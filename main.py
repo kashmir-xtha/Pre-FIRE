@@ -12,7 +12,7 @@ WIN = pygame.display.set_mode((WIDTH, WIDTH))
 pygame.display.set_caption("Simulation")
 
 # ------------------ BACKGROUND ------------------
-BG_IMAGE = pygame.image.load("background.png").convert_alpha()
+BG_IMAGE = pygame.image.load("building_layout.png").convert_alpha()
 BG_IMAGE = pygame.transform.scale(BG_IMAGE, (WIDTH, WIDTH))
 BG_IMAGE.set_alpha(150)
 
