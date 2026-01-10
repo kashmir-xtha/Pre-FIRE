@@ -14,6 +14,7 @@ pygame.display.set_caption("Simulation")
 # ------------------ BACKGROUND ------------------
 BG_IMAGE = pygame.image.load("background.png").convert_alpha()
 BG_IMAGE = pygame.transform.scale(BG_IMAGE, (WIDTH, WIDTH))
+BG_IMAGE.set_alpha(150)
 
 def spot_grid_to_state(grid, rows):
     state = [[EMPTY for _ in range(rows)] for _ in range(rows)]

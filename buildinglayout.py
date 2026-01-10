@@ -53,11 +53,9 @@ def draw_grid(win, rows, width):
 
 
 def draw(win, grid, rows, width, bg_image=None):
+    win.fill((255, 255, 255))
     if bg_image:
         win.blit(bg_image, (0, 0))
-    else:
-        win.fill((255, 255, 255))
-
     for row in grid:
         for spot in row:
             spot.draw(win)
