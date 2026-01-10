@@ -86,7 +86,6 @@ def save_layout(grid, filename="layout.csv"):
         for row in grid:
             writer.writerow([spot_to_value(s) for s in row])
 
-
 def load_layout(grid, filename="layout.csv"):
     start = end = None
     with open(filename, "r") as f:
