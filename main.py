@@ -11,6 +11,10 @@ pygame.init()
 WIN = pygame.display.set_mode((WIDTH, WIDTH))
 pygame.display.set_caption("Simulation")
 
+# ------------------ BACKGROUND ------------------
+BG_IMAGE = pygame.image.load("background.png").convert_alpha()
+BG_IMAGE = pygame.transform.scale(BG_IMAGE, (WIDTH, WIDTH))
+
 def spot_grid_to_state(grid, rows):
     state = [[EMPTY for _ in range(rows)] for _ in range(rows)]
 
@@ -33,10 +37,11 @@ def state_to_spot_grid(state, grid, rows):
                 grid[r][c].color = (255, 80, 0)
 
 def main():
-    grid, start, end = run_editor(WIN, ROWS, WIDTH)
+    grid, start, end = run_editor(WIN, ROWS, WIDTH, BG_IMAGE)
+
 
     def redraw():
-        draw(WIN, grid, ROWS, WIDTH)
+        draw(WIN, grid, ROWS, WIDTH, BG_IMAGE)
 
     a_star(redraw, grid, start, end, ROWS)
 

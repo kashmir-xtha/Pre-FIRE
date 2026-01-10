@@ -29,8 +29,9 @@ class Spot:
     def is_end(self): return self.color == RED
 
     def draw(self, win):
-        pygame.draw.rect(win, self.color,
-                         (self.x, self.y, self.width, self.width))
+        if self.color != WHITE:
+            pygame.draw.rect(win, self.color,
+                            (self.x, self.y, self.width, self.width))
 
 
 # ------------------ GRID UTILS ------------------
@@ -51,11 +52,16 @@ def draw_grid(win, rows, width):
         pygame.draw.line(win, GREY, (i * gap, 0), (i * gap, width))
 
 
-def draw(win, grid, rows, width):
-    win.fill(WHITE)
+def draw(win, grid, rows, width, bg_image=None):
+    if bg_image:
+        win.blit(bg_image, (0, 0))
+    else:
+        win.fill((255, 255, 255))
+
     for row in grid:
         for spot in row:
             spot.draw(win)
+
     draw_grid(win, rows, width)
     pygame.display.update()
 
@@ -103,13 +109,13 @@ def load_layout(grid, filename="layout.csv"):
 
 
 # ------------------ EDITOR LOOP ------------------
-def run_editor(win, rows, width):
+def run_editor(win, rows, width, bg_image=None):
     grid = make_grid(rows, width)
     start = end = None
     run = True
 
     while run:
-        draw(win, grid, rows, width)
+        draw(win, grid, rows, width, bg_image)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
