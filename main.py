@@ -4,7 +4,7 @@ from buildinglayout import run_editor, draw
 from agentmovement import a_star
 from firespread import EMPTY, WALL, START, END, FIRE
 
-WIDTH = 700
+WIDTH = 780
 ROWS = 60
 
 pygame.init()

@@ -14,8 +14,8 @@ class Spot:
     def __init__(self, row, col, width):
         self.row = row
         self.col = col
-        self.x = row * width
-        self.y = col * width
+        self.x = col * width   # horizontal
+        self.y = row * width   # vertical
         self.color = WHITE
         self.width = width
 
@@ -62,7 +62,6 @@ def draw(win, grid, rows, width):
 
 def get_clicked_pos(pos, rows, width):
     gap = width // rows
-    y, x = pos
     return y // gap, x // gap
 
 
