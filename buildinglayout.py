@@ -10,7 +10,7 @@ GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 
 # ------------------ SPOT CLASS ------------------
-class Spot:
+class Spot: #represents one cell in a grid
     def __init__(self, row, col, width):
         self.row = row
         self.col = col
@@ -24,7 +24,7 @@ class Spot:
     def make_start(self): self.color = GREEN
     def make_end(self): self.color = RED
 
-    def is_barrier(self): return self.color == BLACK
+    def is_barrier(self): return self.color == BLACK #returns True if cell color is BLACK   
     def is_start(self): return self.color == GREEN
     def is_end(self): return self.color == RED
 
@@ -35,7 +35,7 @@ class Spot:
 
 
 # ------------------ GRID UTILS ------------------
-def make_grid(rows, width):
+def make_grid(rows, width): #creates 2D grid
     grid = []
     gap = width // rows
     for i in range(rows):
@@ -45,7 +45,7 @@ def make_grid(rows, width):
     return grid
 
 
-def draw_grid(win, rows, width):
+def draw_grid(win, rows, width): # Draws grey horizontal and vertical lines splitting each grid
     gap = width // rows
     for i in range(rows):
         pygame.draw.line(win, GREY, (0, i * gap), (width, i * gap))
@@ -54,7 +54,7 @@ def draw_grid(win, rows, width):
 
 def draw(win, grid, rows, width, bg_image=None):
     win.fill((255, 255, 255))
-    if bg_image:
+    if bg_image: #draws background_image if provided at (0, 0) index position
         win.blit(bg_image, (0, 0))
     for row in grid:
         for spot in row:
@@ -109,28 +109,28 @@ def load_layout(grid, filename="layout.csv"):
 def run_editor(win, rows, width, bg_image=None):
     grid = make_grid(rows, width)
     start = end = None
-    run = True
+    bg_image_loaded = False
 
-    while run:
+    while True:
         draw(win, grid, rows, width, bg_image)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-
-            if pygame.mouse.get_pressed()[0]:
+                
+            if pygame.mouse.get_pressed()[0]: #Left mouseclick functions
                 row, col = get_clicked_pos(pygame.mouse.get_pos(), rows, width)
                 spot = grid[row][col]
-                if not start:
+                if not start: #First click = start, if start not already initiated
                     start = spot
                     spot.make_start()
-                elif not end:
+                elif not end: #second click = end, if end not already initiated
                     end = spot
                     spot.make_end()
                 else:
                     spot.make_barrier()
 
-            elif pygame.mouse.get_pressed()[2]:
+            elif pygame.mouse.get_pressed()[2]: #Right mouseclick functions
                 row, col = get_clicked_pos(pygame.mouse.get_pos(), rows, width)
                 spot = grid[row][col]
                 spot.reset()
@@ -138,9 +138,19 @@ def run_editor(win, rows, width, bg_image=None):
                 if spot == end: end = None
 
             if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_i: # to un/load custom bg_image
+                    if bg_image_loaded == False:
+                        bg_image_loaded = True
+                        bg_image.set_alpha(150)
+                    else:
+                        bg_image_loaded = False
+                        bg_image.set_alpha(0)
                 if event.key == pygame.K_s:
                     save_layout(grid)
                 if event.key == pygame.K_l:
                     start, end = load_layout(grid)
-                if event.key == pygame.K_SPACE and start and end:
+                if event.key == pygame.K_SPACE and start and end: # to start pathfinding
                     return grid, start, end 
+                if event.key == pygame.K_q: # to quit the program
+                    pygame.quit()
+                    sys.exit()
