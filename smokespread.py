@@ -1,5 +1,6 @@
 # smokespread.py
 # Use the same constants as firespread.py
+import pygame
 from firespread import EMPTY, WALL, FIRE, START, END
 
 # Smoke parameters (tweakable)
@@ -48,3 +49,16 @@ def spread_smoke(state_grid, smoke_grid, rows, cols):
             next_smoke[r][c] = max(0, min(MAX_SMOKE, next_smoke[r][c]))
 
     return next_smoke
+
+def draw_smoke(grid, WIN, ROWS):
+    cell = grid.cell_size
+    for r in range(ROWS):
+        for c in range(ROWS):
+            s = grid.smoke[r][c]
+            if s > 0:
+                shade = int(255 * (1 - s))
+                pygame.draw.rect(
+                    WIN,
+                    (shade, shade, shade),
+                    (c * cell, r * cell, cell, cell)
+                )

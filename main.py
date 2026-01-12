@@ -1,10 +1,9 @@
-from smokespread import spread_smoke
-from buildinglayout import draw, get_clicked_pos, run_editor
+from smokespread import draw_smoke, spread_smoke
+from buildinglayout import draw, run_editor
 from agentmovement import a_star, move_agent_along_path
-from firespread import update_fire, EMPTY, WALL, START, END, FIRE
+from firespread import randomfirespot, update_fire, EMPTY, WALL, START, END, FIRE
 import pygame
 import sys
-import random
 
 # Initialization
 WIDTH = 780
@@ -26,7 +25,7 @@ except:
 def main():
     # Run editor first
     grid = run_editor(WIN, ROWS, WIDTH, BG_IMAGE)
-    
+
     # Convert spots to state
     grid.update_state_from_spots()
     
@@ -36,15 +35,9 @@ def main():
         agent_pos.color = (0, 0, 255)  # Blue for agent
     
     # Set random fire location (not at start or end)
-    fire_set = False
-    for _ in range(100):  # Try 100 times to find empty spot
-        r = random.randint(0, ROWS-1)
-        c = random.randint(0, ROWS-1)
-        if grid.state[r][c] == EMPTY:
-            grid.state[r][c] = FIRE
-            fire_set = True
-            break
-    
+    fire_set = randomfirespot(grid, ROWS)
+    randomfirespot(grid, ROWS)  # Try to set another fire
+
     if not fire_set:
         print("Could not find empty spot for fire")
     
@@ -70,18 +63,9 @@ def main():
                             (c * cell, r * cell, cell, cell)
                         )
             
-            # Draw grid and spots
-            for row in grid.grid:
-                for spot in row:
-                    spot.draw(WIN)
-            
-            # Draw grid lines
-            for i in range(ROWS + 1):
-                pygame.draw.line(WIN, (200, 200, 200), 
-                               (0, i * cell), (WIDTH, i * cell))
-                pygame.draw.line(WIN, (200, 200, 200), 
-                               (i * cell, 0), (i * cell, WIDTH))
-            
+            # Draw grid lines and spots
+            draw(WIN, grid.grid, ROWS, WIDTH, BG_IMAGE)
+
             pygame.display.update()
         
         # Find path using A*
@@ -140,29 +124,11 @@ def main():
         cell = grid.cell_size
         
         # Draw smoke
-        for r in range(ROWS):
-            for c in range(ROWS):
-                s = grid.smoke[r][c]
-                if s > 0:
-                    shade = int(255 * (1 - s))
-                    pygame.draw.rect(
-                        WIN,
-                        (shade, shade, shade),
-                        (c * cell, r * cell, cell, cell)
-                    )
+        draw_smoke(grid, WIN, ROWS)
         
         # Draw grid and spots
-        for row in grid.grid:
-            for spot in row:
-                spot.draw(WIN)
-        
-        # Draw grid lines
-        for i in range(ROWS + 1):
-            pygame.draw.line(WIN, (200, 200, 200), 
-                           (0, i * cell), (WIDTH, i * cell))
-            pygame.draw.line(WIN, (200, 200, 200), 
-                           (i * cell, 0), (i * cell, WIDTH))
-        
+        draw(WIN, grid.grid, ROWS, WIDTH)
+
         # Draw agent position indicator
         if agent_pos:
             pygame.draw.circle(WIN, (0, 0, 255), 

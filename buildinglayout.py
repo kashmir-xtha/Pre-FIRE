@@ -109,8 +109,8 @@ def run_editor(win, rows, width, bg_image=None):
     # Try to load existing layout
     start, end = 0, 0
     bg_image_loaded = False
-
-    while True:
+    run = True
+    while run:
         draw(win, grid_obj.grid, rows, width, bg_image)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

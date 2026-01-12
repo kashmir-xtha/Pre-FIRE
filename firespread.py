@@ -35,3 +35,13 @@ def update_fire(grid, fire_prob=0.3):
                             break
 
     return new_grid
+
+def randomfirespot(grid, ROWS):
+    for _ in range(100):  # Try 100 times to find empty spot
+        r = random.randint(0, ROWS-1)
+        c = random.randint(0, ROWS-1)
+        if grid.state[r][c] == EMPTY:
+            grid.state[r][c] = FIRE
+            return True
+            break
+    return False
