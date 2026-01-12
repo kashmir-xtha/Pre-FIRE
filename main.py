@@ -14,7 +14,6 @@ pygame.display.set_caption("Simulation")
 # ------------------ BACKGROUND ------------------
 BG_IMAGE = pygame.image.load("building_layout.png").convert_alpha()
 BG_IMAGE = pygame.transform.scale(BG_IMAGE, (WIDTH, WIDTH))
-BG_IMAGE.set_alpha(0)
 
 def spot_grid_to_state(grid, rows):
     state = [[EMPTY for _ in range(rows)] for _ in range(rows)]
@@ -39,6 +38,7 @@ def state_to_spot_grid(state, grid, rows):
 
 def main():
     while True:
+            BG_IMAGE.set_alpha(0)
             grid, start, end = run_editor(WIN, ROWS, WIDTH, BG_IMAGE)
             def redraw():
                 draw(WIN, grid, ROWS, WIDTH)
@@ -51,5 +51,7 @@ def main():
                     if event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_r: # Press 'r' to reset
                             running = False
-
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        sys.exit()
 main()

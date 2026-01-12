@@ -149,6 +149,8 @@ def run_editor(win, rows, width, bg_image=None):
                     save_layout(grid)
                 if event.key == pygame.K_l:
                     start, end = load_layout(grid)
+                    bg_image_loaded = False
+                    bg_image.set_alpha(0)
                 if event.key == pygame.K_SPACE and start and end: # to start pathfinding
                     return grid, start, end 
                 if event.key == pygame.K_q: # to quit the program
