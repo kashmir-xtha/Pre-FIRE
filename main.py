@@ -1,57 +1,178 @@
+from smokespread import spread_smoke
+from buildinglayout import draw, get_clicked_pos, run_editor
+from agentmovement import a_star, move_agent_along_path
+from firespread import update_fire, EMPTY, WALL, START, END, FIRE
 import pygame
 import sys
-from buildinglayout import run_editor, draw
-from agentmovement import a_star
-from firespread import EMPTY, WALL, START, END, FIRE
+import random
 
+# Initialization
 WIDTH = 780
 ROWS = 60
 
 pygame.init()
 WIN = pygame.display.set_mode((WIDTH, WIDTH))
-pygame.display.set_caption("Simulation")
+pygame.display.set_caption("Fire and Smoke Simulation with Agent")
 
-# ------------------ BACKGROUND ------------------
-BG_IMAGE = pygame.image.load("building_layout.png").convert_alpha()
-BG_IMAGE = pygame.transform.scale(BG_IMAGE, (WIDTH, WIDTH))
-
-def spot_grid_to_state(grid, rows):
-    state = [[EMPTY for _ in range(rows)] for _ in range(rows)]
-
-    for r in range(rows):
-        for c in range(rows):
-            spot = grid[r][c]
-            if spot.is_barrier():
-                state[r][c] = WALL
-            elif spot.is_start():
-                state[r][c] = START
-            elif spot.is_end():
-                state[r][c] = END
-
-    return state
-
-def state_to_spot_grid(state, grid, rows):
-    for r in range(rows):
-        for c in range(rows):
-            if state[r][c] == FIRE:
-                grid[r][c].color = (255, 80, 0)
+# Background
+try:
+    BG_IMAGE = pygame.image.load("building_layout.png").convert_alpha()
+    BG_IMAGE = pygame.transform.scale(BG_IMAGE, (WIDTH, WIDTH))
+    BG_IMAGE.set_alpha(0)
+except:
+    BG_IMAGE = None
+    print("Background image not found. Running without background.")
 
 def main():
-    while True:
-            BG_IMAGE.set_alpha(0)
-            grid, start, end = run_editor(WIN, ROWS, WIDTH, BG_IMAGE)
-            def redraw():
-                draw(WIN, grid, ROWS, WIDTH)
-            a_star(redraw, grid, start, end, ROWS)
-            # Once, A* is completed, windows closes automatically
-            # Below while keeps window open
-            running = True
-            while running:
-                for event in pygame.event.get():
-                    if event.type == pygame.KEYDOWN:
-                        if event.key == pygame.K_r: # Press 'r' to reset
-                            running = False
-                    if event.type == pygame.QUIT:
-                        pygame.quit()
-                        sys.exit()
-main()
+    # Run editor first
+    grid = run_editor(WIN, ROWS, WIDTH, BG_IMAGE)
+    
+    # Convert spots to state
+    grid.update_state_from_spots()
+    
+    # Create agent at start position
+    agent_pos = grid.start
+    if agent_pos:
+        agent_pos.color = (0, 0, 255)  # Blue for agent
+    
+    # Set random fire location (not at start or end)
+    fire_set = False
+    for _ in range(100):  # Try 100 times to find empty spot
+        r = random.randint(0, ROWS-1)
+        c = random.randint(0, ROWS-1)
+        if grid.state[r][c] == EMPTY:
+            grid.state[r][c] = FIRE
+            fire_set = True
+            break
+    
+    if not fire_set:
+        print("Could not find empty spot for fire")
+    
+    # Find path from agent to end
+    path = None
+    if grid.start and grid.end:
+        # Create a draw function for A* visualization
+        def draw_a_star():
+            WIN.fill((255, 255, 255))
+            if BG_IMAGE:
+                WIN.blit(BG_IMAGE, (0, 0))
+            
+            # Draw smoke (if any)
+            cell = grid.cell_size
+            for r in range(ROWS):
+                for c in range(ROWS):
+                    s = grid.smoke[r][c]
+                    if s > 0:
+                        shade = int(255 * (1 - s))
+                        pygame.draw.rect(
+                            WIN,
+                            (shade, shade, shade),
+                            (c * cell, r * cell, cell, cell)
+                        )
+            
+            # Draw grid and spots
+            for row in grid.grid:
+                for spot in row:
+                    spot.draw(WIN)
+            
+            # Draw grid lines
+            for i in range(ROWS + 1):
+                pygame.draw.line(WIN, (200, 200, 200), 
+                               (0, i * cell), (WIDTH, i * cell))
+                pygame.draw.line(WIN, (200, 200, 200), 
+                               (i * cell, 0), (i * cell, WIDTH))
+            
+            pygame.display.update()
+        
+        # Find path using A*
+        path = a_star(draw_a_star, grid.grid, grid.start, grid.end, ROWS)
+        if path:
+            print(f"Path found with {len(path)} steps")
+        else:
+            print("No path found!")
+    
+    clock = pygame.time.Clock()
+    running = True
+    frame_count = 0
+    
+    while running:
+        clock.tick(120)  # 10 FPS
+        frame_count += 1
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+                elif event.key == pygame.K_r:
+                    # Reset agent position and recalculate path
+                    if agent_pos:
+                        agent_pos.color = (255, 255, 255)
+                    agent_pos = grid.start
+                    if agent_pos:
+                        agent_pos.color = (0, 0, 255)
+                    if grid.start and grid.end:
+                        path = a_star(lambda: None, grid.grid, grid.start, grid.end, ROWS)
+        
+        # Update fire spread every 5 frames
+        if frame_count % 5 == 0:
+            grid.state = update_fire(grid.state, fire_prob=0.3)
+        
+        # Update smoke
+        grid.smoke = spread_smoke(grid.state, grid.smoke, ROWS, ROWS)
+        
+        # Apply fire visualization to spots
+        grid.apply_fire_to_spots()
+        
+        # Move agent along path every 10 frames
+        if path and frame_count % 10 == 0 and agent_pos != grid.end:
+            agent_pos = move_agent_along_path(agent_pos, path, grid.grid)
+            # Remove the first element (current position) from path
+            if path and len(path) > 1:
+                path.pop(0)
+        
+        # Draw everything
+        WIN.fill((255, 255, 255))
+        if BG_IMAGE:
+            WIN.blit(BG_IMAGE, (0, 0))
+        
+        cell = grid.cell_size
+        
+        # Draw smoke
+        for r in range(ROWS):
+            for c in range(ROWS):
+                s = grid.smoke[r][c]
+                if s > 0:
+                    shade = int(255 * (1 - s))
+                    pygame.draw.rect(
+                        WIN,
+                        (shade, shade, shade),
+                        (c * cell, r * cell, cell, cell)
+                    )
+        
+        # Draw grid and spots
+        for row in grid.grid:
+            for spot in row:
+                spot.draw(WIN)
+        
+        # Draw grid lines
+        for i in range(ROWS + 1):
+            pygame.draw.line(WIN, (200, 200, 200), 
+                           (0, i * cell), (WIDTH, i * cell))
+            pygame.draw.line(WIN, (200, 200, 200), 
+                           (i * cell, 0), (i * cell, WIDTH))
+        
+        # Draw agent position indicator
+        if agent_pos:
+            pygame.draw.circle(WIN, (0, 0, 255), 
+                             (agent_pos.x + cell//2, agent_pos.y + cell//2), 
+                             cell//3)
+        
+        pygame.display.update()
+    
+    pygame.quit()
+    sys.exit()
+
+if __name__ == "__main__":
+    main()
