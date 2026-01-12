@@ -1,7 +1,7 @@
 from smokespread import draw_smoke, spread_smoke
 from buildinglayout import draw, run_editor
 from agentmovement import a_star, move_agent_along_path
-from firespread import randomfirespot, update_fire, EMPTY, WALL, START, END, FIRE
+from firespread import randomfirespot, update_fire
 import pygame
 import sys
 
@@ -28,7 +28,7 @@ def main():
 
     # Convert spots to state
     grid.update_state_from_spots()
-    
+            
     # Create agent at start position
     agent_pos = grid.start
     if agent_pos:
@@ -36,7 +36,6 @@ def main():
     
     # Set random fire location (not at start or end)
     fire_set = randomfirespot(grid, ROWS)
-    randomfirespot(grid, ROWS)  # Try to set another fire
 
     if not fire_set:
         print("Could not find empty spot for fire")
@@ -51,17 +50,7 @@ def main():
                 WIN.blit(BG_IMAGE, (0, 0))
             
             # Draw smoke (if any)
-            cell = grid.cell_size
-            for r in range(ROWS):
-                for c in range(ROWS):
-                    s = grid.smoke[r][c]
-                    if s > 0:
-                        shade = int(255 * (1 - s))
-                        pygame.draw.rect(
-                            WIN,
-                            (shade, shade, shade),
-                            (c * cell, r * cell, cell, cell)
-                        )
+            draw_smoke(grid, WIN, ROWS)
             
             # Draw grid lines and spots
             draw(WIN, grid.grid, ROWS, WIDTH, BG_IMAGE)
@@ -80,7 +69,7 @@ def main():
     frame_count = 0
     
     while running:
-        clock.tick(120)  # 10 FPS
+        clock.tick(120)  # 120 FPS
         frame_count += 1
         
         for event in pygame.event.get():
@@ -96,16 +85,34 @@ def main():
                     agent_pos = grid.start
                     if agent_pos:
                         agent_pos.color = (0, 0, 255)
+                    # Reset the entire simulation
+                    grid.clear_simulation_visuals()
+                    
+                    # Reset frame count
+                    frame_count = 0
+                    
+                    #reset fire
+                    fire_set = False
+
+                    # Recalculate path
                     if grid.start and grid.end:
                         path = a_star(lambda: None, grid.grid, grid.start, grid.end, ROWS)
-        
+                        if path:
+                            print(f"New path found with {len(path)} steps after reset")
+                        else:
+                            print("No path found after reset!")
+
+        #generate fire after reset
+        if not fire_set:
+            fire_set = randomfirespot(grid, ROWS)
+
         # Update fire spread every 5 frames
         if frame_count % 5 == 0:
             grid.state = update_fire(grid.state, fire_prob=0.3)
         
         # Update smoke
         grid.smoke = spread_smoke(grid.state, grid.smoke, ROWS, ROWS)
-        
+
         # Apply fire visualization to spots
         grid.apply_fire_to_spots()
         

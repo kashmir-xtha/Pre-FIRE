@@ -4,8 +4,8 @@ import pygame
 from firespread import EMPTY, WALL, FIRE, START, END
 
 # Smoke parameters (tweakable)
-SMOKE_DIFFUSION = 0.20    # how much smoke spreads
-SMOKE_DECAY = 0.02       # smoke loss per step
+SMOKE_DIFFUSION = 0.5    # how much smoke spreads
+SMOKE_DECAY = 0.001       # smoke loss per step
 MAX_SMOKE = 1.0
 
 def spread_smoke(state_grid, smoke_grid, rows, cols):
@@ -56,7 +56,7 @@ def draw_smoke(grid, WIN, ROWS):
         for c in range(ROWS):
             s = grid.smoke[r][c]
             if s > 0:
-                shade = int(255 * (1 - s))
+                shade = int(255 * (1 - min(0.7, s * 5)))  # Denser smoke is darker
                 pygame.draw.rect(
                     WIN,
                     (shade, shade, shade),

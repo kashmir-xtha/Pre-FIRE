@@ -1,6 +1,6 @@
 # grid.py
 # Import from the corrected firespread module
-from firespread import EMPTY, WALL, START, END, FIRE
+from firespread import EMPTY, WALL, START, END, FIRE, FIRE_COLOR
 
 class Grid:
     def __init__(self, rows, width):
@@ -42,7 +42,7 @@ class Grid:
         for r in range(self.rows):
             for c in range(self.rows):
                 if self.state[r][c] == FIRE:
-                    self.grid[r][c].color = (255, 80, 0)
+                    self.grid[r][c].color = FIRE_COLOR
 
     def get_spot(self, r, c):
         if 0 <= r < self.rows and 0 <= c < self.rows:
@@ -60,3 +60,20 @@ class Grid:
                 # Reset purple path cells to white
                 if spot.color == (128, 0, 128):  # Purple
                     spot.color = (255, 255, 255)  # White
+    
+    def clear_simulation_visuals(self):
+        """Clear all simulation visuals (fire, smoke, path) but keep walls, start, end"""
+        # Clear smoke
+        self.smoke = [[0.0 for _ in range(self.rows)] for _ in range(self.rows)]
+        
+        # Clear fire from state and visual
+        for r in range(self.rows):
+            for c in range(self.rows):
+                if self.state[r][c] == FIRE:
+                    self.state[r][c] = EMPTY
+                    # Only reset color if not wall, start, or end
+                    if not self.grid[r][c].is_barrier() and not self.grid[r][c].is_start() and not self.grid[r][c].is_end():
+                        self.grid[r][c].color = (255, 255, 255)
+        
+        # Clear path visualization
+        self.clear_path_visualization()

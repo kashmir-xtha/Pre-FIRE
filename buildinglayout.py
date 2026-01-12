@@ -50,7 +50,6 @@ def draw_grid(win, rows, width):
         pygame.draw.line(win, GREY, (i * gap, 0), (i * gap, width))
 
 def draw(win, grid, rows, width, bg_image=None):
-    win.fill(WHITE)
     if bg_image:
         win.blit(bg_image, (0, 0))
     for row in grid:
@@ -111,6 +110,7 @@ def run_editor(win, rows, width, bg_image=None):
     bg_image_loaded = False
     run = True
     while run:
+        win.fill(WHITE)
         draw(win, grid_obj.grid, rows, width, bg_image)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

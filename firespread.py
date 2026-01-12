@@ -7,6 +7,7 @@ WALL = 1
 FIRE = 2
 START = 8    # Different from FIRE
 END = 9      # Different from FIRE
+FIRE_COLOR = (255, 80, 0)
 
 def get_neighbors(r, c, rows, cols):
     for dr, dc in [(1,0), (-1,0), (0,1), (0,-1)]:
