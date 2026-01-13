@@ -17,7 +17,7 @@ class Grid:
 
     def _make_grid(self):
         # Import here to avoid circular import
-        from buildinglayout import Spot
+        from spot import Spot
         grid = []
         for r in range(self.rows):
             grid.append([])
@@ -58,7 +58,7 @@ class Grid:
             for c in range(self.rows):
                 spot = self.grid[r][c]
                 # Reset purple path cells to white
-                if spot.color == Color.PURPLE.value:  # Purple
+                if spot.color == Color.PURPLE.value or spot.color == Color.TURQUOISE.value:  # Purple
                     spot.color = Color.WHITE.value  # White
     
     def clear_simulation_visuals(self):

@@ -1,5 +1,3 @@
-# smokespread.py
-# Use the same constants as firespread.py
 import pygame
 from utilities import get_neighbors, state_value, smoke_constants
 

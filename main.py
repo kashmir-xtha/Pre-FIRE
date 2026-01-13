@@ -1,6 +1,6 @@
 from smoke import draw_smoke, spread_smoke
 from buildinglayout import draw, run_editor
-from agentmovement import a_star, Agent
+from agent import a_star, Agent
 from fire import randomfirespot, update_fire
 import pygame
 import sys
@@ -56,11 +56,6 @@ def main():
         # Find path using A*
         agent.path = a_star(draw_a_star, grid.grid, grid.start, grid.end, ROWS)
         grid.clear_path_visualization()  # Clear any previous path visualization
-
-        if agent.path:
-            print(f"Path found with {len(agent.path)} steps")
-        else:
-            print("No path found!")
     
     clock = pygame.time.Clock()
     running = True
@@ -121,16 +116,10 @@ def main():
             agent.update()
     
         # Draw everything
-        WIN.fill(Color.WHITE.value)
-        
-        # Draw smoke
-        draw_smoke(grid, WIN, ROWS)
-        
-        # Draw grid and spots
-        draw(WIN, grid.grid, ROWS, WIDTH)
-
-        # Draw agent
-        agent.draw(WIN)
+        WIN.fill(Color.WHITE.value) # Clear screen
+        draw_smoke(grid, WIN, ROWS) # Draw smoke
+        draw(WIN, grid.grid, ROWS, WIDTH) # Draw grid and spots
+        agent.draw(WIN) # Draw agent
         
         pygame.display.update()
     

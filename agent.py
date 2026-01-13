@@ -1,6 +1,5 @@
 import pygame
 from queue import PriorityQueue
-import grid
 from utilities import Color, get_neighbors, state_value
 
 class Agent:
