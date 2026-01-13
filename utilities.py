@@ -12,7 +12,6 @@ class Color(Enum):
     BLUE = (0, 0, 255)
     FIRE_COLOR = (255, 80, 0)
 
-
 class state_value(Enum):
     EMPTY = 0
     WALL = 1
@@ -21,6 +20,12 @@ class state_value(Enum):
     END = 9
 
 class smoke_constants(Enum):
-    SMOKE_DIFFUSION = 0.5    # how much smoke spreads
+    SMOKE_DIFFUSION = 1    # how much smoke spreads
     SMOKE_DECAY = 0.001       # smoke loss per step
     MAX_SMOKE = 1.0
+
+def get_neighbors(r, c, rows, cols):
+    for dr, dc in [(1,0), (-1,0), (0,1), (0,-1)]:
+        nr, nc = r + dr, c + dc
+        if 0 <= nr < rows and 0 <= nc < cols:
+            yield nr, nc

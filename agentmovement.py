@@ -1,6 +1,6 @@
 import pygame
 from queue import PriorityQueue
-from utilities import Color
+from utilities import Color, get_neighbors
 
 # ------------------ HEURISTIC ------------------
 def heuristic(a, b):
@@ -48,30 +48,26 @@ def a_star(draw, grid, start, end, rows):
             return path
         
         # 4-connected grid
-        for dr, dc in [(1,0), (-1,0), (0,1), (0,-1)]:
-            r = current.row + dr
-            c = current.col + dc
+        for r, c in get_neighbors(current.row, current.col, rows, rows):
+            neighbor = grid[r][c]
             
-            if 0 <= r < rows and 0 <= c < rows:
-                neighbor = grid[r][c]
+            # Skip if barrier or fire (fire is orange: 255, 80, 0)
+            if neighbor.color == Color.BLACK.value or neighbor.color == Color.FIRE_COLOR.value:
+                continue
+            
+            temp_g = g_score[current] + 1
+            
+            if temp_g < g_score[neighbor]:
+                came_from[neighbor] = current
+                g_score[neighbor] = temp_g
+                f_score[neighbor] = temp_g + heuristic(
+                    (neighbor.row, neighbor.col), (end.row, end.col)
+                )
                 
-                # Skip if barrier or fire (fire is orange: 255, 80, 0)
-                if neighbor.color == Color.BLACK.value or neighbor.color == Color.FIRE_COLOR.value:
-                    continue
-                
-                temp_g = g_score[current] + 1
-                
-                if temp_g < g_score[neighbor]:
-                    came_from[neighbor] = current
-                    g_score[neighbor] = temp_g
-                    f_score[neighbor] = temp_g + heuristic(
-                        (neighbor.row, neighbor.col), (end.row, end.col)
-                    )
-                    
-                    if neighbor not in open_set_hash:
-                        count += 1
-                        open_set.put((f_score[neighbor], count, neighbor))
-                        open_set_hash.add(neighbor)
+                if neighbor not in open_set_hash:
+                    count += 1
+                    open_set.put((f_score[neighbor], count, neighbor))
+                    open_set_hash.add(neighbor)
         
         # Visualization (optional)
         if current != start:

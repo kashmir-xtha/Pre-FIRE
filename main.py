@@ -1,7 +1,7 @@
-from smokespread import draw_smoke, spread_smoke
+from smoke import draw_smoke, spread_smoke
 from buildinglayout import draw, run_editor
 from agentmovement import a_star, move_agent_along_path
-from firespread import randomfirespot, update_fire
+from fire import randomfirespot, update_fire
 import pygame
 import sys
 from utilities import Color
@@ -108,41 +108,44 @@ def main():
         if not fire_set:
             fire_set = randomfirespot(grid, ROWS)
 
+        if paused: 
+            continue
+
+        #updating stuffs...
         # Update fire spread every 5 frames
-        if not paused: 
-            if frame_count % 5 == 0:
-                grid.state = update_fire(grid.state, fire_prob=0.3)
-            # Update smoke
-            if frame_count % 1 == 0:
-                grid.smoke = spread_smoke(grid.state, grid.smoke, ROWS, ROWS)
+        if frame_count % 5 == 0:
+            grid.state = update_fire(grid.state, fire_prob=0.3)
+
+        # Update smoke
+        if frame_count % 1 == 0:
+            grid.smoke = spread_smoke(grid.state, grid.smoke, ROWS, ROWS)
 
         # Apply fire visualization to spots
-        if not paused:
-            grid.apply_fire_to_spots()
-        
-            # Move agent along path every 10 frames
-            if path and frame_count % 10 == 0 and agent_pos != grid.end:
-                agent_pos = move_agent_along_path(agent_pos, path, grid.grid)
-                # Remove the first element (current position) from path
-                if path and len(path) > 1:
-                    path.pop(0)
-        
-            # Draw everything
-            WIN.fill(Color.WHITE.value)
+        grid.apply_fire_to_spots()
+    
+        # Move agent along path every 10 frames
+        if path and frame_count % 10 == 0 and agent_pos != grid.end:
+            agent_pos = move_agent_along_path(agent_pos, path, grid.grid)
+            # Remove the first element (current position) from path
+            if path and len(path) > 1:
+                path.pop(0)
+    
+        # Draw everything
+        WIN.fill(Color.WHITE.value)
 
-            cell = grid.cell_size
-            
-            # Draw smoke
-            draw_smoke(grid, WIN, ROWS)
-            
-            # Draw grid and spots
-            draw(WIN, grid.grid, ROWS, WIDTH)
+        cell = grid.cell_size
+        
+        # Draw smoke
+        draw_smoke(grid, WIN, ROWS)
+        
+        # Draw grid and spots
+        draw(WIN, grid.grid, ROWS, WIDTH)
 
-            # Draw agent position indicator
-            if agent_pos:
-                pygame.draw.circle(WIN, Color.WHITE.value, 
-                                (agent_pos.x + cell//2, agent_pos.y + cell//2), 
-                                cell//3)
+        # Draw agent position indicator
+        if agent_pos:
+            pygame.draw.circle(WIN, Color.WHITE.value, 
+                            (agent_pos.x + cell//2, agent_pos.y + cell//2), 
+                            cell//3)
         
         pygame.display.update()
     

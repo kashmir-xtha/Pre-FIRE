@@ -1,12 +1,5 @@
-# firespread.py - Fixed to match smokespread constants
 import random
-from utilities import state_value
-
-def get_neighbors(r, c, rows, cols):
-    for dr, dc in [(1,0), (-1,0), (0,1), (0,-1)]:
-        nr, nc = r + dr, c + dc
-        if 0 <= nr < rows and 0 <= nc < cols:
-            yield nr, nc
+from utilities import state_value, get_neighbors
 
 def update_fire(grid, fire_prob=0.3):
     """

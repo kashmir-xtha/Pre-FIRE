@@ -9,6 +9,8 @@ class Grid:
         self.grid = self._make_grid()
         self.smoke = [[0.0 for _ in range(rows)] for _ in range(rows)]
         self.state = [[state_value.EMPTY.value for _ in range(rows)] for _ in range(rows)]
+        #self.temperature = [[20.0 for _ in range(rows)] for _ in range(rows)]  # Default temp 20C
+        #self.temperature_threshold = [[0.0 for _ in range(rows)] for _ in range(rows)]  # Example threshold for danger
 
         self.start = None
         self.end = None
