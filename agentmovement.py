@@ -1,14 +1,6 @@
 import pygame
 from queue import PriorityQueue
-
-# Colors (kept local to avoid circular imports)
-WHITE = (255, 255, 255)
-ORANGE = (255, 165, 0)
-TURQUOISE = (64, 224, 208)
-PURPLE = (128, 0, 128)
-BLACK = (0, 0, 0)
-BLUE = (0, 0, 255)
-FIRE_COLOR = (255, 80, 0)
+from utilities import Color
 
 # ------------------ HEURISTIC ------------------
 def heuristic(a, b):
@@ -52,7 +44,7 @@ def a_star(draw, grid, start, end, rows):
             # Color the path
             for spot in path:
                 if spot != start and spot != end:
-                    spot.color = PURPLE
+                    spot.color = Color.PURPLE.value
             return path
         
         # 4-connected grid
@@ -64,7 +56,7 @@ def a_star(draw, grid, start, end, rows):
                 neighbor = grid[r][c]
                 
                 # Skip if barrier or fire (fire is orange: 255, 80, 0)
-                if neighbor.color == BLACK or neighbor.color == FIRE_COLOR:
+                if neighbor.color == Color.BLACK.value or neighbor.color == Color.FIRE_COLOR.value:
                     continue
                 
                 temp_g = g_score[current] + 1
@@ -83,7 +75,7 @@ def a_star(draw, grid, start, end, rows):
         
         # Visualization (optional)
         if current != start:
-            current.color = TURQUOISE
+            current.color = Color.TURQUOISE.value
         
         draw()
     
@@ -99,14 +91,14 @@ def move_agent_along_path(agent_pos, path, grid):
     next_spot = path[1]  # path[0] is current position
     
     # Check if next position is safe (not fire or wall)
-    if (next_spot.color == BLACK or next_spot.color == FIRE_COLOR):
+    if (next_spot.color == Color.BLACK.value or next_spot.color == Color.FIRE_COLOR.value):
         # Recalculate path needed
         return agent_pos
     
     # Mark old position as empty
     if agent_pos:
-        agent_pos.color = WHITE  # White/empty
+        agent_pos.color = Color.WHITE.value  # White/empty
     
     # Move to new position
-    next_spot.color = BLUE
+    next_spot.color = Color.BLUE.value
     return next_spot

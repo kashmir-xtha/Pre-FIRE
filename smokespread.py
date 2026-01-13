@@ -1,12 +1,7 @@
 # smokespread.py
 # Use the same constants as firespread.py
 import pygame
-from firespread import EMPTY, WALL, FIRE, START, END
-
-# Smoke parameters (tweakable)
-SMOKE_DIFFUSION = 0.5    # how much smoke spreads
-SMOKE_DECAY = 0.001       # smoke loss per step
-MAX_SMOKE = 1.0
+from utilities import state_value, smoke_constants
 
 def spread_smoke(state_grid, smoke_grid, rows, cols):
     """
@@ -18,13 +13,13 @@ def spread_smoke(state_grid, smoke_grid, rows, cols):
 
     for r in range(rows):
         for c in range(cols):
-            if state_grid[r][c] == WALL:
+            if state_grid[r][c] == state_value.WALL.value:
                 next_smoke[r][c] = 0
                 continue
 
             # Fire produces smoke
-            if state_grid[r][c] == FIRE:
-                next_smoke[r][c] = MAX_SMOKE
+            if state_grid[r][c] == state_value.FIRE.value:
+                next_smoke[r][c] = smoke_constants.MAX_SMOKE.value
                 continue
 
             # Diffusion from neighbors
@@ -34,19 +29,18 @@ def spread_smoke(state_grid, smoke_grid, rows, cols):
             for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
                 nr, nc = r + dr, c + dc
                 if 0 <= nr < rows and 0 <= nc < cols:
-                    if state_grid[nr][nc] != WALL:
+                    if state_grid[nr][nc] != state_value.WALL.value:
                         total += smoke_grid[nr][nc]
                         count += 1
 
             if count > 0:
-                diffusion = SMOKE_DIFFUSION * (total / count - smoke_grid[r][c])
+                diffusion = smoke_constants.SMOKE_DIFFUSION.value * (total / count - smoke_grid[r][c])
                 next_smoke[r][c] += diffusion
 
             # Natural decay
-            next_smoke[r][c] *= (1 - SMOKE_DECAY)
-
+            next_smoke[r][c] *= (1 - smoke_constants.SMOKE_DECAY.value)
             # Clamp
-            next_smoke[r][c] = max(0, min(MAX_SMOKE, next_smoke[r][c]))
+            next_smoke[r][c] = max(0, min(smoke_constants.MAX_SMOKE.value, next_smoke[r][c]))
 
     return next_smoke
 

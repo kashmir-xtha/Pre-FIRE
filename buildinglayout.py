@@ -2,13 +2,7 @@
 import pygame
 import csv
 import sys
-
-# Colors
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-GREY = (200, 200, 200)
-GREEN = (0, 255, 0)
-RED = (255, 0, 0)
+from utilities import state_value, Color
 
 class Spot:
     def __init__(self, row, col, width):
@@ -16,20 +10,20 @@ class Spot:
         self.col = col
         self.x = col * width
         self.y = row * width
-        self.color = WHITE
+        self.color = Color.WHITE.value
         self.width = width
 
-    def reset(self): self.color = WHITE
-    def make_barrier(self): self.color = BLACK
-    def make_start(self): self.color = GREEN
-    def make_end(self): self.color = RED
+    def reset(self): self.color = Color.WHITE.value
+    def make_barrier(self): self.color = Color.BLACK.value
+    def make_start(self): self.color = Color.GREEN.value
+    def make_end(self): self.color = Color.RED.value
 
-    def is_barrier(self): return self.color == BLACK
-    def is_start(self): return self.color == GREEN
-    def is_end(self): return self.color == RED
+    def is_barrier(self): return self.color == Color.BLACK.value
+    def is_start(self): return self.color == Color.GREEN.value
+    def is_end(self): return self.color == Color.RED.value
 
     def draw(self, win):
-        if self.color != WHITE:
+        if self.color != Color.WHITE.value:
             pygame.draw.rect(win, self.color,
                             (self.x, self.y, self.width, self.width))
 
@@ -46,8 +40,8 @@ def make_grid(rows, width):  #creates 2D grid
 def draw_grid(win, rows, width):
     gap = width // rows
     for i in range(rows):
-        pygame.draw.line(win, GREY, (0, i * gap), (width, i * gap))
-        pygame.draw.line(win, GREY, (i * gap, 0), (i * gap, width))
+        pygame.draw.line(win, Color.GREY.value, (0, i * gap), (width, i * gap))
+        pygame.draw.line(win, Color.GREY.value, (i * gap, 0), (i * gap, width))
 
 def draw(win, grid, rows, width, bg_image=None):
     if bg_image:
@@ -67,10 +61,10 @@ def get_clicked_pos(pos, rows, width):
 
 # ------------------ SAVE / LOAD ------------------
 def spot_to_value(spot):
-    if spot.is_barrier(): return 1
-    if spot.is_start(): return 2
-    if spot.is_end(): return 3
-    return 0
+    if spot.is_barrier(): return state_value.WALL.value
+    if spot.is_start(): return state_value.START.value
+    if spot.is_end(): return state_value.END.value
+    return state_value.EMPTY.value
 
 def save_layout(grid, filename="layout.csv"):
     with open(filename, "w", newline="") as f:
@@ -87,12 +81,12 @@ def load_layout(grid, filename="layout.csv"):
                 for c, val in enumerate(row):
                     spot = grid[r][c]
                     spot.reset()
-                    if val == "1":
+                    if int(val) == state_value.WALL.value:
                         spot.make_barrier()
-                    elif val == "2":
+                    elif int(val) == state_value.START.value:
                         spot.make_start()
                         start = spot
-                    elif val == "3":
+                    elif int(val) == state_value.END.value:
                         spot.make_end()
                         end = spot
     except FileNotFoundError:
@@ -110,7 +104,7 @@ def run_editor(win, rows, width, bg_image=None):
     bg_image_loaded = False
     run = True
     while run:
-        win.fill(WHITE)
+        win.fill(Color.WHITE.value)
         draw(win, grid_obj.grid, rows, width, bg_image)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
