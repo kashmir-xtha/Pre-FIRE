@@ -4,6 +4,7 @@ from agentmovement import a_star, move_agent_along_path
 from firespread import randomfirespot, update_fire
 import pygame
 import sys
+from utilities import Color
 
 # Initialization
 WIDTH = 780
@@ -32,7 +33,7 @@ def main():
     # Create agent at start position
     agent_pos = grid.start
     if agent_pos:
-        agent_pos.color = (0, 0, 255)  # Blue for agent
+        agent_pos.color = Color.BLUE.value  # Blue for agent
     
     # Set random fire location (not at start or end)
     fire_set = randomfirespot(grid, ROWS)
@@ -45,15 +46,13 @@ def main():
     if grid.start and grid.end:
         # Create a draw function for A* visualization
         def draw_a_star():
-            WIN.fill((255, 255, 255))
-            if BG_IMAGE:
-                WIN.blit(BG_IMAGE, (0, 0))
+            WIN.fill(Color.WHITE.value)
             
             # Draw smoke (if any)
             draw_smoke(grid, WIN, ROWS)
             
             # Draw grid lines and spots
-            draw(WIN, grid.grid, ROWS, WIDTH, BG_IMAGE)
+            draw(WIN, grid.grid, ROWS, WIDTH)
 
             pygame.display.update()
         
@@ -67,11 +66,13 @@ def main():
     clock = pygame.time.Clock()
     running = True
     frame_count = 0
-    
+    paused = False
+
     while running:
         clock.tick(120)  # 120 FPS
         frame_count += 1
         
+        print(paused)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -81,10 +82,10 @@ def main():
                 elif event.key == pygame.K_r:
                     # Reset agent position and recalculate path
                     if agent_pos:
-                        agent_pos.color = (255, 255, 255)
+                        agent_pos.color = Color.WHITE.value
                     agent_pos = grid.start
                     if agent_pos:
-                        agent_pos.color = (0, 0, 255)
+                        agent_pos.color = Color.BLUE.value
                     # Reset the entire simulation
                     grid.clear_simulation_visuals()
                     
@@ -124,9 +125,7 @@ def main():
                 path.pop(0)
         
         # Draw everything
-        WIN.fill((255, 255, 255))
-        if BG_IMAGE:
-            WIN.blit(BG_IMAGE, (0, 0))
+        WIN.fill(Color.WHITE.value)
         
         cell = grid.cell_size
         
@@ -138,9 +137,9 @@ def main():
 
         # Draw agent position indicator
         if agent_pos:
-            pygame.draw.circle(WIN, (0, 0, 255), 
-                             (agent_pos.x + cell//2, agent_pos.y + cell//2), 
-                             cell//3)
+            pygame.draw.circle(WIN, Color.WHITE.value, 
+                            (agent_pos.x + cell//2, agent_pos.y + cell//2), 
+                            cell//3)
         
         pygame.display.update()
     
