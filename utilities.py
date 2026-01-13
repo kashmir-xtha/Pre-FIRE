@@ -25,7 +25,11 @@ class smoke_constants(Enum):
     MAX_SMOKE = 1.0
 
 def get_neighbors(r, c, rows, cols):
-    for dr, dc in [(1,0), (-1,0), (0,1), (0,-1)]:
-        nr, nc = r + dr, c + dc
-        if 0 <= nr < rows and 0 <= nc < cols:
-            yield nr, nc
+    # Moore neighborhood
+    for dr in [-1, 0, 1]:
+        for dc in [-1, 0, 1]:
+            if dr == 0 and dc == 0: # Skip the current cell
+                continue
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < rows and 0 <= nc < cols:
+                yield nr, nc
