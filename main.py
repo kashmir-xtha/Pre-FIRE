@@ -41,20 +41,7 @@ def main():
     
     # Find path from agent to end
     if grid.start and grid.end:
-        # Create a draw function for A* visualization
-        def draw_a_star():
-            WIN.fill(Color.WHITE.value)
-            
-            # Draw smoke (if any)
-            draw_smoke(grid, WIN, ROWS)
-            
-            # Draw grid lines and spots
-            draw(WIN, grid.grid, ROWS, WIDTH)
-
-            pygame.display.update()
-        
-        # Find path using A*
-        agent.path = a_star(draw_a_star, grid.grid, grid.start, grid.end, ROWS)
+        agent.path = a_star(grid.grid, grid.start, grid.end, ROWS)
         grid.clear_path_visualization()  # Clear any previous path visualization
     
     clock = pygame.time.Clock()
@@ -86,7 +73,7 @@ def main():
 
                     # Recalculate path
                     if grid.start and grid.end:
-                        agent.path = a_star(lambda: None, grid.grid, grid.start, grid.end, ROWS)
+                        agent.path = a_star(grid.grid, grid.start, grid.end, ROWS)
                         grid.clear_path_visualization()  # Clear any previous path visualization
                 
                 elif event.key == pygame.K_p:

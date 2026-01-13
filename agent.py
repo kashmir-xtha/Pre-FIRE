@@ -59,7 +59,7 @@ def heuristic(a, b):
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 # ------------------ PATH RECONSTRUCTION ------------------
-def reconstruct_path(came_from, current, draw):
+def reconstruct_path(came_from, current):
     path = []
     while current in came_from:
         path.append(current)
@@ -68,7 +68,7 @@ def reconstruct_path(came_from, current, draw):
     return path
 
 # ------------------ A* ALGORITHM ------------------
-def a_star(draw, grid, start, end, rows):
+def a_star(grid, start, end, rows):
     count = 0
     open_set = PriorityQueue()
     open_set.put((0, count, start))
@@ -92,7 +92,7 @@ def a_star(draw, grid, start, end, rows):
         open_set_hash.remove(current)
         
         if current == end:
-            path = reconstruct_path(came_from, end, draw)
+            path = reconstruct_path(came_from, end)
             # Color the path
             for spot in path:
                 if spot != start and spot != end:
@@ -124,7 +124,5 @@ def a_star(draw, grid, start, end, rows):
         # Visualization (optional)
         if current != start:
             current.color = Color.TURQUOISE.value
-        
-        draw()
     
     return None
