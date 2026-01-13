@@ -66,13 +66,12 @@ def main():
     clock = pygame.time.Clock()
     running = True
     frame_count = 0
-    paused = False
 
+    paused = False
     while running:
         clock.tick(120)  # 120 FPS
         frame_count += 1
         
-        print(paused)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -102,44 +101,48 @@ def main():
                             print(f"New path found with {len(path)} steps after reset")
                         else:
                             print("No path found after reset!")
+                elif event.key == pygame.K_p:
+                    paused = not paused
 
         #generate fire after reset
         if not fire_set:
             fire_set = randomfirespot(grid, ROWS)
 
         # Update fire spread every 5 frames
-        if frame_count % 5 == 0:
-            grid.state = update_fire(grid.state, fire_prob=0.3)
-        
-        # Update smoke
-        grid.smoke = spread_smoke(grid.state, grid.smoke, ROWS, ROWS)
+        if not paused: 
+            if frame_count % 5 == 0:
+                grid.state = update_fire(grid.state, fire_prob=0.3)
+            # Update smoke
+            if frame_count % 1 == 0:
+                grid.smoke = spread_smoke(grid.state, grid.smoke, ROWS, ROWS)
 
         # Apply fire visualization to spots
-        grid.apply_fire_to_spots()
+        if not paused:
+            grid.apply_fire_to_spots()
         
-        # Move agent along path every 10 frames
-        if path and frame_count % 10 == 0 and agent_pos != grid.end:
-            agent_pos = move_agent_along_path(agent_pos, path, grid.grid)
-            # Remove the first element (current position) from path
-            if path and len(path) > 1:
-                path.pop(0)
+            # Move agent along path every 10 frames
+            if path and frame_count % 10 == 0 and agent_pos != grid.end:
+                agent_pos = move_agent_along_path(agent_pos, path, grid.grid)
+                # Remove the first element (current position) from path
+                if path and len(path) > 1:
+                    path.pop(0)
         
-        # Draw everything
-        WIN.fill(Color.WHITE.value)
-        
-        cell = grid.cell_size
-        
-        # Draw smoke
-        draw_smoke(grid, WIN, ROWS)
-        
-        # Draw grid and spots
-        draw(WIN, grid.grid, ROWS, WIDTH)
+            # Draw everything
+            WIN.fill(Color.WHITE.value)
 
-        # Draw agent position indicator
-        if agent_pos:
-            pygame.draw.circle(WIN, Color.WHITE.value, 
-                            (agent_pos.x + cell//2, agent_pos.y + cell//2), 
-                            cell//3)
+            cell = grid.cell_size
+            
+            # Draw smoke
+            draw_smoke(grid, WIN, ROWS)
+            
+            # Draw grid and spots
+            draw(WIN, grid.grid, ROWS, WIDTH)
+
+            # Draw agent position indicator
+            if agent_pos:
+                pygame.draw.circle(WIN, Color.WHITE.value, 
+                                (agent_pos.x + cell//2, agent_pos.y + cell//2), 
+                                cell//3)
         
         pygame.display.update()
     

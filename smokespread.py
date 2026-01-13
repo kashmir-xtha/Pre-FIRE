@@ -49,8 +49,9 @@ def draw_smoke(grid, WIN, ROWS):
     for r in range(ROWS):
         for c in range(ROWS):
             s = grid.smoke[r][c]
+            #print(s)
             if s > 0:
-                shade = int(255 * (1 - min(0.7, s * 5)))  # Denser smoke is darker
+                shade = int(255 * (1 - min(0.7,  s * 5)))  # Denser smoke is darker
                 pygame.draw.rect(
                     WIN,
                     (shade, shade, shade),
