@@ -1,6 +1,59 @@
 import pygame
 from queue import PriorityQueue
-from utilities import Color, get_neighbors
+import grid
+from utilities import Color, get_neighbors, state_value
+
+class Agent:
+    def __init__(self, grid, start_spot):
+        self.grid = grid
+        self.spot = start_spot
+        self.health = 100  # Example health value
+        self.alive = (self.health > 0)
+        self.speed = 1    # Cells per move
+        self.path = []   # Path to follow
+    
+    def move_along_path(self):
+        if not self.path or len(self.path) <= 1:
+            return
+
+        next_spot = self.path[1]
+        r, c = next_spot.row, next_spot.col
+
+        # Check world state
+        if self.grid.state[r][c] == state_value.FIRE.value:
+            return
+        if next_spot.is_barrier():
+            return
+
+        # Move agent
+        self.spot = next_spot
+        self.path.pop(0)
+
+    def update(self):
+        if not self.alive:
+            return
+
+        # Smoke damage
+        r, c = self.spot.row, self.spot.col
+        smoke = self.grid.smoke[r][c]
+        #self.health -= smoke * 5 * dt
+
+        if self.health <= 0:
+            self.alive = False
+            return
+
+        # Movement
+        if self.path:
+            self.move_along_path()
+    
+    def draw(self, win):
+        cell_size = self.grid.cell_size
+        pygame.draw.circle(
+            win,
+            Color.BLUE.value,
+            (self.spot.x + cell_size//2, self.spot.y + cell_size//2),
+            cell_size // 2
+        )
 
 # ------------------ HEURISTIC ------------------
 def heuristic(a, b):
@@ -76,25 +129,3 @@ def a_star(draw, grid, start, end, rows):
         draw()
     
     return None
-
-# ------------------ SIMPLE AGENT MOVEMENT ------------------
-def move_agent_along_path(agent_pos, path, grid):
-    """Move agent along the found path"""
-    if not path or len(path) <= 1:
-        return agent_pos  # No path or already at destination
-    
-    # Move to next position in path
-    next_spot = path[1]  # path[0] is current position
-    
-    # Check if next position is safe (not fire or wall)
-    if (next_spot.color == Color.BLACK.value or next_spot.color == Color.FIRE_COLOR.value):
-        # Recalculate path needed
-        return agent_pos
-    
-    # Mark old position as empty
-    if agent_pos:
-        agent_pos.color = Color.WHITE.value  # White/empty
-    
-    # Move to new position
-    next_spot.color = Color.BLUE.value
-    return next_spot

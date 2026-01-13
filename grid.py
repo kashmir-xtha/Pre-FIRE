@@ -1,4 +1,4 @@
-from utilities import state_value, Color
+from utilities import state_value, Color, fire_constants
 
 class Grid:
     def __init__(self, rows, width):
@@ -9,7 +9,7 @@ class Grid:
         self.grid = self._make_grid()
         self.smoke = [[0.0 for _ in range(rows)] for _ in range(rows)]
         self.state = [[state_value.EMPTY.value for _ in range(rows)] for _ in range(rows)]
-        #self.temperature = [[20.0 for _ in range(rows)] for _ in range(rows)]  # Default temp 20C
+        self.temperature = [[fire_constants.AMBIENT_TEMP.value for _ in range(rows)] for _ in range(rows)]  # Default temp 20C
         #self.temperature_threshold = [[0.0 for _ in range(rows)] for _ in range(rows)]  # Example threshold for danger
 
         self.start = None
@@ -37,6 +37,7 @@ class Grid:
                     self.state[r][c] = state_value.END.value
                 else:
                     self.state[r][c] = state_value.EMPTY.value
+
     def apply_fire_to_spots(self):
         for r in range(self.rows):
             for c in range(self.rows):

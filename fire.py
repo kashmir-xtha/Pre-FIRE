@@ -1,5 +1,5 @@
 import random
-from utilities import state_value, get_neighbors
+from utilities import state_value, get_neighbors, fire_constants
 
 def update_fire(grid, fire_prob=0.3):
     """
@@ -32,3 +32,30 @@ def randomfirespot(grid, ROWS):
             return True
             break
     return False
+
+def update_temperature(state, temperature, rows, cols):
+    new_temp = [[temperature[r][c] for c in range(cols)] for r in range(rows)]
+
+    for r in range(rows):
+        for c in range(cols):
+
+            # Fire cell = constant heat source
+            if state[r][c] == state_value.FIRE.value:
+                new_temp[r][c] = fire_constants.FIRE_TEMP.value
+                continue
+
+            # Neighbor diffusion
+            total = 0
+            count = 0
+            for nr, nc in get_neighbors(r, c, rows, cols):
+                total += temperature[nr][nc]
+                count += 1
+
+            if count > 0:
+                avg = total / count
+                new_temp[r][c] += fire_constants.DIFFUSION_RATE.value * (avg - temperature[r][c])
+
+            # Cooling to ambient
+            new_temp[r][c] += fire_constants.COOLING_RATE.value * (fire_constants.AMBIENT_TEMP.value - new_temp[r][c])
+
+    return new_temp

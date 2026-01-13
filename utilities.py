@@ -24,6 +24,12 @@ class smoke_constants(Enum):
     SMOKE_DECAY = 0.001       # smoke loss per step
     MAX_SMOKE = 1.0
 
+class fire_constants(Enum):
+    AMBIENT_TEMP = 20.0        # °C
+    FIRE_TEMP = 600.0          # °C at fire source
+    DIFFUSION_RATE = 0.2       # heat spreading
+    COOLING_RATE = 0.02        # loss to environment
+
 def get_neighbors(r, c, rows, cols):
     # Moore neighborhood
     for dr in [-1, 0, 1]:

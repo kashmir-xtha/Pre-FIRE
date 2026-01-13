@@ -1,6 +1,6 @@
 from smoke import draw_smoke, spread_smoke
 from buildinglayout import draw, run_editor
-from agentmovement import a_star, move_agent_along_path
+from agentmovement import a_star, Agent
 from fire import randomfirespot, update_fire
 import pygame
 import sys
@@ -31,10 +31,8 @@ def main():
     grid.update_state_from_spots()
             
     # Create agent at start position
-    agent_pos = grid.start
-    if agent_pos:
-        agent_pos.color = Color.BLUE.value  # Blue for agent
-    
+    agent = Agent(grid, grid.start)  
+   
     # Set random fire location (not at start or end)
     fire_set = randomfirespot(grid, ROWS)
 
@@ -42,7 +40,6 @@ def main():
         print("Could not find empty spot for fire")
     
     # Find path from agent to end
-    path = None
     if grid.start and grid.end:
         # Create a draw function for A* visualization
         def draw_a_star():
@@ -57,9 +54,11 @@ def main():
             pygame.display.update()
         
         # Find path using A*
-        path = a_star(draw_a_star, grid.grid, grid.start, grid.end, ROWS)
-        if path:
-            print(f"Path found with {len(path)} steps")
+        agent.path = a_star(draw_a_star, grid.grid, grid.start, grid.end, ROWS)
+        grid.clear_path_visualization()  # Clear any previous path visualization
+
+        if agent.path:
+            print(f"Path found with {len(agent.path)} steps")
         else:
             print("No path found!")
     
@@ -79,28 +78,22 @@ def main():
                 if event.key == pygame.K_ESCAPE:
                     running = False
                 elif event.key == pygame.K_r:
-                    # Reset agent position and recalculate path
-                    if agent_pos:
-                        agent_pos.color = Color.WHITE.value
-                    agent_pos = grid.start
-                    if agent_pos:
-                        agent_pos.color = Color.BLUE.value
-                    # Reset the entire simulation
+                    # Reset simulation
                     grid.clear_simulation_visuals()
                     
-                    # Reset frame count
+                    # Reset frame count and fire source
                     frame_count = 0
-                    
-                    #reset fire
                     fire_set = False
+
+                    # Reset agent
+                    agent.spot = grid.start
+                    agent.path = []
 
                     # Recalculate path
                     if grid.start and grid.end:
-                        path = a_star(lambda: None, grid.grid, grid.start, grid.end, ROWS)
-                        if path:
-                            print(f"New path found with {len(path)} steps after reset")
-                        else:
-                            print("No path found after reset!")
+                        agent.path = a_star(lambda: None, grid.grid, grid.start, grid.end, ROWS)
+                        grid.clear_path_visualization()  # Clear any previous path visualization
+                
                 elif event.key == pygame.K_p:
                     paused = not paused
 
@@ -124,16 +117,11 @@ def main():
         grid.apply_fire_to_spots()
     
         # Move agent along path every 10 frames
-        if path and frame_count % 10 == 0 and agent_pos != grid.end:
-            agent_pos = move_agent_along_path(agent_pos, path, grid.grid)
-            # Remove the first element (current position) from path
-            if path and len(path) > 1:
-                path.pop(0)
+        if agent.path and frame_count % 10 == 0 and agent.spot != grid.end:
+            agent.update()
     
         # Draw everything
         WIN.fill(Color.WHITE.value)
-
-        cell = grid.cell_size
         
         # Draw smoke
         draw_smoke(grid, WIN, ROWS)
@@ -141,11 +129,8 @@ def main():
         # Draw grid and spots
         draw(WIN, grid.grid, ROWS, WIDTH)
 
-        # Draw agent position indicator
-        if agent_pos:
-            pygame.draw.circle(WIN, Color.WHITE.value, 
-                            (agent_pos.x + cell//2, agent_pos.y + cell//2), 
-                            cell//3)
+        # Draw agent
+        agent.draw(WIN)
         
         pygame.display.update()
     
