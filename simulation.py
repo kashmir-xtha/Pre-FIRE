@@ -46,6 +46,7 @@ class Simulation:
 
         if self.agent:
             self.agent.reset()
+
         if self.grid.start and self.grid.end:
             self.agent.path = a_star(self.grid.grid, self.grid.start, self.grid.end, self.rows)
             self.grid.clear_path_visualization()  # Clear any previous path visualization

@@ -17,7 +17,11 @@ def spread_smoke(state_grid, smoke_grid, rows, cols):
 
             # Fire produces smoke
             if state_grid[r][c] == state_value.FIRE.value:
-                next_smoke[r][c] = smoke_constants.MAX_SMOKE.value
+                #next_smoke[r][c] = smoke_constants.MAX_SMOKE.value
+                if(next_smoke[r][c]>1.0):
+                    next_smoke[r][c]=1.0
+                else:
+                    next_smoke[r][c] += 0.1
                 continue
 
             # Diffusion from neighbors
@@ -50,7 +54,7 @@ def draw_smoke(grid, WIN, ROWS):
                 #visually appealing
                 surface = pygame.Surface((cell, cell), pygame.SRCALPHA)
                 alpha = min(200, int(s * 255))
-                surface.fill((50, 50, 50, alpha))
+                surface.fill((25, 25, 25, alpha))
                 WIN.blit(surface, (c * cell, r * cell))
                 #below is more computationally efficient but less visually appealing
                 #shade = int(255 * (1 - s))  # Denser smoke is darker

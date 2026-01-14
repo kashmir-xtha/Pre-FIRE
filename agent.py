@@ -15,6 +15,7 @@ class Agent:
         self.health = 100
         self.alive = True
         self.path = []
+        self.spot = self.grid.start
     
     def move_along_path(self):
         if not self.path or len(self.path) <= 1:
@@ -26,7 +27,7 @@ class Agent:
         # Check world state
         if self.grid.state[r][c] == state_value.FIRE.value:
             return
-        if next_spot.is_barrier():
+        if next_spot.is_barrier() or self.grid.state[r][c] == state_value.FIRE.value:
             return
 
         # Move agent
@@ -47,6 +48,10 @@ class Agent:
             return
 
         # Movement
+        if not self.path or not path_still_safe(self.path, self.grid):
+            self.path = a_star(self.grid.grid, self.spot, self.grid.end, self.grid.rows)
+            self.grid.clear_path_visualization()
+
         if self.path:
             self.move_along_path()
     
@@ -131,3 +136,13 @@ def a_star(grid, start, end, rows):
             current.color = Color.TURQUOISE.value
     
     return None
+
+# ------------------ PATH SAFETY CHECK ------------------
+def path_still_safe(path, grid, lookahead=10):
+    if not path:
+        return False
+
+    for spot in path[:lookahead]:
+        if grid.state[spot.row][spot.col] == state_value.FIRE.value:
+            return False
+    return True

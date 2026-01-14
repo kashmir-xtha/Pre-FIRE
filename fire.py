@@ -23,14 +23,59 @@ def update_fire(grid, fire_prob=0.3):
 
     return new_grid
 
-def randomfirespot(grid, ROWS):
-    for _ in range(100):  # Try 100 times to find empty spot
-        r = random.randint(0, ROWS-1)
-        c = random.randint(0, ROWS-1)
-        if grid.state[r][c] == state_value.EMPTY.value:
+def randomfirespot(grid, ROWS, max_dist=30):
+    for _ in range(100):
+        r = random.randint(1, ROWS - 2)
+        c = random.randint(1, ROWS - 2)
+
+        if is_valid_fire_start(grid, r, c, max_dist):
             grid.state[r][c] = state_value.FIRE.value
             return True
+
     return False
+
+
+def direction_blocked(grid, r, c, dr, dc, max_dist):
+    rows = len(grid.state)
+    cols = len(grid.state[0])
+
+    for d in range(1, max_dist + 1):
+        nr = r + dr * d
+        nc = c + dc * d
+
+        # Escaped the building
+        if nr < 0 or nr >= rows or nc < 0 or nc >= cols:
+            return False
+
+        cell = grid.state[nr][nc]
+
+        if cell == state_value.WALL.value:
+            return True
+
+        if cell == state_value.END.value:
+            return True
+
+        # EMPTY → keep looking
+
+    # Nothing stopped us within max_dist
+    return False
+
+def is_valid_fire_start(grid, r, c, max_dist=30):
+    if grid.state[r][c] != state_value.EMPTY.value:
+        return False
+
+    directions = [
+        (1, 0),   # down
+        (-1, 0),  # up
+        (0, 1),   # right
+        (0, -1)   # left
+    ]
+
+    for dr, dc in directions:
+        if not direction_blocked(grid, r, c, dr, dc, max_dist):
+            return False  # one open direction ruins it
+
+    return True
 
 def update_temperature(state, temperature, rows, cols):
     new_temp = [[temperature[r][c] for c in range(cols)] for r in range(rows)]
