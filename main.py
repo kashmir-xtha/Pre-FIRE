@@ -11,7 +11,7 @@ pygame.display.set_caption("Fire & Smoke Simulation")
 
 # Background
 try:
-    BG_IMAGE = pygame.image.load("building_layout.png").convert_alpha()
+    BG_IMAGE = pygame.image.load("layout_images\\building_layout.png").convert_alpha()
     BG_IMAGE = pygame.transform.scale(BG_IMAGE, (Dimensions.WIDTH.value, Dimensions.WIDTH.value))
     BG_IMAGE.set_alpha(0)
 except:
