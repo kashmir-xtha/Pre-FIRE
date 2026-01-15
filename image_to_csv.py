@@ -113,10 +113,9 @@ image_entries = os.listdir(image_directory)
 csv_entries = os.listdir(csv_directory) 
 
 i = 1 
-csv_filename = 'layout_1.csv'
-
 while f'layout_{i}.csv' in csv_entries:
     i += 1
 csv_filename = f"{csv_directory}/layout_{i}.csv"
+img_filename = f"{image_directory}/layout_{i}.png" # layout_i.png and layout_i.csv are linked
 
-floor_image_to_wall_csv(image_path="layout_images/building_layout.png", csv_path=csv_filename, rows=60, cols=60, thicken_iterations=1)
+floor_image_to_wall_csv(image_path=img_filename, csv_path=csv_filename, rows=60, cols=60)

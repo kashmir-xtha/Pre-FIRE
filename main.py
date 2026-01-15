@@ -1,4 +1,3 @@
-# main.py
 import pygame
 from buildinglayout import run_editor
 from agent import Agent, a_star
@@ -8,10 +7,11 @@ from utilities import Dimensions
 pygame.init()
 WIN = pygame.display.set_mode((Dimensions.WIDTH.value, Dimensions.WIDTH.value))
 pygame.display.set_caption("Fire & Smoke Simulation")
-
+image_directory = "layout_images"
 # Background
 try:
-    BG_IMAGE = pygame.image.load("layout_images\\building_layout.png").convert_alpha()
+    img_filename = f"{image_directory}/layout_{1}.png" #to change background image, the number should match the csv layout used
+    BG_IMAGE = pygame.image.load(img_filename).convert_alpha()
     BG_IMAGE = pygame.transform.scale(BG_IMAGE, (Dimensions.WIDTH.value, Dimensions.WIDTH.value))
     BG_IMAGE.set_alpha(0)
 except:

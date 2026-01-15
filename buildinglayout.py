@@ -35,13 +35,13 @@ def spot_to_value(spot):
     if spot.is_end(): return state_value.END.value
     return state_value.EMPTY.value
 
-def save_layout(grid, filename="layout_csv\\layout.csv"):
+def save_layout(grid, filename="layout_csv\\layout_1.csv"):
     with open(filename, "w", newline="") as f:
         writer = csv.writer(f)
         for row in grid:
             writer.writerow([spot_to_value(s) for s in row])
 
-def load_layout(grid, filename="layout_csv\\layout.csv"):
+def load_layout(grid, filename="layout_csv\\layout_1.csv"):
     start = end = None
     try:
         with open(filename, "r") as f:
