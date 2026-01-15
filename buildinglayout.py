@@ -2,6 +2,8 @@ import pygame
 import csv
 import sys
 from utilities import state_value, Color
+from PIL import Image
+
 
 # ------------------ GRID UTILS ------------------
 def draw_grid(win, rows, width):
@@ -131,3 +133,33 @@ def run_editor(win, rows, width, bg_image=None):
                     pygame.quit()
                     sys.exit()
     return grid_obj
+
+def floor_image_to_csv(image_path, csv_path, rows=60, cols=60, wall_color=(0, 0, 0), end_color=(255, 0, 0)):
+    """
+    Converts a floor layout image into a 60x60 CSV grid.
+
+    """
+
+    img = Image.open(image_path).convert("RGB")
+    img = img.resize((cols, rows), Image.NEAREST)
+    pixels = img.load()
+
+    grid = []
+
+    for r in range(rows):
+        row = []
+        for c in range(cols):
+            color = pixels[c, r]
+
+            if color == wall_color:
+                row.append(1)
+            elif color == end_color:
+                row.append(3)
+            else:
+                row.append(0)
+
+        grid.append(row)
+
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(grid)
