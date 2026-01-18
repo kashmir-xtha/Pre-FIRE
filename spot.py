@@ -9,7 +9,7 @@ class Spot:
         self.y = row * width
         self.color = Color.WHITE.value
         self.width = width
-
+        
     def reset(self): self.color = Color.WHITE.value
     def make_barrier(self): self.color = Color.BLACK.value
     def make_start(self): self.color = Color.GREEN.value

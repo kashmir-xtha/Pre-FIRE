@@ -1,8 +1,11 @@
 from enum import Enum
+import numpy as np
+import matplotlib.pyplot as plt
 
 class Dimensions(Enum):
     WIDTH = 780
     ROWS = 60
+    TOOLS_WIDTH = 200
 
 class Color(Enum):
     WHITE = (255, 255, 255)
@@ -25,14 +28,24 @@ class state_value(Enum):
 
 class smoke_constants(Enum):
     SMOKE_DIFFUSION = 1    # how much smoke spreads
-    SMOKE_DECAY = 0.001       # smoke loss per step
+    SMOKE_DECAY = 0.01       # smoke loss per step
     MAX_SMOKE = 1.0
 
 class fire_constants(Enum):
-    AMBIENT_TEMP = 20.0        # °C
-    FIRE_TEMP = 600.0          # °C at fire source
+    AMBIENT_TEMP = 39.0       # °C
     DIFFUSION_RATE = 0.2       # heat spreading
     COOLING_RATE = 0.02        # loss to environment
+    IGNITION_TEMP = 200.0
+    BURN_TEMP = 600.0
+    HEAT_TRANSFER = 0.15
+    FIRE_SPREAD_PROBABILITY = 0.9 #10%
+
+class material_id(Enum):
+    AIR = 0
+    WOOD = 1
+    CONCRETE = 2
+    METAL = 3
+    FIRE = 4
 
 def get_neighbors(r, c, rows, cols):
     # Moore neighborhood
@@ -43,3 +56,8 @@ def get_neighbors(r, c, rows, cols):
             nr, nc = r + dr, c + dc
             if 0 <= nr < rows and 0 <= nc < cols:
                 yield nr, nc
+
+def visualize_2d(arr):
+    h = np.array(arr)
+    plt.imshow(h, interpolation='none')
+    plt.show()

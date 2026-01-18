@@ -21,7 +21,7 @@ def spread_smoke(state_grid, smoke_grid, rows, cols):
                 if(next_smoke[r][c]>1.0):
                     next_smoke[r][c]=1.0
                 else:
-                    next_smoke[r][c] += 0.1
+                    next_smoke[r][c] += 0.15
                 continue
 
             # Diffusion from neighbors

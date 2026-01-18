@@ -1,9 +1,10 @@
 import pygame
 import csv
 import sys
-from utilities import state_value, Color
+from utilities import state_value, Color, material_id
+from materials import MATERIALS
 from PIL import Image
-
+from tools import ToolsPanel
 
 # ------------------ GRID UTILS ------------------
 def draw_grid(win, rows, width):
@@ -12,21 +13,29 @@ def draw_grid(win, rows, width):
         pygame.draw.line(win, Color.GREY.value, (0, i * gap), (width, i * gap))
         pygame.draw.line(win, Color.GREY.value, (i * gap, 0), (i * gap, width))
 
-def draw(win, grid, rows, width, bg_image=None):
+def draw(win, grid, rows, width, tools_panel=None, bg_image=None):
     if bg_image:
         win.blit(bg_image, (0, 0))
     for row in grid:
         for spot in row:
             spot.draw(win)
     draw_grid(win, rows, width)
+    
+    if tools_panel:
+        tools_panel.draw(win)
+    
     pygame.display.update()
 
 def get_clicked_pos(pos, rows, width):
     gap = width // rows
     x, y = pos
-    row = y // gap
-    col = x // gap
-    return row, col
+    
+    # Only process clicks within grid area
+    if x < width:
+        row = y // gap
+        col = x // gap
+        return row, col
+    return None, None
 
 # ------------------ SAVE / LOAD ------------------
 def spot_to_value(spot):
@@ -63,75 +72,161 @@ def load_layout(grid, filename="layout_csv\\layout_1.csv"):
     return start, end
 
 # ------------------ EDITOR LOOP ------------------
-def run_editor(win, rows, width, bg_image=None):
-    # Import here to avoid circular import
+def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.csv"):
     from grid import Grid
     grid_obj = Grid(rows, width)
+    
+    # Create tools panel
+    tools_panel = ToolsPanel(width, 0, 200, width)
+    current_tool = "MATERIAL"  # Can be "MATERIAL", "START", "END"
+    
+    # Variables for mouse dragging
+    mouse_dragging = False
+    drag_action = None  # 'place' or 'erase'
+    last_cell = None  # Last cell we processed during drag
     
     # Try to load existing layout
     start, end = 0, 0
     bg_image_loaded = False
     run = True
+    
     while run:
         win.fill(Color.WHITE.value)
-        draw(win, grid_obj.grid, rows, width, bg_image)
+        
+        # Draw everything
+        draw(win, grid_obj.grid, rows, width, tools_panel, bg_image)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+ 
+            # Handle tools panel clicks
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.pos[0] >= width:  # Click in tools panel
+                    selected_material = tools_panel.handle_event(event)
+                    if selected_material is not None:
+                        current_tool = "MATERIAL"
+                else:  # Click in grid area
+                    row, col = get_clicked_pos(event.pos, rows, width)
+                    
+                    if row is not None and col is not None and grid_obj.in_bounds(row, col):
+                        spot = grid_obj.get_spot(row, col)
+                        
+                        if event.button == 1:  # Left click - place
+                            mouse_dragging = True
+                            drag_action = 'place'
+                            
+                            if current_tool == "START":
+                                if grid_obj.start:
+                                    grid_obj.start.reset()
+                                grid_obj.start = spot
+                                spot.make_start()
+                            
+                            elif current_tool == "END":
+                                if grid_obj.end:
+                                    grid_obj.end.reset()
+                                grid_obj.end = spot
+                                spot.make_end()
+                            
+                            else:  # MATERIAL mode
+                                material_id = tools_panel.get_current_material()
+                                grid_obj.set_material(row, col, material_id)
+                                color = MATERIALS[material_id]["color"]
+                                grid_obj.grid[row][col].color = color
+                            
+                            last_cell = (row, col)
+                        
+                        elif event.button == 3:  # Right click - erase
+                            mouse_dragging = True
+                            drag_action = 'erase'
+                            spot.reset()
+                            if spot == grid_obj.start:
+                                grid_obj.start = None
+                            if spot == grid_obj.end:
+                                grid_obj.end = None
+                            last_cell = (row, col)
             
-            if pygame.mouse.get_pressed()[0]: #Left mouseclick functions
-                row, col = get_clicked_pos(event.pos, rows, width)
-                if 0 <= row < rows and 0 <= col < rows:
-                    spot = grid_obj.get_spot(row, col)
-                    if not grid_obj.start:
-                        grid_obj.start = spot
-                        spot.make_start()
-                    elif not grid_obj.end:
-                        grid_obj.end = spot
-                        spot.make_end()
-                    else:
-                        spot.make_barrier()
-                
-            elif pygame.mouse.get_pressed()[2]: #Right mouseclick functions
-                row, col = get_clicked_pos(event.pos, rows, width)
-                if 0 <= row < rows and 0 <= col < rows:
-                    spot = grid_obj.get_spot(row, col)
-                    spot.reset()
-                    if spot == grid_obj.start:
-                        grid_obj.start = None
-                    if spot == grid_obj.end:
-                        grid_obj.end = None
+            # Handle mouse motion for dragging
+            elif event.type == pygame.MOUSEMOTION and mouse_dragging:
+                if event.pos[0] < width:  # Only process if in grid area
+                    row, col = get_clicked_pos(event.pos, rows, width)
+                    
+                    if row is not None and col is not None and grid_obj.in_bounds(row, col):
+                        # Check if we're moving to a new cell (avoid duplicate processing)
+                        if last_cell != (row, col):
+                            spot = grid_obj.get_spot(row, col)
+                            
+                            if drag_action == 'place':
+                                if current_tool == "MATERIAL":
+                                    material_id = tools_panel.get_current_material()
+                                    grid_obj.set_material(row, col, material_id)
+                                    color = MATERIALS[material_id]["color"]
+                                    grid_obj.grid[row][col].color = color
+                            elif drag_action == 'erase':
+                                spot.reset()
+                                if spot == grid_obj.start:
+                                    grid_obj.start = None
+                                if spot == grid_obj.end:
+                                    grid_obj.end = None
+                            
+                            last_cell = (row, col)
             
+            # Handle mouse button release
+            elif event.type == pygame.MOUSEBUTTONUP:
+                mouse_dragging = False
+                drag_action = None
+                last_cell = None
+            
+            # Keyboard shortcuts
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_i: # to un/load custom bg_image
+                if event.key == pygame.K_i:  # Toggle background image
                     if bg_image_loaded == False:
                         bg_image_loaded = True
-                        bg_image.set_alpha(150)
+                        if bg_image:
+                            bg_image.set_alpha(150)
                     else:
                         bg_image_loaded = False
-                        bg_image.set_alpha(0)
-
-                elif event.key == pygame.K_s:
-                    save_layout(grid_obj.grid)
+                        if bg_image:
+                            bg_image.set_alpha(0)
                 
-                elif event.key == pygame.K_l:
+                elif event.key == pygame.K_s:  # Set start position mode
+                    current_tool = "START"
+                    print("Start position mode - click on grid to place start")
+                
+                elif event.key == pygame.K_e:  # Set end position mode
+                    current_tool = "END"
+                    print("End position mode - click on grid to place end")
+                
+                elif event.key == pygame.K_m:  # Back to material mode
+                    current_tool = "MATERIAL"
+                    print("Material mode")
+                
+                elif event.key == pygame.K_c:  # Save layout
+                    save_layout(grid_obj.grid)
+                    print("Layout saved")
+                
+                elif event.key == pygame.K_l:  # Load layout
                     bg_image_loaded = False
-                    bg_image.set_alpha(0)
+                    if bg_image:
+                        bg_image.set_alpha(0)
                     grid_obj.start = None
                     grid_obj.end = None
-                    start, end = load_layout(grid_obj.grid)
+                    start, end = load_layout(grid_obj.grid, filename)
                     if start:
                         grid_obj.start = start
                     if end:
                        grid_obj.end = end
-
+                    print("Layout loaded")
+                
                 elif event.key == pygame.K_SPACE and grid_obj.start and grid_obj.end:
+                    print("Starting simulation...")
                     return grid_obj
                 
                 elif event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
                     pygame.quit()
                     sys.exit()
+    
     return grid_obj
 
 def floor_image_to_csv(image_path, csv_path, rows=60, cols=60, wall_color=(0, 0, 0), end_color=(255, 0, 0)):

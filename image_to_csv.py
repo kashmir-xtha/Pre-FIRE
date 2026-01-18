@@ -9,7 +9,7 @@ def otsu_threshold(img_array):
     hist, _ = np.histogram(img_array, bins=256, range=(0, 256)) # to compute histogram of each pixel intensity
     total = img_array.size
 
-    sum_total = np.dot(np.arange(256), hist) #dotproduct of pixel intensity and histogram values
+    sum_total = np.dot(np.arange(256), hist) # dotproduct of pixel intensity and histogram values
     sum_bg = 0
     weight_bg = 0
     max_variance = 0
