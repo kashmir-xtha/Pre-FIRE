@@ -58,12 +58,7 @@ class Simulation:
         self.fire_set = False
         self.start_time = pygame.time.get_ticks()
         self.grid.temperature = [[fire_constants.AMBIENT_TEMP.value for _ in range(self.rows)] for _ in range(self.rows)]  # Default temp 20C
-        self.grid.fuel = [
-                            [
-                                MATERIALS[material_id(self.grid.material[r][c])]["fuel"]
-                                for c in range(self.rows)
-                            ]
-                            for r in range(self.rows)
+        self.grid.fuel = [[1.0 for _ in range(self.rows)] for _ in range(self.rows)
                         ]
 
         self.grid.smoke = [[0.0 for _ in range(self.rows)] for _ in range(self.rows)]
@@ -95,7 +90,7 @@ class Simulation:
             for c in range(self.rows):
                 if self.grid.state[r][c] == state_value.FIRE.value and self.grid.fuel[r][c] <= 0:
                     self.grid.state[r][c] = state_value.EMPTY.value
-                    self.grid.temperature[r][c] *= 0.5  # Cool down when fire goes out
+                    #self.grid.temperature[r][c] *= 0.5  # Cool down when fire goes out
                     # Update visual to material color
                     if not self.grid.grid[r][c].is_barrier() and not self.grid.grid[r][c].is_start() and not self.grid.grid[r][c].is_end():
                         mat_id = material_id(self.grid.material[r][c])

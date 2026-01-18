@@ -151,7 +151,7 @@ def randomfirespot(grid, ROWS, max_dist=30):
         c = random.randint(1, ROWS - 2)
         
         # Check if cell is empty and has fuel
-        if grid.state[r][c] == state_value.EMPTY.value:
+        if grid.state[r][c] == state_value.EMPTY.value and is_valid_fire_start(grid, r, c, max_dist):
             material = material_id(grid.material[r][c])
             if MATERIALS[material]["fuel"] > 0:
                 grid.state[r][c] = state_value.FIRE.value
@@ -168,7 +168,7 @@ def randomfirespot(grid, ROWS, max_dist=30):
         r = random.randint(1, ROWS - 2)
         c = random.randint(1, ROWS - 2)
         
-        if grid.state[r][c] == state_value.EMPTY.value:
+        if grid.state[r][c] == state_value.EMPTY.value and is_valid_fire_start(grid, r, c, max_dist):
             grid.state[r][c] = state_value.FIRE.value
             grid.temperature[r][c] = 600.0
             # Set it to wood so it has fuel
