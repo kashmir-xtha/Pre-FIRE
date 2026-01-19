@@ -28,21 +28,13 @@ def main():
     grid = run_editor(WIN, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE, csv_filename)
     grid.update_state_from_spots()
 
-    #visualize_2d(grid.state)
+    #visualize_2d(grid.temperature)
 
     # Agent
     agent = Agent(grid, grid.start)
     
     # Pathfinding to closest exit
-    if grid.start and bool(grid.exits):
-        paths = []
-        for exit_spot in grid.exits:
-            path = a_star(grid, agent.spot, exit_spot, grid.rows)
-            if path:
-                paths.append(path)
-
-        best_path = min(paths, key=len) if paths else None
-        agent.path = best_path if best_path else []
+    agent.path = agent.best_path()
     
     # Simulation
     sim = Simulation(WIN, grid, agent, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE)

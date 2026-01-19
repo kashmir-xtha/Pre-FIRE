@@ -50,7 +50,8 @@ class Agent:
                 paths.append(path)
 
         best_path = min(paths, key=len) if paths else None
-        self.path = best_path if best_path else []
+        # self.path = best_path if best_path else []
+        return best_path if best_path else [] 
     
     def update(self, dt):
         """Time-based update with delta time"""
@@ -92,13 +93,14 @@ class Agent:
         if self.update_timer >= self.UPDATE_INTERVAL:
             if not self.path or not path_still_safe(self.path, self.grid):
                 print("Path not safe, replanning boss")
-                paths = []
-                for exit_spot in self.grid.exits:
-                    path = a_star(self.grid, self.spot, exit_spot, self.grid.rows)
-                    if path:
-                        paths.append(path)
-                best_path = min(paths, key=len) if paths else None
-                self.path = best_path if best_path else []
+                # paths = []
+                # for exit_spot in self.grid.exits:
+                #     path = a_star(self.grid, self.spot, exit_spot, self.grid.rows)
+                #     if path:
+                #         paths.append(path)
+                # best_path = min(paths, key=len) if paths else None
+                # self.path = best_path if best_path else []
+                self.path = self.best_path()
                 self.move_timer = 0
                 
             self.update_timer = 0
@@ -240,11 +242,6 @@ def a_star(grid_obj, start, end, rows):
                     count += 1
                     open_set.put((f_score[neighbor], count, neighbor))
                     open_set_hash.add(neighbor)
-        
-        # Visualization
-        if current != start:
-            current.color = Color.TURQUOISE.value
-    
     return None
 
 # ------------------ PATH SAFETY CHECK ------------------

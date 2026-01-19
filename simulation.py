@@ -66,14 +66,14 @@ class Simulation:
             self.agent.reset()
 
         if self.grid.start and bool(self.grid.exits):
-            paths = []
-            for exit_spot in self.grid.exits:
-                path = a_star(self.grid, self.agent.spot, exit_spot, self.grid.rows)
-                if path:
-                    paths.append(path)
+            # paths = []
+            # for exit_spot in self.grid.exits:
+            #     path = a_star(self.grid, self.agent.spot, exit_spot, self.grid.rows)
+            #     if path:
+            #         paths.append(path)
 
-            best_path = min(paths, key=len) if paths else None
-            self.agent.path = best_path if best_path else []
+            # best_path = min(paths, key=len) if paths else None
+            self.agent.path = self.agent.best_path()
 
     # ---------------- UPDATE ----------------
     # In simulation.py - modify update method
