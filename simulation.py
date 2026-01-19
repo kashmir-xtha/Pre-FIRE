@@ -58,8 +58,7 @@ class Simulation:
         self.fire_set = False
         self.start_time = pygame.time.get_ticks()
         self.grid.temperature = [[fire_constants.AMBIENT_TEMP.value for _ in range(self.rows)] for _ in range(self.rows)]  # Default temp 20C
-        self.grid.fuel = [[1.0 for _ in range(self.rows)] for _ in range(self.rows)
-                        ]
+        self.grid.fuel = [[1.0 for _ in range(self.rows)] for _ in range(self.rows)]
 
         self.grid.smoke = [[0.0 for _ in range(self.rows)] for _ in range(self.rows)]
 
@@ -69,9 +68,10 @@ class Simulation:
         if self.grid.start and bool(self.grid.exits):
             paths = []
             for exit_spot in self.grid.exits:
-                path = a_star(self.grid, self.grid.start, exit_spot, self.rows)
+                path = a_star(self.grid, self.agent.spot, exit_spot, self.grid.rows)
                 if path:
                     paths.append(path)
+
             best_path = min(paths, key=len) if paths else None
             self.agent.path = best_path if best_path else []
 

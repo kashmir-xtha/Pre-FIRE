@@ -171,9 +171,10 @@ def randomfirespot(grid, ROWS, max_dist=30):
         if grid.state[r][c] == state_value.EMPTY.value and is_valid_fire_start(grid, r, c, max_dist):
             grid.state[r][c] = state_value.FIRE.value
             grid.temperature[r][c] = 600.0
+            print("Forced fire on non-flammable material")
             # Set it to wood so it has fuel
-            grid.material[r][c] = material_id.WOOD.value
-            grid.fuel[r][c] = MATERIALS[material_id.WOOD]["fuel"]
+            # grid.material[r][c] = material_id.WOOD.value
+            # grid.fuel[r][c] = MATERIALS[material_id.WOOD]["fuel"]
             return True
     
     return False

@@ -54,10 +54,10 @@ class ToolsPanel:
         
         tools = [
         # Materials
-            (ToolType.MATERIAL, MaterialID.AIR, "Air", MATERIALS[MaterialID.AIR]["color"]),
-            (ToolType.MATERIAL, MaterialID.WOOD, "Wood", MATERIALS[MaterialID.WOOD]["color"]),
-            (ToolType.MATERIAL, MaterialID.CONCRETE, "Concrete", MATERIALS[MaterialID.CONCRETE]["color"]),
-            (ToolType.MATERIAL, MaterialID.METAL, "Metal", MATERIALS[MaterialID.METAL]["color"]),
+            (ToolType.MATERIAL, MaterialID.AIR, MATERIALS[MaterialID.AIR]["name"], MATERIALS[MaterialID.AIR]["color"]),
+            (ToolType.MATERIAL, MaterialID.WOOD, MATERIALS[MaterialID.WOOD]["name"], MATERIALS[MaterialID.WOOD]["color"]),
+            (ToolType.MATERIAL, MaterialID.CONCRETE, MATERIALS[MaterialID.CONCRETE]["name"], MATERIALS[MaterialID.CONCRETE]["color"]),
+            (ToolType.MATERIAL, MaterialID.METAL, MATERIALS[MaterialID.METAL]["name"], MATERIALS[MaterialID.METAL]["color"]),
 
             # Special tools
             (ToolType.START, None, "Start", Color.GREEN.value),
@@ -111,7 +111,7 @@ class ToolsPanel:
         
         for i, instruction in enumerate(instructions):
             text_surface = self.font_small.render(instruction, True, (200, 200, 200))
-            surface.blit(text_surface, (self.rect.x + 10, self.rect.bottom - 120 + i * 20))
+            surface.blit(text_surface, (self.rect.x + 10, self.rect.bottom - 130 + i * 20))
         
         # Draw selected material info
         selected_mat = MATERIALS[self.current_material]

@@ -51,7 +51,8 @@ def save_layout(grid, filename="layout_csv\\layout_1.csv"):
             writer.writerow([spot_to_value(s) for s in row])
 
 def load_layout(grid, filename="layout_csv\\layout_1.csv"):
-    start = end = None
+    start = None
+    end = set()
     try:
         with open(filename, "r") as f:
             reader = csv.reader(f)
@@ -66,7 +67,7 @@ def load_layout(grid, filename="layout_csv\\layout_1.csv"):
                         start = spot
                     elif int(val) == state_value.END.value:
                         spot.make_end()
-                        end = spot
+                        end.add(spot)
     except FileNotFoundError:
         print(f"Layout file {filename} not found. Starting with empty grid.")
     return start, end
@@ -201,19 +202,11 @@ def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.c
                         if bg_image:
                             bg_image.set_alpha(0)
                 
-                elif event.key == pygame.K_s:  # Set start position mode
-                    current_tool = "START"
-                    print("Start position mode - click on grid to place start")
-                
-                elif event.key == pygame.K_e:  # Set end position mode
-                    current_tool = "END"
-                    print("End position mode - click on grid to place end")
-                
                 elif event.key == pygame.K_m:  # Back to material mode
                     current_tool = "MATERIAL"
                     print("Material mode")
                 
-                elif event.key == pygame.K_c:  # Save layout
+                elif event.key == pygame.K_s:  # Save layout
                     save_layout(grid_obj.grid)
                     print("Layout saved")
                 
@@ -222,12 +215,12 @@ def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.c
                     if bg_image:
                         bg_image.set_alpha(0)
                     grid_obj.start = None
-                    grid_obj.end = None
-                    start, end = load_layout(grid_obj.grid, filename)
+                    grid_obj.exits.clear()
+                    start, exits = load_layout(grid_obj.grid, filename)
                     if start:
                         grid_obj.start = start
-                    if end:
-                       grid_obj.end = end
+                    if bool(exits):
+                       grid_obj.exits = exits
                     print("Layout loaded")
                 
                 elif event.key == pygame.K_SPACE and grid_obj.start and bool(grid_obj.exits):

@@ -18,7 +18,7 @@ MATERIALS = {
         "heat_transfer": 0.08   # Lower heat transfer
     },
     material_id.CONCRETE: {
-        "name": "WALL",
+        "name": "Wall",
         "color": (0, 0, 0),
         "fuel": 0.0,
         "ignition_temp": float("inf"),  # Very high ignition temp

@@ -34,14 +34,15 @@ def main():
     agent = Agent(grid, grid.start)
     
     # Pathfinding to closest exit
-    paths = []
-    for exit_spot in grid.exits:
-        path = a_star(grid, grid.start, exit_spot, Dimensions.ROWS.value)
-        if path:
-            paths.append(path)
+    if grid.start and bool(grid.exits):
+        paths = []
+        for exit_spot in grid.exits:
+            path = a_star(grid, agent.spot, exit_spot, grid.rows)
+            if path:
+                paths.append(path)
 
-    best_path = min(paths, key=len) if paths else None
-    agent.path = best_path if best_path else []
+        best_path = min(paths, key=len) if paths else None
+        agent.path = best_path if best_path else []
     
     # Simulation
     sim = Simulation(WIN, grid, agent, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE)

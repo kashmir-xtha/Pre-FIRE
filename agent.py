@@ -41,6 +41,17 @@ class Agent:
         self.spot = next_spot
         self.path.pop(0)
 
+    def best_path(self):
+        """Return the best path to the exit considering safety"""
+        paths = []
+        for exit_spot in self.grid.exits:
+            path = a_star(self.grid, self.spot, exit_spot, self.grid.rows)
+            if path:
+                paths.append(path)
+
+        best_path = min(paths, key=len) if paths else None
+        self.path = best_path if best_path else []
+    
     def update(self, dt):
         """Time-based update with delta time"""
         if not self.alive:
@@ -81,8 +92,15 @@ class Agent:
         if self.update_timer >= self.UPDATE_INTERVAL:
             if not self.path or not path_still_safe(self.path, self.grid):
                 print("Path not safe, replanning boss")
-                self.path = a_star(self.grid, self.spot, self.grid.end, self.grid.rows)
-                self.grid.clear_path_visualization()
+                paths = []
+                for exit_spot in self.grid.exits:
+                    path = a_star(self.grid, self.spot, exit_spot, self.grid.rows)
+                    if path:
+                        paths.append(path)
+                best_path = min(paths, key=len) if paths else None
+                self.path = best_path if best_path else []
+                self.move_timer = 0
+                
             self.update_timer = 0
         
         # Movement
