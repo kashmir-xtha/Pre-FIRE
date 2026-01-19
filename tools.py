@@ -1,11 +1,12 @@
 # tools_panel.py
 import pygame
-from utilities import Color, material_id
+from utilities import Color, ToolType, material_id as MaterialID
 from materials import MATERIALS
 
 class ToolButton:
-    def __init__(self, x, y, width, height, material_id, name, color):
+    def __init__(self, x, y, width, height, material_id, name, color, tool_type):
         self.rect = pygame.Rect(x, y, width, height)
+        self.tool_type = tool_type
         self.material_id = material_id
         self.name = name
         self.color = color
@@ -41,7 +42,7 @@ class ToolsPanel:
     def __init__(self, x, y, width, height):
         self.rect = pygame.Rect(x, y, width, height)
         self.buttons = []
-        self.current_material = material_id.AIR
+        self.current_material = MaterialID.AIR
         self.font_large = pygame.font.SysFont(None, 24)
         self.font_small = pygame.font.SysFont(None, 18)
         self._init_buttons()
@@ -51,25 +52,33 @@ class ToolsPanel:
         button_height = 80
         padding = 10
         
-        materials = [
-            (material_id.AIR, "Air", MATERIALS[material_id.AIR]["color"]),
-            (material_id.WOOD, "Wood", MATERIALS[material_id.WOOD]["color"]),
-            (material_id.CONCRETE, "Concrete", MATERIALS[material_id.CONCRETE]["color"]),
-            (material_id.METAL, "Metal", MATERIALS[material_id.METAL]["color"]),
+        tools = [
+        # Materials
+            (ToolType.MATERIAL, MaterialID.AIR, "Air", MATERIALS[MaterialID.AIR]["color"]),
+            (ToolType.MATERIAL, MaterialID.WOOD, "Wood", MATERIALS[MaterialID.WOOD]["color"]),
+            (ToolType.MATERIAL, MaterialID.CONCRETE, "Concrete", MATERIALS[MaterialID.CONCRETE]["color"]),
+            (ToolType.MATERIAL, MaterialID.METAL, "Metal", MATERIALS[MaterialID.METAL]["color"]),
+
+            # Special tools
+            (ToolType.START, None, "Start", Color.GREEN.value),
+            (ToolType.END, None, "End", Color.RED.value),
         ]
-        
-        for i, (mat_id, name, color) in enumerate(materials):
+
+        for i, (tool_type, material_id, name, color) in enumerate(tools):
             col = i % 2
             row = i // 2
-            
+
             x = self.rect.x + padding + col * (button_width + padding)
             y = self.rect.y + 50 + row * (button_height + padding)
-            
-            button = ToolButton(x, y, button_width, button_height, mat_id, name, color)
-            if mat_id == self.current_material:
+
+            button = ToolButton(x, y, button_width, button_height, material_id, name, color, tool_type)
+
+            if tool_type == ToolType.MATERIAL and material_id == self.current_material:
                 button.selected = True
+
             self.buttons.append(button)
     
+    # tools.py - update the handle_event method
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             for button in self.buttons:
@@ -79,9 +88,10 @@ class ToolsPanel:
                         btn.selected = False
                     # Select clicked button
                     button.selected = True
-                    self.current_material = button.material_id
-                    return self.current_material
-        return None
+                    
+                    # Return both tool type and material id
+                    return button.tool_type, button.material_id
+        return None, None
     
     def draw(self, surface):
         # Draw panel background

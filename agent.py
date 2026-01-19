@@ -1,6 +1,5 @@
 import pygame
 from queue import PriorityQueue
-import smoke
 from utilities import Color, get_neighbors, state_value
 
 class Agent:

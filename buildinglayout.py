@@ -1,7 +1,7 @@
 import pygame
 import csv
 import sys
-from utilities import state_value, Color, material_id
+from utilities import ToolType, state_value, Color, material_id
 from materials import MATERIALS
 from PIL import Image
 from tools import ToolsPanel
@@ -104,9 +104,17 @@ def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.c
             # Handle tools panel clicks
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.pos[0] >= width:  # Click in tools panel
-                    selected_material = tools_panel.handle_event(event)
-                    if selected_material is not None:
-                        current_tool = "MATERIAL"
+                    tool_type, selected_material = tools_panel.handle_event(event)
+                    if tool_type is not None:
+                        if tool_type == ToolType.MATERIAL:
+                            current_tool = "MATERIAL"
+                            tools_panel.current_material = selected_material
+                        elif tool_type == ToolType.START:
+                            current_tool = "START"
+                            print("Start position mode - click on grid to place start")
+                        elif tool_type == ToolType.END:
+                            current_tool = "END"
+                            print("End position mode - click on grid to place end")
                 else:  # Click in grid area
                     row, col = get_clicked_pos(event.pos, rows, width)
                     

@@ -132,8 +132,9 @@ class Simulation:
         # Drawing path
         if self.agent.path and self.agent.path_show:
             for p in self.agent.path:
-                p.color = Color.PURPLE.value
-                p.draw(self.win)
+                if p != self.agent.spot and not p.is_start() and not p.is_end():
+                    p.color = Color.PURPLE.value
+                    p.draw(self.win)
                 
         # Draw grid lines
         gap = self.width // self.rows

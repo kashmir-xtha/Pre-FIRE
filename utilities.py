@@ -47,6 +47,11 @@ class material_id(Enum):
     METAL = 3
     FIRE = 4
 
+class ToolType(Enum):
+    MATERIAL = 1
+    START = 2
+    END = 3
+    
 def get_neighbors(r, c, rows, cols):
     # Moore neighborhood
     for dr in [-1, 0, 1]:

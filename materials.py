@@ -18,12 +18,12 @@ MATERIALS = {
         "heat_transfer": 0.08   # Lower heat transfer
     },
     material_id.CONCRETE: {
-        "name": "Concrete",
-        "color": (160, 160, 160),
+        "name": "WALL",
+        "color": (0, 0, 0),
         "fuel": 0.0,
-        "ignition_temp": 1000.0,  # Very high ignition temp
-        "cooling_rate": 0.001,    # Very slow cooling
-        "heat_transfer": 0.15     # Better heat conductor than wood
+        "ignition_temp": float("inf"),  # Very high ignition temp
+        "cooling_rate": 0,    # Very slow cooling
+        "heat_transfer": 0     # Better heat conductor than wood
     },
     material_id.METAL: {
         "name": "Metal",
