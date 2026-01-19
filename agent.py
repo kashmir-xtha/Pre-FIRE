@@ -211,9 +211,7 @@ def a_star(grid_obj, start, end, rows):
         if current == end:
             path = reconstruct_path(came_from, end)
             # Color the path
-            for spot in path:
-                if spot != start and spot != end:
-                    spot.color = Color.PURPLE.value
+            
             return path
         
         # 4-connected grid
