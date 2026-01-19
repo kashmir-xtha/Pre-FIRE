@@ -120,4 +120,4 @@ class Grid:
                         self.grid[r][c].color = Color.WHITE.value
         
         # Clear path visualization
-        self.clear_path_visualization()
+        #self.clear_path_visualization()

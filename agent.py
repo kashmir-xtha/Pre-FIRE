@@ -11,6 +11,7 @@ class Agent:
         self.alive = (self.health > 0)
         self.speed = 1    # Cells per move
         self.path = []   # Path to follow
+        self.path_show = True
 
         self.move_timer = 0
         self.update_timer = 0

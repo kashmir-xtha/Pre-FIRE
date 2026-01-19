@@ -68,7 +68,7 @@ class Simulation:
 
         if self.grid.start and self.grid.end:
             self.agent.path = a_star(self.grid, self.grid.start, self.grid.end, self.rows)
-            self.grid.clear_path_visualization()
+            #self.grid.clear_path_visualization()
 
     # ---------------- UPDATE ----------------
     # In simulation.py - modify update method
@@ -110,10 +110,9 @@ class Simulation:
         # Update agent with delta time
         if self.agent:
             self.agent.update(dt)
-
+        
         #update metrics
         self.update_metrics()
-
 
     # ---------------- DRAW ----------------
     def draw(self):
@@ -130,6 +129,12 @@ class Simulation:
             for spot in row:
                 spot.draw(self.win)
         
+        # Drawing path
+        if self.agent.path and self.agent.path_show:
+            for p in self.agent.path:
+                p.color = Color.PURPLE.value
+                p.draw(self.win)
+                
         # Draw grid lines
         gap = self.width // self.rows
         for i in range(self.rows):
