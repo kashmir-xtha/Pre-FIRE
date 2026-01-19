@@ -78,7 +78,6 @@ class ToolsPanel:
 
             self.buttons.append(button)
     
-    # tools.py - update the handle_event method
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             for button in self.buttons:
@@ -88,7 +87,6 @@ class ToolsPanel:
                         btn.selected = False
                     # Select clicked button
                     button.selected = True
-                    
                     # Return both tool type and material id
                     return button.tool_type, button.material_id
         return None, None
@@ -105,8 +103,8 @@ class ToolsPanel:
         # Draw instructions
         instructions = [
             "Click material to select",
-            "Left-click to place",
-            "Right-click to erase",
+            "Hold Left-click to place",
+            "Hold Right-click to erase",
             "S: Start position",
             "E: End position"
         ]
