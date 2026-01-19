@@ -32,12 +32,17 @@ def main():
 
     # Agent
     agent = Agent(grid, grid.start)
+    
+    # Pathfinding to closest exit
+    paths = []
+    for exit_spot in grid.exits:
+        path = a_star(grid, grid.start, exit_spot, Dimensions.ROWS.value)
+        if path:
+            paths.append(path)
 
-    # Pathfinding
-    if grid.start and grid.end:
-        agent.path = a_star(grid, grid.start, grid.end, Dimensions.ROWS.value)
-    #grid.clear_path_visualization()  # Clear any previous path visualization
-
+    best_path = min(paths, key=len) if paths else None
+    agent.path = best_path if best_path else []
+    
     # Simulation
     sim = Simulation(WIN, grid, agent, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE)
     sim.run()

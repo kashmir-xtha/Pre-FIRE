@@ -66,9 +66,14 @@ class Simulation:
         if self.agent:
             self.agent.reset()
 
-        if self.grid.start and self.grid.end:
-            self.agent.path = a_star(self.grid, self.grid.start, self.grid.end, self.rows)
-            #self.grid.clear_path_visualization()
+        if self.grid.start and bool(self.grid.exits):
+            paths = []
+            for exit_spot in self.grid.exits:
+                path = a_star(self.grid, self.grid.start, exit_spot, self.rows)
+                if path:
+                    paths.append(path)
+            best_path = min(paths, key=len) if paths else None
+            self.agent.path = best_path if best_path else []
 
     # ---------------- UPDATE ----------------
     # In simulation.py - modify update method

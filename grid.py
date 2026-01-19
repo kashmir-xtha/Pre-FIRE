@@ -15,7 +15,21 @@ class Grid:
         self.material = [[0 for _ in range(rows)] for _ in range(rows)]
 
         self.start = None
-        self.end = None
+        #self.end = None
+        self.exits = set() # Set of exit spots
+
+    def add_exit(self, spot):
+        self.exits.add(spot)
+
+    def remove_exit(self, spot):
+        self.exits.discard(spot)
+
+    def clear_exits(self):
+        self.exits.clear()
+
+    def is_exit(self, spot):
+        return spot in self.exits
+
 
     def _make_grid(self):
         # Import here to avoid circular import

@@ -132,9 +132,10 @@ def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.c
                                 spot.make_start()
                             
                             elif current_tool == "END":
-                                if grid_obj.end:
-                                    grid_obj.end.reset()
-                                grid_obj.end = spot
+                                grid_obj.add_exit(spot)
+                                # if grid_obj.end:
+                                #     grid_obj.end.reset()
+                                # grid_obj.end = spot
                                 spot.make_end()
                             
                             else:  # MATERIAL mode
@@ -151,8 +152,10 @@ def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.c
                             spot.reset()
                             if spot == grid_obj.start:
                                 grid_obj.start = None
-                            if spot == grid_obj.end:
-                                grid_obj.end = None
+                            if grid_obj.is_exit(spot):
+                                grid_obj.remove_exit(spot)
+                            # if spot == grid_obj.end:
+                            #     grid_obj.end = None
                             last_cell = (row, col)
             
             # Handle mouse motion for dragging
@@ -227,7 +230,7 @@ def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.c
                        grid_obj.end = end
                     print("Layout loaded")
                 
-                elif event.key == pygame.K_SPACE and grid_obj.start and grid_obj.end:
+                elif event.key == pygame.K_SPACE and grid_obj.start and bool(grid_obj.exits):
                     print("Starting simulation...")
                     return grid_obj
                 

@@ -29,7 +29,7 @@ MATERIALS = {
         "name": "Metal",
         "color": (120, 120, 150),
         "fuel": 0.0,
-        "ignition_temp": 1500.0,  # Very high ignition temp
+        "ignition_temp": 1500,  # Very high ignition temp
         "cooling_rate": 0.05,     # Fast cooling (metal dissipates heat well)
         "heat_transfer": 0.50     # Excellent heat conductor
     }
