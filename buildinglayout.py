@@ -5,6 +5,8 @@ from utilities import ToolType, state_value, Color, material_id
 from materials import MATERIALS
 from PIL import Image
 from tools import ToolsPanel
+import tkinter as tk
+from tkinter import filedialog
 
 # ------------------ GRID UTILS ------------------
 def draw_grid(win, rows, width):
@@ -72,6 +74,27 @@ def load_layout(grid, filename="layout_csv\\layout_1.csv"):
         print(f"Layout file {filename} not found. Starting with empty grid.")
     return start, end
 
+def pick_csv_file():
+    root = tk.Tk()
+    root.withdraw()
+    return filedialog.askopenfilename(
+        filetypes=[("CSV files", "*.csv")]
+    )
+
+def pick_save_csv_file(default_name="layout.csv"):
+    root = tk.Tk()
+    root.withdraw()  # hide tk window
+
+    filename = filedialog.asksaveasfilename(
+        title="Export layout as CSV",
+        defaultextension=".csv",
+        initialfile=default_name,
+        filetypes=[("CSV Files", "*.csv")]
+    )
+
+    root.destroy()
+    return filename
+
 # ------------------ EDITOR LOOP ------------------
 def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.csv"):
     from grid import Grid
@@ -115,6 +138,25 @@ def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.c
                         elif tool_type == ToolType.END:
                             current_tool = "END"
                             print("End position mode - click on grid to place end")
+                        elif tool_type == ToolType.IMPORT:
+                            csv_filename = pick_csv_file()
+                            if csv_filename:
+                                grid_obj.start = None
+                                grid_obj.exits.clear()
+
+                                start, exits = load_layout(grid_obj.grid, csv_filename)
+
+                                if start:
+                                    grid_obj.start = start
+                                if exits:
+                                    grid_obj.exits = exits
+                                print("Layout loaded")
+                        elif tool_type == ToolType.EXPORT:
+                            save_filename = pick_save_csv_file()
+                            if save_filename:
+                                save_layout(grid_obj.grid, save_filename)
+                                print("Layout saved")
+                            
                 else:  # Click in grid area
                     row, col = get_clicked_pos(event.pos, rows, width)
                     
@@ -138,7 +180,7 @@ def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.c
                                 # grid_obj.end = spot
                                 spot.make_end()
                             
-                            else:  # MATERIAL mode
+                            elif current_tool == "MATERIAL":  # MATERIAL mode
                                 material_id = tools_panel.get_current_material()
                                 grid_obj.set_material(row, col, material_id)
                                 color = MATERIALS[material_id]["color"]

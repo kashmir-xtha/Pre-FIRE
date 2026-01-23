@@ -21,6 +21,7 @@ def main():
         BG_IMAGE = pygame.transform.scale(BG_IMAGE, (Dimensions.WIDTH.value, Dimensions.WIDTH.value))
         BG_IMAGE.set_alpha(0)
     except:
+        print("Background image not found, proceeding without it.")
         BG_IMAGE = None
     # Editor
     grid = run_editor(WIN, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE, csv_filename)

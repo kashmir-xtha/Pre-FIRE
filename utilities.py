@@ -51,6 +51,8 @@ class ToolType(Enum):
     MATERIAL = 1
     START = 2
     END = 3
+    IMPORT = 4
+    EXPORT = 5
 
 class SimulationState(Enum):
     SIM_CONTINUE = 0

@@ -53,7 +53,7 @@ class ToolsPanel:
         padding = 10
         
         tools = [
-        # Materials
+            # Materials
             (ToolType.MATERIAL, MaterialID.AIR, MATERIALS[MaterialID.AIR]["name"], MATERIALS[MaterialID.AIR]["color"]),
             (ToolType.MATERIAL, MaterialID.WOOD, MATERIALS[MaterialID.WOOD]["name"], MATERIALS[MaterialID.WOOD]["color"]),
             (ToolType.MATERIAL, MaterialID.CONCRETE, MATERIALS[MaterialID.CONCRETE]["name"], MATERIALS[MaterialID.CONCRETE]["color"]),
@@ -62,8 +62,10 @@ class ToolsPanel:
             # Special tools
             (ToolType.START, None, "Start", Color.GREEN.value),
             (ToolType.END, None, "End", Color.RED.value),
+            (ToolType.IMPORT, None, "Import", (160, 160, 160)),
+            (ToolType.EXPORT, None, "Export", (160, 160, 160)),
         ]
-
+        
         for i, (tool_type, material_id, name, color) in enumerate(tools):
             col = i % 2
             row = i // 2
