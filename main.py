@@ -23,31 +23,17 @@ def main():
     except:
         print("Background image not found, proceeding without it.")
         BG_IMAGE = None
-    # Editor
-    grid = run_editor(WIN, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE, csv_filename)
-    grid.update_state_from_spots()
-
-    #visualize_2d(grid.temperature)
-
-    # Agent
-    agent = Agent(grid, grid.start)
-    
-    # Pathfinding to closest exit
-    agent.path = agent.best_path()
-    
-    # Simulation
-    sim = Simulation(WIN, grid, agent, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE)
-    # sim.run()
 
     while(True):
+        grid = run_editor(WIN, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE, csv_filename)
+        grid.update_state_from_spots()
+        agent = Agent(grid, grid.start)
+        agent.path = agent.best_path()
+        sim = Simulation(WIN, grid, agent, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE)
         mode = sim.run()
         if mode == SimulationState.SIM_EDITOR.value:
-            print("Entering Editor Mode")
-            grid = run_editor(WIN, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE, csv_filename)
-            grid.update_state_from_spots()
-            agent = Agent(grid, grid.start)
-            agent.path = agent.best_path()
-            sim = Simulation(WIN, grid, agent, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE)
+            print("Switching to Editor Mode")
+            continue
         elif mode == SimulationState.SIM_QUIT.value:
             print("Quitting Simulation")
             pygame.quit()
