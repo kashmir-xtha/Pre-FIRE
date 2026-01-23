@@ -51,7 +51,12 @@ class ToolType(Enum):
     MATERIAL = 1
     START = 2
     END = 3
-    
+
+class SimulationState(Enum):
+    SIM_CONTINUE = 0
+    SIM_EDITOR = 1
+    SIM_QUIT = 2
+
 def get_neighbors(r, c, rows, cols):
     # Moore neighborhood
     for dr in [-1, 0, 1]:

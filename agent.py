@@ -210,8 +210,6 @@ def a_star(grid_obj, start, end, rows):
         
         if current == end:
             path = reconstruct_path(came_from, end)
-            # Color the path
-            
             return path
         
         # 4-connected grid

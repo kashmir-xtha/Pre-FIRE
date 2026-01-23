@@ -80,14 +80,13 @@ def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.c
     # Create tools panel
     tools_panel = ToolsPanel(width, 0, 200, width)
     current_tool = "MATERIAL"  # Can be "MATERIAL", "START", "END"
-    
+
     # Variables for mouse dragging
     mouse_dragging = False
     drag_action = None  # 'place' or 'erase'
     last_cell = None  # Last cell we processed during drag
     
     # Try to load existing layout
-    start, end = 0, 0
     bg_image_loaded = False
     run = True
     

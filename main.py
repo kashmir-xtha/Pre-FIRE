@@ -1,8 +1,9 @@
+import sys
 import pygame
 from buildinglayout import run_editor
-from agent import Agent, a_star
+from agent import Agent
 from simulation import Simulation
-from utilities import Dimensions, visualize_2d
+from utilities import Dimensions, SimulationState, visualize_2d
 
 pygame.init()
 WIN = pygame.display.set_mode((Dimensions.WIDTH.value + Dimensions.TOOLS_WIDTH.value, Dimensions.WIDTH.value))
@@ -12,9 +13,6 @@ csv_directory = "layout_csv"
 
 def main():
     i = 3 # to change background image, the number should match the csv layout used
-
-    img_filename = f"{image_directory}/layout_{i}.png"
-    csv_filename = f"{csv_directory}/layout_{i}.csv"
 
     try:
         img_filename = f"{image_directory}/layout_{i}.png"
@@ -38,7 +36,21 @@ def main():
     
     # Simulation
     sim = Simulation(WIN, grid, agent, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE)
-    sim.run()
+    # sim.run()
 
+    while(True):
+        mode = sim.run()
+        if mode == SimulationState.SIM_EDITOR.value:
+            print("Entering Editor Mode")
+            grid = run_editor(WIN, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE, csv_filename)
+            grid.update_state_from_spots()
+            agent = Agent(grid, grid.start)
+            agent.path = agent.best_path()
+            sim = Simulation(WIN, grid, agent, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE)
+        elif mode == SimulationState.SIM_QUIT.value:
+            print("Quitting Simulation")
+            pygame.quit()
+            sys.exit()
+            
 if __name__ == "__main__":
     main()

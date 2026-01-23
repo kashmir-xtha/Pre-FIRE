@@ -2,10 +2,8 @@ import pygame
 import sys
 from fire import randomfirespot, update_fire_with_materials, update_temperature_with_materials
 from smoke import spread_smoke, draw_smoke
-import tools
-from utilities import Color, state_value, visualize_2d, fire_constants, Dimensions, material_id
+from utilities import Color, state_value, visualize_2d, fire_constants, material_id, SimulationState
 from materials import MATERIALS
-from agent import a_star
 
 class Simulation:
     def __init__(self, win, grid, agent, rows, width, bg_image=None):
@@ -15,11 +13,6 @@ class Simulation:
         self.rows = rows
         self.width = width
         self.bg_image = bg_image
-
-        # Create simulation tools panel (for metrics/controls)
-        self.sim_panel = tools.ToolsPanel(width, 0, Dimensions.TOOLS_WIDTH.value, width)
-        # Change title of sim panel
-        self.sim_panel.rect = pygame.Rect(width, 0, Dimensions.TOOLS_WIDTH.value, width)
 
         self.clock = pygame.time.Clock()
         self.running = True
@@ -37,21 +30,27 @@ class Simulation:
             'avg_temp': 20,
             'path_length': 0
         }
-
-    # ---------------- EVENTS ----------------
+        
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.running = False
+                return SimulationState.SIM_QUIT.value
+
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    self.running = False
+                    return SimulationState.SIM_QUIT.value
+                
                 elif event.key == pygame.K_p:
                     self.paused = not self.paused
+
                 elif event.key == pygame.K_r:
                     self.reset()
 
-    # ---------------- RESET ----------------
+                elif event.key == pygame.K_e:
+                    return SimulationState.SIM_EDITOR.value
+
+        return SimulationState.SIM_CONTINUE.value
+
     def reset(self):
         self.grid.clear_simulation_visuals()
         self.frame_count = 0
@@ -66,17 +65,8 @@ class Simulation:
             self.agent.reset()
 
         if self.grid.start and bool(self.grid.exits):
-            # paths = []
-            # for exit_spot in self.grid.exits:
-            #     path = a_star(self.grid, self.agent.spot, exit_spot, self.grid.rows)
-            #     if path:
-            #         paths.append(path)
-
-            # best_path = min(paths, key=len) if paths else None
             self.agent.path = self.agent.best_path()
 
-    # ---------------- UPDATE ----------------
-    # In simulation.py - modify update method
     def update(self, dt):
         """Time-based update with delta time"""
         if self.paused:
@@ -166,14 +156,21 @@ class Simulation:
             last_time = current_time
             
             self.clock.tick(120)
-            # if not self.agent.alive:
-            #     visualize_2d(self.grid.fuel)
-            self.handle_events()
-            self.update(dt)  # Pass delta time
+            
+            # Handle events
+            action = self.handle_events()
+            if action == SimulationState.SIM_EDITOR.value:
+                self.running = False
+                return SimulationState.SIM_EDITOR.value
+
+            if action == SimulationState.SIM_QUIT.value:
+                self.running = False
+                return SimulationState.SIM_QUIT.value
+
+            self.update(dt)  
             self.draw()
-        
-        pygame.quit()
-        sys.exit()
+
+        return SimulationState.SIM_QUIT.value
 
     def update_metrics(self):
         # Time
