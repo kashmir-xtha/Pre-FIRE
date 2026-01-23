@@ -1,6 +1,7 @@
 from enum import Enum
 import numpy as np
 import matplotlib.pyplot as plt
+import pygame
 
 class Dimensions(Enum):
     WIDTH = 780
@@ -73,3 +74,24 @@ def visualize_2d(arr):
     h = np.array(arr)
     plt.imshow(h, interpolation='none')
     plt.show()
+
+def loadImage(image_directory, csv_directory, i):
+    '''
+    Docstring for loadImage
+    
+    :param image_directory: Image Directory
+    :param csv_directory: CSV Directory
+    :param i: layout_{i}.png from image_directory and layout_{i}.csv from csv_directory
+    :return: BG_IMAGE, csv_filename
+    '''
+    try:
+        img_filename = f"{image_directory}/layout_{i}.png"
+        csv_filename = f"{csv_directory}/layout_{i}.csv"
+        BG_IMAGE = pygame.image.load(img_filename).convert_alpha()
+        BG_IMAGE = pygame.transform.scale(BG_IMAGE, (Dimensions.WIDTH.value, Dimensions.WIDTH.value))
+        BG_IMAGE.set_alpha(0)
+    except:
+        print("Background image not found, proceeding without it.")
+        BG_IMAGE = None
+
+    return BG_IMAGE, csv_filename

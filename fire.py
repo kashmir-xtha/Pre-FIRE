@@ -47,7 +47,7 @@ def update_fire_with_materials(grid, dt=1.0):
                             # Temperature-based ignition
                             if grid.temperature[nr][nc] >= ignition_temp:
                                 new_state[nr][nc] = state_value.FIRE.value
-                                print("Temperature based change in state")
+                                #print("Temperature based change in state")
                                 # Initialize temperature for new fire
                                 grid.temperature[nr][nc] = 400.0
                             # Direct flame contact - increased probability
@@ -171,7 +171,7 @@ def randomfirespot(grid, ROWS, max_dist=30):
         if grid.state[r][c] == state_value.EMPTY.value and is_valid_fire_start(grid, r, c, max_dist):
             grid.state[r][c] = state_value.FIRE.value
             grid.temperature[r][c] = 600.0
-            print("Forced fire on non-flammable material")
+            #print("Forced fire on non-flammable material")
             # Set it to wood so it has fuel
             # grid.material[r][c] = material_id.WOOD.value
             # grid.fuel[r][c] = MATERIALS[material_id.WOOD]["fuel"]

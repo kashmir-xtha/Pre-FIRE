@@ -3,7 +3,7 @@ import pygame
 from buildinglayout import run_editor
 from agent import Agent
 from simulation import Simulation
-from utilities import Dimensions, SimulationState, visualize_2d
+from utilities import Dimensions, SimulationState, loadImage, visualize_2d
 
 pygame.init()
 WIN = pygame.display.set_mode((Dimensions.WIDTH.value + Dimensions.TOOLS_WIDTH.value, Dimensions.WIDTH.value))
@@ -12,18 +12,9 @@ image_directory = "layout_images"
 csv_directory = "layout_csv"
 
 def main():
-    i = 3 # to change background image, the number should match the csv layout used
+    BG_IMAGE, csv_filename = loadImage(image_directory, csv_directory, 3)
 
-    try:
-        img_filename = f"{image_directory}/layout_{i}.png"
-        csv_filename = f"{csv_directory}/layout_{i}.csv"
-        BG_IMAGE = pygame.image.load(img_filename).convert_alpha()
-        BG_IMAGE = pygame.transform.scale(BG_IMAGE, (Dimensions.WIDTH.value, Dimensions.WIDTH.value))
-        BG_IMAGE.set_alpha(0)
-    except:
-        print("Background image not found, proceeding without it.")
-        BG_IMAGE = None
-
+    # This loop allows switching between editor and simulation modes
     while(True):
         grid = run_editor(WIN, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE, csv_filename)
         grid.update_state_from_spots()
