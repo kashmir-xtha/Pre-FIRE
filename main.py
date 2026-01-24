@@ -12,7 +12,7 @@ image_directory = "data\\layout_images"
 csv_directory = "data\\layout_csv"
 
 def main():
-    BG_IMAGE, csv_filename = loadImage(image_directory, csv_directory, 3)
+    BG_IMAGE, csv_filename = loadImage(image_directory, csv_directory, 2)
 
     # This loop allows switching between editor and simulation modes
     while(True):
