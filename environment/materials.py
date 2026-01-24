@@ -1,4 +1,4 @@
-from utilities import material_id
+from utils.utilities import material_id
 
 MATERIALS = {
     material_id.AIR: {

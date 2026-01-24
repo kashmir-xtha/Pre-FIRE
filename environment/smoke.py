@@ -1,5 +1,5 @@
 import pygame
-from utilities import get_neighbors, state_value, smoke_constants
+from utils.utilities import get_neighbors, state_value, smoke_constants
 
 def spread_smoke(state_grid, smoke_grid, rows, cols):
     """

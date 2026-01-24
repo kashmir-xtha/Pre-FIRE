@@ -2,16 +2,16 @@ import pygame
 import pygame_gui
 import csv
 import sys
-from utilities import ToolType, Color
-from materials import MATERIALS
+from utils.utilities import ToolType, Color
+from environment.materials import MATERIALS
 from PIL import Image
-from tools import ToolsPanel
-from utilities import load_layout, save_layout, pick_csv_file, pick_save_csv_file
+from editor.tools import ToolsPanel
+from utils.utilities import load_layout, save_layout, pick_csv_file, pick_save_csv_file
 
 # ------------------ EDITOR CLASS ------------------
 class Editor:
     def __init__(self, win, rows, width, bg_image=None, filename="layout_csv\\layout_1.csv"):
-        from grid import Grid
+        from core.grid import Grid
         
         self.win = win
         self.rows = rows

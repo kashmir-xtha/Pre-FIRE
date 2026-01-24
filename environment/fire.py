@@ -1,7 +1,7 @@
 # In fire.py - replace with proper material-aware fire system
 import random
-from utilities import material_id, state_value, fire_constants, get_neighbors
-from materials import MATERIALS
+from utils.utilities import material_id, state_value, fire_constants, get_neighbors
+from environment.materials import MATERIALS
 
 def update_fire_with_materials(grid, dt=1.0):
     """Update fire spread considering material properties"""

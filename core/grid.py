@@ -1,6 +1,6 @@
 import pygame
-from materials import MATERIALS
-from utilities import state_value, Color, fire_constants, material_id
+from environment.materials import MATERIALS
+from utils.utilities import state_value, Color, fire_constants, material_id
 
 class Grid:
     def __init__(self, rows, width):
@@ -33,7 +33,7 @@ class Grid:
 
     def _make_grid(self):
         # Import here to avoid circular import
-        from spot import Spot
+        from core.spot import Spot
         grid = []
         for r in range(self.rows):
             grid.append([])

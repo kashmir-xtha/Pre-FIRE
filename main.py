@@ -1,15 +1,15 @@
 import sys
 import pygame
-from buildinglayout import run_editor
-from agent import Agent
-from simulation import Simulation
-from utilities import Dimensions, SimulationState, loadImage, visualize_2d
+from editor.buildinglayout import run_editor
+from core.agent import Agent
+from core.simulation import Simulation
+from utils.utilities import Dimensions, SimulationState, loadImage, visualize_2d
 
 pygame.init()
 WIN = pygame.display.set_mode((Dimensions.WIDTH.value + Dimensions.TOOLS_WIDTH.value, Dimensions.WIDTH.value))
 pygame.display.set_caption("Fire & Smoke Simulation")
-image_directory = "layout_images"
-csv_directory = "layout_csv"
+image_directory = "data\\layout_images"
+csv_directory = "data\\layout_csv"
 
 def main():
     BG_IMAGE, csv_filename = loadImage(image_directory, csv_directory, 3)

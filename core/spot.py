@@ -1,4 +1,4 @@
-from utilities import Color
+from utils.utilities import Color
 import pygame
 
 class Spot:

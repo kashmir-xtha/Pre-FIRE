@@ -1,9 +1,9 @@
 import pygame
 import sys
-from fire import randomfirespot, update_fire_with_materials, update_temperature_with_materials
-from smoke import spread_smoke, draw_smoke
-from utilities import Color, state_value, visualize_2d, fire_constants, material_id, SimulationState
-from materials import MATERIALS
+from environment.fire import randomfirespot, update_fire_with_materials, update_temperature_with_materials
+from environment.smoke import spread_smoke, draw_smoke
+from utils.utilities import Color, state_value, visualize_2d, fire_constants, material_id, SimulationState
+from environment.materials import MATERIALS
 
 class Simulation:
     def __init__(self, win, grid, agent, rows, width, bg_image=None):

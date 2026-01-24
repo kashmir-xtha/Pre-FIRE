@@ -1,7 +1,7 @@
 # tools_panel.py
 import pygame
-from utilities import Color, ToolType, material_id as MaterialID
-from materials import MATERIALS
+from utils.utilities import Color, ToolType, material_id as MaterialID
+from environment.materials import MATERIALS
 
 class ToolButton:
     def __init__(self, x, y, width, height, material_id, name, color, tool_type):

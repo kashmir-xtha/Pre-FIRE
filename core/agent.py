@@ -1,6 +1,6 @@
 import pygame
 from queue import PriorityQueue
-from utilities import Color, get_neighbors, state_value
+from utils.utilities import Color, get_neighbors, state_value
 
 class Agent:
     def __init__(self, grid, start_spot):
