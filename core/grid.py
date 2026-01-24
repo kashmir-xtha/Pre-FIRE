@@ -15,6 +15,7 @@ class Grid:
         self.fuel = [[1.0 for _ in range(rows)] for _ in range(rows)]
         self.material = [[0 for _ in range(rows)] for _ in range(rows)]
 
+        self.fire_sources = set()  # Set of (r, c) tuples for fire source spots
         self.start = None
         #self.end = None
         self.exits = set() # Set of exit spots
@@ -76,7 +77,12 @@ class Grid:
                 # Don't change start, end, or barrier colors
                 if spot.is_start() or spot.is_end() or spot.is_barrier():
                     continue
-        
+                
+                if (r, c) in self.fire_sources:
+                    spot.color = Color.FIRE_COLOR.value
+                    self.state[r][c] = state_value.FIRE.value
+                    continue
+
                 # If cell is on fire, set to fire color
                 if current_state == state_value.FIRE.value:
                     spot.color = Color.FIRE_COLOR.value

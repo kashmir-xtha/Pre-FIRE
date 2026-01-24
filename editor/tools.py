@@ -62,6 +62,7 @@ class ToolsPanel:
             # Special tools
             (ToolType.START, None, "Start", Color.GREEN.value),
             (ToolType.END, None, "End", Color.RED.value),
+            (ToolType.FIRE_SOURCE, None, "Fire", Color.FIRE_COLOR.value),
         ]
         
         for i, (tool_type, material_id, name, color) in enumerate(tools):

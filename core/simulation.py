@@ -76,7 +76,13 @@ class Simulation:
         
         # Generate fire once
         if not self.fire_set:
-            self.fire_set = randomfirespot(self.grid, self.rows)
+            if self.grid.fire_sources:
+                for r, c in self.grid.fire_sources:
+                    self.grid.state[r][c] = state_value.FIRE.value
+                self.fire_set = True
+            else:
+                self.fire_set = randomfirespot(self.grid, self.rows)
+
 
         update_temperature_with_materials(self.grid, dt)
         update_fire_with_materials(self.grid, dt)

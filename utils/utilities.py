@@ -55,7 +55,8 @@ class ToolType(Enum):
     MATERIAL = 1
     START = 8
     END = 9
-
+    FIRE_SOURCE = 10
+    
 class SimulationState(Enum):
     SIM_CONTINUE = 0
     SIM_EDITOR = 1

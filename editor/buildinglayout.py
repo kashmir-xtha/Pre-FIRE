@@ -89,6 +89,7 @@ class Editor:
     
     def _process_tool_selection(self, tool_type, selected_material):
         """Process tool selection from tools panel"""
+        
         if tool_type == ToolType.MATERIAL:
             self.current_tool = "MATERIAL"
             self.tools_panel.current_material = selected_material
@@ -98,7 +99,9 @@ class Editor:
         elif tool_type == ToolType.END:
             self.current_tool = "END"
             print("End position mode - click on grid to place end")
-    
+        elif tool_type == ToolType.FIRE_SOURCE:
+            self.current_tool = "FIRE_SOURCE"
+            print("Fire source mode - click on grid to place fire source")
     def _handle_grid_click(self, event):
         """Handle mouse clicks in the grid area"""
         row, col = self.grid_obj.get_clicked_pos(event.pos)
@@ -136,7 +139,12 @@ class Editor:
             self.grid_obj.set_material(row, col, material_id)
             color = MATERIALS[material_id]["color"]
             self.grid_obj.grid[row][col].color = color
-    
+
+        elif self.current_tool == "FIRE_SOURCE":
+            self.grid_obj.fire_sources.add((row, col))
+            self.grid_obj.grid[row][col].color = Color.FIRE_COLOR.value
+            print("Fire source placed")
+
     def _erase_from_grid(self, spot):
         """Erase items from the grid"""
         spot.reset()
