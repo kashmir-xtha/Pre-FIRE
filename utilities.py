@@ -50,8 +50,8 @@ class material_id(Enum):
 
 class ToolType(Enum):
     MATERIAL = 1
-    START = 2
-    END = 3
+    START = 8
+    END = 9
     IMPORT = 4
     EXPORT = 5
 

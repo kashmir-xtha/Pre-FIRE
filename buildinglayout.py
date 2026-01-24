@@ -1,4 +1,5 @@
 import pygame
+import pygame_gui
 import csv
 import sys
 from utilities import ToolType, state_value, Color, material_id
@@ -26,7 +27,7 @@ def draw(win, grid, rows, width, tools_panel=None, bg_image=None):
     if tools_panel:
         tools_panel.draw(win)
     
-    pygame.display.update()
+    #pygame.display.update()
 
 def get_clicked_pos(pos, rows, width):
     gap = width // rows
@@ -97,33 +98,107 @@ def pick_save_csv_file(default_name="layout.csv"):
 
 # ------------------ EDITOR LOOP ------------------
 def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.csv"):
+    """
+    Layout editor window.
+    - Draw walls, start, and end points
+    - Save layout to CSV
+    - Load layout from CSV
+    - Finish editing and return grid, start, end
+    """
     from grid import Grid
+
     grid_obj = Grid(rows, width)
+    start = end = None
+    clock = pygame.time.Clock()
+
+    manager = pygame_gui.UIManager((width+200, width)) # Initialize GUI button manager including tools panel area
+    # Position buttons to just left of the tools panel
+    button_y = width - 40  # Bottom of the window
+    button_width = 80
+    button_height = 30
+    button_gap = 10  # Gap between buttons
     
+    # Calculate X positions: place buttons right before the tools panel starts
+    # Tools panel starts at X = width, so we place buttons to the left of it
+    load_button_x = width - (2 * button_width) - (2 * button_gap)
+    save_button_x = width - button_width - button_gap
+
+    save_button = pygame_gui.elements.UIButton( 
+        relative_rect=pygame.Rect((save_button_x, button_y), (button_width, button_height)),
+        text="Save",
+        manager=manager
+    )
+
+    load_button = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect((load_button_x, button_y), (button_width, button_height)),
+        text="Load",
+        manager=manager
+    )
+
+
     # Create tools panel
     tools_panel = ToolsPanel(width, 0, 200, width)
-    current_tool = "MATERIAL"  # Can be "MATERIAL", "START", "END"
+    current_tool = "MATERIAL"  # Can be "MATERIAL", "START", "END", "WOOD", etc.
 
     # Variables for mouse dragging
     mouse_dragging = False
     drag_action = None  # 'place' or 'erase'
     last_cell = None  # Last cell we processed during drag
     
+    current_filename = filename
     # Try to load existing layout
     bg_image_loaded = False
     run = True
     
     while run:
+        time_delta = clock.tick(60) / 1000.0
         win.fill(Color.WHITE.value)
         
         # Draw everything
         draw(win, grid_obj.grid, rows, width, tools_panel, bg_image)
 
         for event in pygame.event.get():
+            
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
- 
+
+            # Handle button clicks- UI button events
+            if event.type == pygame_gui.UI_BUTTON_PRESSED:
+                if event.ui_element == save_button:
+                    save_filename = pick_save_csv_file()
+                    if save_filename:
+                        save_layout(grid_obj.grid, filename=save_filename)
+                        current_filename = save_filename  # Update current filename
+                        #print(f"Layout saved to {save_filename}")
+                    
+                elif event.ui_element == load_button:
+                    # Clear old start/exits before loading
+                    load_filename = pick_csv_file()
+                    if load_filename:
+                        # Reset current layout before loading
+                        grid_obj.start = None
+                        grid_obj.exits.clear()
+                        
+                        # Reset all spots in grid
+                        for r in range(rows):
+                            for c in range(width // rows):
+                                grid_obj.grid[r][c].reset()
+                        
+                        # Load from selected file
+                        start, exits = load_layout(grid_obj.grid, load_filename)
+                        
+                        if start:
+                            grid_obj.start = start
+                            #print(f"Start position loaded at ({start.row}, {start.col})")
+                        if exits:
+                            grid_obj.exits = exits
+                            #print(f"{len(exits)} exit(s) loaded")
+                        
+                        current_filename = load_filename  # Update current filename
+                        #print(f"Layout loaded from {load_filename}")
+            
+
             # Handle tools panel clicks
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.pos[0] >= width:  # Click in tools panel
@@ -181,7 +256,7 @@ def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.c
                                 spot.make_end()
                             
                             elif current_tool == "MATERIAL":  # MATERIAL mode
-                                material_id = tools_panel.get_current_material()
+                                material_id = tools_panel.get_current_material() #naming conflict doesnt matter here due to use of getter function
                                 grid_obj.set_material(row, col, material_id)
                                 color = MATERIALS[material_id]["color"]
                                 grid_obj.grid[row][col].color = color
@@ -199,7 +274,7 @@ def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.c
                             # if spot == grid_obj.end:
                             #     grid_obj.end = None
                             last_cell = (row, col)
-            
+                
             # Handle mouse motion for dragging
             elif event.type == pygame.MOUSEMOTION and mouse_dragging:
                 if event.pos[0] < width:  # Only process if in grid area
@@ -220,8 +295,8 @@ def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.c
                                 spot.reset()
                                 if spot == grid_obj.start:
                                     grid_obj.start = None
-                                if spot == grid_obj.end:
-                                    grid_obj.end = None
+                                if spot == grid_obj.exits:
+                                    grid_obj.exits = None
                             
                             last_cell = (row, col)
             
@@ -271,7 +346,11 @@ def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_1.c
                 elif event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
                     pygame.quit()
                     sys.exit()
-    
+        
+        manager.process_events(event)
+        manager.update(time_delta)
+        manager.draw_ui(win)
+        pygame.display.update()
     return grid_obj
 
 def floor_image_to_csv(image_path, csv_path, rows=60, cols=60, wall_color=(0, 0, 0), end_color=(255, 0, 0)):
