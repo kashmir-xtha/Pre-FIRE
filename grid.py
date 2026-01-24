@@ -1,3 +1,4 @@
+import pygame
 from materials import MATERIALS
 from utilities import state_value, Color, fire_constants, material_id
 
@@ -29,7 +30,6 @@ class Grid:
 
     def is_exit(self, spot):
         return spot in self.exits
-
 
     def _make_grid(self):
         # Import here to avoid circular import
@@ -66,7 +66,6 @@ class Grid:
                     else:
                         self.material[r][c] = material_id.AIR.value
 
-
     def apply_fire_to_spots(self):
         """Update spot colors based on current state (fire, material, etc.)"""
         for r in range(self.rows):
@@ -84,7 +83,6 @@ class Grid:
                 else:
                     mat_id = material_id(self.material[r][c])
                     spot.color = MATERIALS[mat_id]["color"]
-
 
     def get_spot(self, r, c):
         if self.in_bounds(r, c):
@@ -112,15 +110,6 @@ class Grid:
                 if not spot.is_start() and not spot.is_end() and not spot.is_barrier():
                     material = self.material[r][c]
                     spot.color = MATERIALS[material]["color"]
-
-    def clear_path_visualization(self):
-        """Clear path visualization (purple cells)"""
-        for r in range(self.rows):
-            for c in range(self.rows):
-                spot = self.grid[r][c]
-                # Reset purple path cells to white
-                if spot.color == Color.PURPLE.value or spot.color == Color.TURQUOISE.value:  # Purple
-                    spot.color = Color.WHITE.value  # White
     
     def clear_simulation_visuals(self):
         """Clear all simulation visuals (fire, smoke, path) but keep walls, start, end"""
@@ -132,6 +121,37 @@ class Grid:
                     # Only reset color if not wall, start, or end
                     if not self.grid[r][c].is_barrier() and not self.grid[r][c].is_start() and not self.grid[r][c].is_end():
                         self.grid[r][c].color = Color.WHITE.value
+    
+    def draw_grid(self, win):
+        gap = self.width // self.rows
+        for i in range(self.rows):
+            pygame.draw.line(win, Color.GREY.value, (0, i * gap), (self.width, i * gap))
+            pygame.draw.line(win, Color.GREY.value, (i * gap, 0), (i * gap, self.width))
+    
+    def draw(self, win, tools_panel=None, bg_image=None):
+        if bg_image:
+            win.blit(bg_image, (0, 0))
+        for row in self.grid:
+            for spot in row:
+                spot.draw(win)
+        self.draw_grid(win)
         
-        # Clear path visualization
-        #self.clear_path_visualization()
+        if tools_panel:
+            tools_panel.draw(win)
+    
+    def get_clicked_pos(self, pos):
+        '''
+        Docstring for get_clicked_pos
+        
+        :param pos: This is the event.pos from pygame
+        :return: (row, col) tuple corresponding to grid cell clicked
+        '''
+        gap = self.width // self.rows
+        x, y = pos
+        
+        # Only process clicks within grid area
+        if x < self.width:
+            row = y // gap
+            col = x // gap
+            return row, col
+        return None, None

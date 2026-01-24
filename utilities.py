@@ -1,4 +1,7 @@
 from enum import Enum
+import tkinter as tk
+import csv
+from tkinter import filedialog
 import numpy as np
 import matplotlib.pyplot as plt
 import pygame
@@ -52,8 +55,6 @@ class ToolType(Enum):
     MATERIAL = 1
     START = 8
     END = 9
-    IMPORT = 4
-    EXPORT = 5
 
 class SimulationState(Enum):
     SIM_CONTINUE = 0
@@ -95,3 +96,57 @@ def loadImage(image_directory, csv_directory, i):
         BG_IMAGE = None
 
     return BG_IMAGE, csv_filename
+
+# ------------------ SAVE / LOAD ------------------
+def spot_to_value(spot):
+    if spot.is_barrier(): return state_value.WALL.value
+    if spot.is_start(): return state_value.START.value
+    if spot.is_end(): return state_value.END.value
+    return state_value.EMPTY.value
+
+def save_layout(grid, filename="layout_csv\\layout_1.csv"):
+    with open(filename, "w", newline="") as f:
+        writer = csv.writer(f)
+        for row in grid:
+            writer.writerow([spot_to_value(s) for s in row])
+
+def load_layout(grid, filename="layout_csv\\layout_1.csv"):
+    start = None
+    end = set()
+    try:
+        with open(filename, "r") as f:
+            reader = csv.reader(f)
+            for r, row in enumerate(reader):
+                for c, val in enumerate(row):
+                    spot = grid[r][c]
+                    spot.reset()
+                    if int(val) == state_value.WALL.value:
+                        spot.make_barrier()
+                    elif int(val) == state_value.START.value:
+                        spot.make_start()
+                        start = spot
+                    elif int(val) == state_value.END.value:
+                        spot.make_end()
+                        end.add(spot)
+    except FileNotFoundError:
+        print(f"Layout file {filename} not found. Starting with empty grid.")
+    return start, end
+
+def pick_csv_file():
+    root = tk.Tk()
+    root.withdraw()
+    return filedialog.askopenfilename(
+        filetypes=[("CSV files", "*.csv")]
+    )
+
+def pick_save_csv_file(default_name="layout.csv"):
+    root = tk.Tk()
+    root.withdraw()  # hide tk window
+    filename = filedialog.asksaveasfilename(
+        title="Export layout as CSV",
+        defaultextension=".csv",
+        initialfile=default_name,
+        filetypes=[("CSV Files", "*.csv")]
+    )
+    root.destroy()
+    return filename

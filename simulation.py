@@ -117,26 +117,17 @@ class Simulation:
         
         # Smoke FIRST (background effect)
         draw_smoke(self.grid, self.win, self.rows)
-        
-        # Grid + walls + path
-        # Note: We need to modify the draw function to not draw outside grid area
-        for row in self.grid.grid:
-            for spot in row:
-                spot.draw(self.win)
-        
+  
         # Drawing path
         if self.agent.path and self.agent.path_show:
             for p in self.agent.path:
                 if p != self.agent.spot and not p.is_start() and not p.is_end():
                     p.color = Color.PURPLE.value
                     p.draw(self.win)
-                
-        # Draw grid lines
-        gap = self.width // self.rows
-        for i in range(self.rows):
-            pygame.draw.line(self.win, Color.GREY.value, (0, i * gap), (self.width, i * gap))
-            pygame.draw.line(self.win, Color.GREY.value, (i * gap, 0), (i * gap, self.width))
-        
+
+        # Draw Grid Lines + spots
+        self.grid.draw(self.win, bg_image=self.bg_image)
+
         # Agent LAST (top layer)
         if self.agent:
             self.agent.draw(self.win)
