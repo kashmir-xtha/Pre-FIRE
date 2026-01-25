@@ -59,6 +59,9 @@ def update_fire_with_materials(grid, dt=1.0):
                 # If fuel runs out, extinguish fire
                 if fuel <= 0:
                     new_state[r][c] = state_value.EMPTY.value
+                    #removing fire source when fuel runs out
+                    if (r, c) in grid.fire_sources:
+                        grid.fire_sources.remove((r, c))
                     # Don't reset temperature immediately - let it cool down naturally
             
             # If cell is not on fire but has fuel and is hot enough
