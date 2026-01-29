@@ -150,7 +150,7 @@ class Simulation:
         
         # Grid should be square (rows x rows)
         grid_height = grid_width  # Force square aspect ratio
-        cell_size = grid_width // self.rows
+        cell_size = self.grid.cell_size
         
         # Center the grid in window
         grid_x = 0  # Align to left

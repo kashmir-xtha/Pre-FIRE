@@ -253,11 +253,30 @@ def a_star(grid_obj, start, end, rows):
     return None
 
 # ------------------ PATH SAFETY CHECK ------------------
-def path_still_safe(path, grid, lookahead=10):
+def path_still_safe(path, grid, lookahead=20, smoke_threshold=0.7):
+    """
+    Check if the planned path is still safe to follow.
+    
+    A path is considered unsafe if:
+    1. Any cell ahead contains fire, OR
+    2. Smoke density exceeds the safety threshold (agent can't see/navigate)
+    
+    Args:
+        path: List of Spot objects representing the path
+        grid: Grid object containing state and smoke data
+        lookahead: How many steps ahead to check
+        smoke_threshold: Smoke density level (0-1) above which path is unsafe
+    """
     if not path:
         return False
 
     for spot in path[:lookahead]:
+        # Check if cell is on fire
         if grid.state[spot.row][spot.col] == state_value.FIRE.value:
             return False
+        
+        # Check if smoke density is too high for safe navigation
+        if grid.smoke[spot.row][spot.col] > smoke_threshold:
+            return False
+    
     return True

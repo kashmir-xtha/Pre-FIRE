@@ -6,7 +6,7 @@ class Grid:
     def __init__(self, rows, width):
         self.rows = rows
         self.width = width
-        self.cell_size = width // rows
+        self.cell_size = min(10, width // rows)
 
         self.grid = self._make_grid()
         self.smoke = [[0.0 for _ in range(rows)] for _ in range(rows)]
@@ -129,12 +129,13 @@ class Grid:
                         self.grid[r][c].color = Color.WHITE.value
     
     def draw_grid(self, win):
-        gap = self.width // self.rows
+        gap = self.cell_size
         for i in range(self.rows):
             pygame.draw.line(win, Color.GREY.value, (0, i * gap), (self.width, i * gap))
             pygame.draw.line(win, Color.GREY.value, (i * gap, 0), (i * gap, self.width))
     
-    def draw(self, win, tools_panel=None, bg_image=None):
+    def draw(self, win, tools_panel=None, bg_image=
+             None):
         if bg_image:
             win.blit(bg_image, (0, 0))
         for row in self.grid:
@@ -152,7 +153,7 @@ class Grid:
         :param pos: This is the event.pos from pygame
         :return: (row, col) tuple corresponding to grid cell clicked
         '''
-        gap = self.width // self.rows
+        gap = self.cell_size
         x, y = pos
         
         # Only process clicks within grid area
