@@ -187,7 +187,7 @@ def danger_heuristic(spot, grid, danger_weight=2.0):
     # Base danger from fire
     fire_danger = 100 if grid.state[r][c] == state_value.FIRE.value else 0
     
-    # Danger from smoke (0-100)
+    # Danger from smoke (0-50)
     smoke_danger = grid.smoke[r][c] * 50
     
     # Danger from temperature (>50°C is dangerous)
@@ -212,11 +212,6 @@ def a_star(grid_obj, start, end, rows):
     open_set_hash = {start}
     
     while not open_set.empty():
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                return None
-        
         current = open_set.get()[2]
         open_set_hash.remove(current)
         
@@ -224,7 +219,7 @@ def a_star(grid_obj, start, end, rows):
             path = reconstruct_path(came_from, end)
             return path
         
-        # 4-connected grid
+        # 4-connected and 8-connected neighbors (Moore neighborhood)
         for r, c in get_neighbors(current.row, current.col, rows, rows):
             neighbor = grid_obj.state[r][c]
             # Skip if barrier or fire (fire is orange: 255, 80, 0)
@@ -232,9 +227,25 @@ def a_star(grid_obj, start, end, rows):
                 continue
             
             neighbor = grid[r][c]
-            # Calculate cost with danger
-            base_cost = 1
+            
             danger_cost = danger_heuristic(neighbor, grid_obj, danger_weight=2.0)
+            
+            # Dynamic diagonal penalty based on danger level
+            # In safe areas: discourage diagonals (prefer straight paths - realistic)
+            # In dangerous areas: allow diagonals (necessary for escape)
+            is_diagonal = (r != current.row) and (c != current.col)
+            danger_threshold = 30  # Threshold for "high danger"
+            
+            if is_diagonal:
+                # High danger: reduce penalty to allow escape diagonals
+                # Low danger: heavy penalty to prefer straight hallways
+                if danger_cost >= danger_threshold:
+                    base_cost = 1.0  # No penalty in dangerous areas
+                else:
+                    base_cost = 2.0  # Full penalty in safe areas
+            else:
+                base_cost = 1.0  # Straight moves always cost 1.0
+            
             total_cost = base_cost + danger_cost
 
             temp_g = g_score[current] + total_cost
@@ -253,7 +264,7 @@ def a_star(grid_obj, start, end, rows):
     return None
 
 # ------------------ PATH SAFETY CHECK ------------------
-def path_still_safe(path, grid, lookahead=20, smoke_threshold=0.7):
+def path_still_safe(path, grid, lookahead=10, smoke_threshold=0.7):
     """
     Check if the planned path is still safe to follow.
     
