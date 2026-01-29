@@ -161,3 +161,12 @@ class Grid:
             col = x // gap
             return row, col
         return None, None
+
+    def update_cell_positions(self, cell_size):
+        """Update all spot positions based on new cell size"""
+        for r in range(self.rows):
+            for c in range(self.cols):
+                spot = self.grid[r][c]
+                spot.x = c * cell_size
+                spot.y = r * cell_size
+                spot.cell_size = cell_size

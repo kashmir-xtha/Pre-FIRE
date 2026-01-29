@@ -45,17 +45,22 @@ def spread_smoke(state_grid, smoke_grid, rows, cols):
 
     return next_smoke
 
-def draw_smoke(grid, WIN, ROWS):
-    cell = grid.cell_size
-    for r in range(ROWS):
-        for c in range(ROWS):
-            s = grid.smoke[r][c]
-            if s > 0:
-                #visually appealing
-                surface = pygame.Surface((cell, cell), pygame.SRCALPHA)
-                alpha = min(200, int(s * 255))
-                surface.fill((25, 25, 25, alpha))
-                WIN.blit(surface, (c * cell, r * cell))
+def draw_smoke(grid, surface, rows, cell_size=None):
+    """Draw smoke on the given surface, but not on fire cells"""
+    # Use provided cell_size or grid's cell_size
+    cell = cell_size if cell_size is not None else grid.cell_size
+    
+    for r in range(rows):
+        for c in range(rows):
+            # Check if this cell is NOT fire
+            if grid.state[r][c] != state_value.FIRE.value:
+                s = grid.smoke[r][c]
+                if s > 0:
+                    # Create smoke overlay with alpha
+                    smoke_surface = pygame.Surface((cell, cell), pygame.SRCALPHA)
+                    alpha = min(200, int(s * 255))  # s is between 0 and 1
+                    smoke_surface.fill((25, 25, 25, alpha))
+                    surface.blit(smoke_surface, (c * cell, r * cell))
                 #below is more computationally efficient but less visually appealing
                 #shade = int(255 * (1 - s))  # Denser smoke is darker
                 # pygame.draw.rect(

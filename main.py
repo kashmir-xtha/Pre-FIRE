@@ -3,10 +3,14 @@ import pygame
 from editor.buildinglayout import run_editor
 from core.agent import Agent
 from core.simulation import Simulation
-from utils.utilities import Dimensions, SimulationState, loadImage, visualize_2d
+from utils.utilities import Dimensions, SimulationState, loadImage
 
 pygame.init()
-WIN = pygame.display.set_mode((Dimensions.WIDTH.value + Dimensions.TOOLS_WIDTH.value, Dimensions.WIDTH.value))
+WIN = pygame.display.set_mode(
+    (Dimensions.WIDTH.value + Dimensions.TOOLS_WIDTH.value, Dimensions.WIDTH.value),
+    pygame.RESIZABLE # Set window size and make it resizable according to monitor resolution
+) 
+
 pygame.display.set_caption("Fire & Smoke Simulation")
 image_directory = "data\\layout_images"
 csv_directory = "data\\layout_csv"

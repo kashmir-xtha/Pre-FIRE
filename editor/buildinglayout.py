@@ -21,7 +21,12 @@ class Editor:
         
         # Grid and state
         self.grid_obj = Grid(rows, width)
-        self.tools_panel = ToolsPanel(width, 0, 200, width)
+        # Get current window size
+        win_width, win_height = self.win.get_size()
+        tools_panel_width = 200
+
+        self.tools_panel = ToolsPanel(win_width - tools_panel_width, 0, 
+                                      tools_panel_width, win_height) #with dynamic dimensions
         self.current_tool = "MATERIAL"
         self.current_filename = filename
         self.bg_image_loaded = False
@@ -31,8 +36,12 @@ class Editor:
         self.drag_action = None  # 'place' or 'erase'
         self.last_cell = None
         
+        # Window resizing state
+        self.window_size = (width + 200, width)
+        self.original_width = width
+
         # Initialize GUI
-        self.manager = pygame_gui.UIManager((width + 200, width))
+        self.manager = pygame_gui.UIManager((win_width, win_height))
         self._setup_ui_buttons()
         
         # Try to load existing layout
@@ -40,14 +49,17 @@ class Editor:
     
     def _setup_ui_buttons(self):
         """Initialize UI buttons (Save/Load)"""
-        button_y = self.width - 40  # Bottom of the window
+        # Get current window size
+        win_width, win_height = self.win.get_size()
+        
+        button_y = win_height - 40  # Bottom of the window
         button_width = 80
         button_height = 30
         button_gap = 10
         
-        # Calculate X positions
-        load_button_x = self.width - (2 * button_width) - (2 * button_gap)
-        save_button_x = self.width - button_width - button_gap
+        # Calculate X positions relative to tools panel
+        load_button_x = win_width - (2 * button_width) - (2 * button_gap)
+        save_button_x = win_width - button_width - button_gap
         
         self.save_button = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect((save_button_x, button_y), (button_width, button_height)),
@@ -60,6 +72,38 @@ class Editor:
             text="Load",
             manager=self.manager
         )
+
+    def _handle_window_resize(self, event):
+        """Handle window resize events"""
+        if event.type == pygame.VIDEORESIZE:
+            # Update window size
+            self.window_size = event.size
+            
+            # Recreate UI manager with new size
+            self.manager = pygame_gui.UIManager(event.size)
+            
+            # Recreate UI buttons at new positions
+            self._setup_ui_buttons()
+            
+            # Update tools panel size
+            win_width, win_height = event.size
+            tools_panel_width = 200  # Fixed tools panel width
+            
+
+            self.tools_panel.rect.x = win_width - tools_panel_width
+            self.tools_panel.rect.y = 0
+            self.tools_panel.rect.width = tools_panel_width
+            self.tools_panel.rect.height = win_height
+            
+            # Update grid width (main area is everything except tools panel)
+            self.width = win_width - tools_panel_width
+            
+            self.tools_panel._init_buttons() # Reinitialization of tools panel buttons with new position
+
+            self.grid_obj.cell_size = self.width // self.rows # Update grid's cell size based on new width
+
+            return True
+        return False
     
     def _load_initial_layout(self):
         """Load initial layout if file exists"""
@@ -275,12 +319,26 @@ class Editor:
         
         while True:
             time_delta = clock.tick(60) / 1000.0
+
+            # Clear the entire window
             self.win.fill(Color.WHITE.value)
-            
-            # Draw everything
+
+            # Draw everything (grid and tools panel)
             self.grid_obj.draw(self.win, self.tools_panel, self.bg_image)
+
+            # Draw white separator bar between grid and tools
+            win_width, win_height = self.win.get_size() #pygame method to get current window size
+            separator_x = self.width #use current window width
+            
+            pygame.draw.rect(
+                self.win, 
+                Color.WHITE.value, 
+                (separator_x, 0, 2, win_height)
+            )# Draw white separator
             
             for event in pygame.event.get():
+                if self._handle_window_resize(event):
+                    continue
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
@@ -290,6 +348,7 @@ class Editor:
                     self._handle_ui_events(event)
                 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
+                    win_width, _ = self.win.get_size()
                     if event.pos[0] >= self.width:
                         self._handle_tools_panel_events(event)
                     else:

@@ -11,9 +11,16 @@ class Simulation:
         self.grid = grid
         self.agent = agent
         self.rows = rows
-        self.width = width
-        self.bg_image = bg_image
+        # Get current window size for proper initialization
+        win_width, win_height = win.get_size()
+        self.width = win_width - 200  # Grid width = window width - panel width
 
+        self.bg_image = bg_image
+        
+        # Store original dimensions
+        self.original_width = width
+        self.tools_width = 200  # Width for simulation panel
+        
         self.clock = pygame.time.Clock()
         self.running = True
         self.paused = False
@@ -30,11 +37,27 @@ class Simulation:
             'avg_temp': 20,
             'path_length': 0
         }
-        
+    
+    def _handle_window_resize(self, event):
+        """Handle window resize events"""
+        if event.type == pygame.VIDEORESIZE:
+            win_width, win_height = event.size
+            
+            # Update window width for grid area
+            # Grid area takes all space except 200px for panel
+            self.width = win_width - self.tools_width if win_width > 200 else win_width
+            
+            return True
+        return False
+    
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return SimulationState.SIM_QUIT.value
+
+            elif event.type == pygame.VIDEORESIZE:
+                self._handle_window_resize(event)
+                continue  # Continue processing other events
 
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
@@ -83,7 +106,6 @@ class Simulation:
             else:
                 self.fire_set = randomfirespot(self.grid, self.rows)
 
-
         update_temperature_with_materials(self.grid, dt)
         update_fire_with_materials(self.grid, dt)
 
@@ -91,20 +113,19 @@ class Simulation:
             for c in range(self.rows):
                 if self.grid.state[r][c] == state_value.FIRE.value and self.grid.fuel[r][c] <= 0:
                     self.grid.state[r][c] = state_value.EMPTY.value
-                    #self.grid.temperature[r][c] *= 0.5  # Cool down when fire goes out
-                    # Update visual to material color
                     if not self.grid.grid[r][c].is_barrier() and not self.grid.grid[r][c].is_start() and not self.grid.grid[r][c].is_end():
                         mat_id = material_id(self.grid.material[r][c])
                         self.grid.grid[r][c].color = MATERIALS[mat_id]["color"]
 
         # Smoke spread
+        old_smoke_total = sum(sum(row) for row in self.grid.smoke)
         self.grid.smoke = spread_smoke(
             self.grid.state,
             self.grid.smoke,
             self.rows,
             self.rows
         )
-
+        
         # Apply fire visuals
         self.grid.apply_fire_to_spots()
 
@@ -112,32 +133,79 @@ class Simulation:
         if self.agent:
             self.agent.update(dt)
         
-        #update metrics
+        # Update metrics
         self.update_metrics()
 
     # ---------------- DRAW ----------------
     def draw(self):
-        # Clear only the grid area
-        grid_area = pygame.Rect(0, 0, self.width, self.width)
-        pygame.draw.rect(self.win, Color.WHITE.value, grid_area)
+        # Get current window size
+        win_width, win_height = self.win.get_size()
         
-        # Smoke FIRST (background effect)
-        draw_smoke(self.grid, self.win, self.rows)
-  
-        # Drawing path
-        if self.agent.path and self.agent.path_show:
+        # Clear the entire window
+        self.win.fill(Color.WHITE.value)
+
+        # Calculate grid dimensions (fixed square based on original grid)
+        grid_width = min(win_width - 200, self.original_width)
+        grid_width = max(grid_width, 100)  # Minimum width
+        
+        # Grid should be square (rows x rows)
+        grid_height = grid_width  # Force square aspect ratio
+        cell_size = grid_width // self.rows
+        
+        # Center the grid in window
+        grid_x = 0  # Align to left
+        grid_y = (win_height - grid_height) // 2 if win_height > grid_height else 0
+        
+        # Create a temporary surface for the grid area with exact grid dimensions
+        grid_surface = pygame.Surface((grid_width, grid_height))
+        grid_surface.fill(Color.WHITE.value)
+        
+        # IMPORTANT: Update grid cell size for proper drawing
+        self.grid.cell_size = cell_size
+        
+        # Update spot positions in the grid
+        for r in range(self.rows):
+            for c in range(self.rows):
+                spot = self.grid.grid[r][c]
+                spot.x = c * cell_size
+                spot.y = r * cell_size
+                spot.cell_size = cell_size
+        
+        # Update agent position if it exists
+        if self.agent and self.agent.spot:
+            self.agent.spot.cell_size = cell_size
+            # Update agent's reference to cell size
+            if hasattr(self.agent, 'cell_size'):
+                self.agent.cell_size = cell_size
+        
+        # Drawing path - draw on grid surface
+        if self.agent and self.agent.path and self.agent.path_show:
             for p in self.agent.path:
                 if p != self.agent.spot and not p.is_start() and not p.is_end():
                     p.color = Color.PURPLE.value
-                    p.draw(self.win)
-
-        # Draw Grid Lines + spots
-        self.grid.draw(self.win, bg_image=self.bg_image)
-
-        # Agent LAST (top layer)
-        if self.agent:
-            self.agent.draw(self.win)
+                    # Ensure path spot has correct size
+                    p.cell_size = cell_size
+                    p.draw(grid_surface)
         
+        # Draw Grid Lines + spots - on grid surface
+        self.grid.draw(grid_surface, bg_image=self.bg_image)
+        
+        # Draw smoke using the imported function
+        draw_smoke(self.grid, grid_surface, self.rows, cell_size)
+        
+        # Agent LAST (top layer) - on grid surface
+        if self.agent and self.agent.spot:
+            # Ensure agent's spot has correct size
+            self.agent.spot.cell_size = cell_size
+            self.agent.draw(grid_surface)
+        
+        # Blit the grid surface onto the main window at centered position
+        self.win.blit(grid_surface, (grid_x, grid_y))
+        
+        # Draw the white separator bar between grid and panel
+        panel_x = grid_width
+        pygame.draw.rect(self.win, Color.WHITE.value, (panel_x, 0, 2, win_height))
+
         # Draw simulation panel
         self.draw_sim_panel()
         
@@ -203,24 +271,34 @@ class Simulation:
         ]
         
         y_offset = 10
+        panel_x = self.width  # Right side of grid area
         for text in metrics:
-            # Draw background for readability
-            text_surface = self.font.render(text, True, (255, 255, 255))
-            pygame.draw.rect(self.win, (0, 0, 0, 180), 
-                           (10, y_offset - 2, text_surface.get_width() + 4, text_surface.get_height() + 4))
-            self.win.blit(text_surface, (12, y_offset))
+            if text:
+                text_surface = self.font.render(text, True, (220, 220, 220))
+                self.win.blit(text_surface, (panel_x + 15, y_offset))
             y_offset += 25
 
     def draw_sim_panel(self):
+        # Get current window size
+        win_width, win_height = self.win.get_size()
+        
+        # Fixed panel width
+        panel_width = 200
+        panel_x = win_width - panel_width
+        
+        # Calculate actual grid width used in draw()
+        grid_width = min(win_width - panel_width, self.original_width)
+        grid_width = max(grid_width, 100)
+        
         # Draw panel background
-        panel_rect = pygame.Rect(self.width, 0, 200, self.width)
+        panel_rect = pygame.Rect(panel_x, 0, panel_width, win_height)
         pygame.draw.rect(self.win, (40, 40, 50), panel_rect)
         pygame.draw.rect(self.win, (60, 60, 70), panel_rect, width=2)
-        
-        # Draw title
+
+        # Draw title - center in panel
         title_font = pygame.font.SysFont(None, 24)
         title = title_font.render("SIMULATION", True, (255, 255, 255))
-        self.win.blit(title, (self.width + 100 - title.get_width() // 2, 20))
+        self.win.blit(title, (panel_x + panel_width//2 - title.get_width()//2, 20))
         
         # Draw metrics
         y_offset = 60
@@ -240,27 +318,29 @@ class Simulation:
         for text in metrics:
             if text:
                 text_surface = self.font.render(text, True, (220, 220, 220))
-                self.win.blit(text_surface, (self.width + 15, y_offset))
+                # **FIX: Use panel_x instead of self.width**
+                self.win.blit(text_surface, (panel_x + 15, y_offset))
             y_offset += 25
         
         # Draw agent status
         if self.agent:
-            status_y = self.width - 100
+            status_y = win_height - 100
             status = "ALIVE" if self.agent.alive else "DEAD"
             status_color = (0, 255, 0) if self.agent.alive else (255, 0, 0)
             status_surface = self.font.render(f"Agent: {status}", True, status_color)
-            self.win.blit(status_surface, (self.width + 15, status_y))
+            self.win.blit(status_surface, (panel_x + 15, status_y))
             
             # Draw health bar
-            health_width = int(180 * (self.agent.health / 100))
+            health_width = int((panel_width - 20) * (self.agent.health / 100))
             pygame.draw.rect(self.win, (50, 50, 50), 
-                           (self.width + 10, status_y + 25, 180, 20))
+                        (panel_x + 10, status_y + 25, panel_width - 20, 20))
             pygame.draw.rect(self.win, status_color, 
-                           (self.width + 10, status_y + 25, health_width, 20))
+                        (panel_x + 10, status_y + 25, health_width, 20))
             
             # Draw health text
             health_text = self.font.render(f"{self.agent.health:.0f}%", True, (255, 255, 255))
-            self.win.blit(health_text, (self.width + 100 - health_text.get_width() // 2, status_y + 27))
+            self.win.blit(health_text, (panel_x + panel_width//2 - health_text.get_width()//2, status_y + 27))
+    
 
 def draw_temperature(grid, win, rows):
     """Draw temperature as color overlay"""

@@ -5,7 +5,7 @@ from utils.utilities import Color, get_neighbors, state_value
 class Agent:
     def __init__(self, grid, start_spot):
         self.grid = grid
-        self.spot = start_spot
+        self.spot =  start_spot
         self.health = 100  # Example health value
         self.alive = (self.health > 0)
         self.speed = 1    # Cells per move
@@ -113,10 +113,18 @@ class Agent:
         return True
 
     def draw(self, win):
-        cell_size = self.grid.cell_size
+        # Ensure we have a valid cell size
+        if not hasattr(self.spot, 'cell_size') or self.spot.cell_size <= 0:
+            # Use grid's cell_size as fallback
+            cell_size = self.grid.cell_size if hasattr(self.grid, 'cell_size') else 20
+            self.spot.cell_size = cell_size
+        else:
+            cell_size = self.spot.cell_size
+        
+        # Calculate center position within the cell
         center_x = self.spot.x + cell_size // 2
         center_y = self.spot.y + cell_size // 2
-        radius = cell_size // 2
+        radius = max(1, cell_size // 2 - 2)  # Ensure radius is at least 1
         
         # Health-based color
         health_ratio = self.health / 100
@@ -142,6 +150,10 @@ class Agent:
         # Draw direction indicator if moving
         if self.path and len(self.path) > 1:
             next_spot = self.path[1]
+            # Ensure next spot has correct cell size
+            if not hasattr(next_spot, 'cell_size'):
+                next_spot.cell_size = cell_size
+            
             dx = next_spot.x - self.spot.x
             dy = next_spot.y - self.spot.y
             if dx != 0 or dy != 0:

@@ -65,10 +65,14 @@ class ToolsPanel:
             (ToolType.FIRE_SOURCE, None, "Fire", Color.FIRE_COLOR.value),
         ]
         
+        # Clear existing buttons
+        self.buttons = []
+        
         for i, (tool_type, material_id, name, color) in enumerate(tools):
             col = i % 2
             row = i // 2
 
+            # Calculate position relative to panel
             x = self.rect.x + padding + col * (button_width + padding)
             y = self.rect.y + 50 + row * (button_height + padding)
 
@@ -101,7 +105,7 @@ class ToolsPanel:
         title_surface = self.font_large.render("MATERIALS", True, (255, 255, 255))
         surface.blit(title_surface, (self.rect.centerx - title_surface.get_width() // 2, self.rect.y + 15))
         
-        # Draw instructions
+        # Draw instructions - position relative to panel bottom
         instructions = [
             "Click material to select",
             "Hold Left-click to place",
