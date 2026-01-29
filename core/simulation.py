@@ -312,6 +312,7 @@ class Simulation:
             "Controls:",
             "P: Pause/Resume",
             "R: Reset",
+            "E: Enter Editor Mode",
             "ESC: Quit"
         ]
         

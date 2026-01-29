@@ -55,7 +55,7 @@ class Editor:
         button_y = win_height - 40  # Bottom of the window
         button_width = 80
         button_height = 30
-        button_gap = 10
+        button_gap = 16
         
         # Calculate X positions relative to tools panel
         load_button_x = win_width - (2 * button_width) - (2 * button_gap)

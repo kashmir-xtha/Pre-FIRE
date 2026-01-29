@@ -42,7 +42,7 @@ class ToolsPanel:
     def __init__(self, x, y, width, height):
         self.rect = pygame.Rect(x, y, width, height)
         self.buttons = []
-        self.current_material = MaterialID.AIR
+        self.current_material = MaterialID.WOOD
         self.font_large = pygame.font.SysFont(None, 24)
         self.font_small = pygame.font.SysFont(None, 18)
         self._init_buttons()
@@ -54,15 +54,14 @@ class ToolsPanel:
         
         tools = [
             # Materials
-            (ToolType.MATERIAL, MaterialID.AIR, MATERIALS[MaterialID.AIR]["name"], MATERIALS[MaterialID.AIR]["color"]),
             (ToolType.MATERIAL, MaterialID.WOOD, MATERIALS[MaterialID.WOOD]["name"], MATERIALS[MaterialID.WOOD]["color"]),
             (ToolType.MATERIAL, MaterialID.CONCRETE, MATERIALS[MaterialID.CONCRETE]["name"], MATERIALS[MaterialID.CONCRETE]["color"]),
             (ToolType.MATERIAL, MaterialID.METAL, MATERIALS[MaterialID.METAL]["name"], MATERIALS[MaterialID.METAL]["color"]),
 
             # Special tools
-            (ToolType.START, None, "Start", Color.GREEN.value),
-            (ToolType.END, None, "End", Color.RED.value),
             (ToolType.FIRE_SOURCE, None, "Fire", Color.FIRE_COLOR.value),
+            (ToolType.START, None, "Start", Color.GREEN.value),
+            (ToolType.END, None, "End", Color.RED.value)
         ]
         
         # Clear existing buttons
@@ -109,20 +108,12 @@ class ToolsPanel:
         instructions = [
             "Click material to select",
             "Hold Left-click to place",
-            "Hold Right-click to erase",
-            "S: Start position",
-            "E: End position"
+            "Hold Right-click to erase"
         ]
         
         for i, instruction in enumerate(instructions):
             text_surface = self.font_small.render(instruction, True, (200, 200, 200))
-            surface.blit(text_surface, (self.rect.x + 10, self.rect.bottom - 130 + i * 20))
-        
-        # Draw selected material info
-        selected_mat = MATERIALS[self.current_material]
-        info_text = f"Selected: {selected_mat['name']}"
-        info_surface = self.font_small.render(info_text, True, (255, 255, 200))
-        surface.blit(info_surface, (self.rect.x + 10, self.rect.bottom - 30))
+            surface.blit(text_surface, (self.rect.x + 10, self.rect.bottom - 100 + i * 20))
         
         # Draw all buttons
         for button in self.buttons:
