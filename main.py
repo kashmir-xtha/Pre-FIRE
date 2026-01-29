@@ -3,14 +3,13 @@ import pygame
 from editor.buildinglayout import run_editor
 from core.agent import Agent
 from core.simulation import Simulation
-from utils.utilities import Dimensions, SimulationState, loadImage
+from utils.utilities import Dimensions, SimulationState, loadImage, visualize_2d
 
 pygame.init()
 WIN = pygame.display.set_mode(
     (Dimensions.WIDTH.value + Dimensions.TOOLS_WIDTH.value, Dimensions.WIDTH.value),
     pygame.RESIZABLE # Set window size and make it resizable according to monitor resolution
-) 
-
+)
 pygame.display.set_caption("Fire & Smoke Simulation")
 image_directory = "data\\layout_images"
 csv_directory = "data\\layout_csv"
@@ -21,7 +20,6 @@ def main():
     # This loop allows switching between editor and simulation modes
     while(True):
         grid = run_editor(WIN, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE, csv_filename)
-        grid.update_state_from_spots()
         agent = Agent(grid, grid.start)
         agent.path = agent.best_path()
         sim = Simulation(WIN, grid, agent, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE)

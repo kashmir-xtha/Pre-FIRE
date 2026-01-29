@@ -1,4 +1,3 @@
-# tools_panel.py
 import pygame
 from utils.utilities import Color, ToolType, material_id as MaterialID
 from environment.materials import MATERIALS
@@ -42,7 +41,7 @@ class ToolsPanel:
     def __init__(self, x, y, width, height):
         self.rect = pygame.Rect(x, y, width, height)
         self.buttons = []
-        self.current_material = MaterialID.WOOD
+        self.current_material = MaterialID.AIR
         self.font_large = pygame.font.SysFont(None, 24)
         self.font_small = pygame.font.SysFont(None, 18)
         self._init_buttons()
@@ -52,26 +51,22 @@ class ToolsPanel:
         button_height = 80
         padding = 10
         
-        tools = [
-            # Materials
-            (ToolType.MATERIAL, MaterialID.WOOD, MATERIALS[MaterialID.WOOD]["name"], MATERIALS[MaterialID.WOOD]["color"]),
-            (ToolType.MATERIAL, MaterialID.CONCRETE, MATERIALS[MaterialID.CONCRETE]["name"], MATERIALS[MaterialID.CONCRETE]["color"]),
-            (ToolType.MATERIAL, MaterialID.METAL, MATERIALS[MaterialID.METAL]["name"], MATERIALS[MaterialID.METAL]["color"]),
+        tools = []
+        for value in MaterialID:
+            if value == MaterialID.FIRE or value == MaterialID.AIR:
+                continue # Skip FIRE and AIR as material tools
+            tools.append((ToolType.MATERIAL, value, MATERIALS[value]["name"], MATERIALS[value]["color"]))
 
-            # Special tools
-            (ToolType.FIRE_SOURCE, None, "Fire", Color.FIRE_COLOR.value),
-            (ToolType.START, None, "Start", Color.GREEN.value),
-            (ToolType.END, None, "End", Color.RED.value)
-        ]
+        # Special tools
+        tools.append((ToolType.START, None, "Start", Color.GREEN.value))
+        tools.append((ToolType.END, None, "End", Color.RED.value))
+        tools.append((ToolType.FIRE_SOURCE, None, "Fire", Color.FIRE_COLOR.value))
         
-        # Clear existing buttons
-        self.buttons = []
-        
+        self.buttons.clear()
         for i, (tool_type, material_id, name, color) in enumerate(tools):
             col = i % 2
             row = i // 2
 
-            # Calculate position relative to panel
             x = self.rect.x + padding + col * (button_width + padding)
             y = self.rect.y + 50 + row * (button_height + padding)
 
@@ -104,7 +99,7 @@ class ToolsPanel:
         title_surface = self.font_large.render("MATERIALS", True, (255, 255, 255))
         surface.blit(title_surface, (self.rect.centerx - title_surface.get_width() // 2, self.rect.y + 15))
         
-        # Draw instructions - position relative to panel bottom
+        # Draw instructions
         instructions = [
             "Click material to select",
             "Hold Left-click to place",
@@ -113,7 +108,13 @@ class ToolsPanel:
         
         for i, instruction in enumerate(instructions):
             text_surface = self.font_small.render(instruction, True, (200, 200, 200))
-            surface.blit(text_surface, (self.rect.x + 10, self.rect.bottom - 100 + i * 20))
+            surface.blit(text_surface, (self.rect.x + 10, self.rect.bottom - 130 + i * 20))
+        
+        # Draw selected material info
+        # selected_mat = MATERIALS[self.current_material]
+        # info_text = f"Selected: {selected_mat['name']}"
+        # info_surface = self.font_small.render(info_text, True, (255, 255, 200))
+        # surface.blit(info_surface, (self.rect.x + 10, self.rect.bottom - 30))
         
         # Draw all buttons
         for button in self.buttons:

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import pygame
 
 class Dimensions(Enum):
-    WIDTH = 600
+    WIDTH = 780
     ROWS = 60
     TOOLS_WIDTH = 200
 
@@ -31,10 +31,10 @@ class state_value(Enum):
     END = 9
 
 class smoke_constants(Enum):
-    SMOKE_DIFFUSION = 0.16    # how much smoke spreads per step (0-1, higher = faster spread)
-    SMOKE_DECAY = 0.01        # smoke loss per step (lower = smoke travels further)
+    SMOKE_DIFFUSION = 0.16    # how much smoke spreads
+    SMOKE_DECAY = 0.01       # smoke loss per step
     MAX_SMOKE = 1.0
-    SMOKE_PRODUCTION = 0.25   # how much smoke fire produces per step
+    SMOKE_PRODUCTION = 0.25  # units per second
 
 class fire_constants(Enum):
     AMBIENT_TEMP = 39.0       # °C
@@ -43,7 +43,7 @@ class fire_constants(Enum):
     IGNITION_TEMP = 200.0
     BURN_TEMP = 600.0
     HEAT_TRANSFER = 0.15
-    FIRE_SPREAD_PROBABILITY = 0.35 # 35% chance per second from direct contact (reduced from 90%)
+    FIRE_SPREAD_PROBABILITY = 0.5 #10%
 
 class material_id(Enum):
     AIR = 0
