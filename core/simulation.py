@@ -172,19 +172,17 @@ class Simulation:
         self.win.fill(Color.WHITE.value)
 
         # Calculate grid dimensions (fixed square based on original grid)
-        grid_width = min(win_width - self.tools_width, self.grid.width)
-        grid_width = max(grid_width, 100)  # Minimum width
-
-        # Grid should be square (rows x rows)
-        grid_height = grid_width  # Force square aspect ratio
-        cell_size = grid_width // self.rows
+        grid_width = self.width
+        grid_height = min(grid_width, win_height)
+        cell_size = grid_height // self.rows
+        grid_pixel_width = cell_size * self.rows
 
         # Center the grid in window
         grid_x = 0  # Align to left
         grid_y = (win_height - grid_height) // 2 if win_height > grid_height else 0
         
         # Create a temporary surface for the grid area with exact grid dimensions
-        grid_surface = pygame.Surface((grid_width, grid_height))
+        grid_surface = pygame.Surface((grid_pixel_width, grid_height))
         grid_surface.fill(Color.WHITE.value)
         
         # IMPORTANT: Update grid cell size for proper drawing
@@ -221,7 +219,7 @@ class Simulation:
         self.win.blit(grid_surface, (grid_x, grid_y))
 
         # Draw the white separator bar between grid and panel
-        panel_x = grid_width
+        panel_x = self.width
         pygame.draw.rect(self.win, Color.WHITE.value, (panel_x, 0, 2, win_height))
 
         # Draw simulation panel

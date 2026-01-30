@@ -15,13 +15,19 @@ class Editor:
         
         self.win = win
         self.rows = rows
-        self.width = width
         self.bg_image = bg_image
         self.filename = filename
         
+        # Calculate width based on current window size
+        win_width, win_height = win.get_size()
+        tools_width = 200
+        self.width = min(win_width - tools_width, win_height)
+        self.width = max(self.width, 200)  # minimum
+        self.panel_x = win_width - tools_width
+        
         # Grid and state
-        self.grid_obj = Grid(rows, width)
-        self.tools_panel = ToolsPanel(width, 0, 200, width)
+        self.grid_obj = Grid(rows, self.width)
+        self.tools_panel = ToolsPanel(self.panel_x, 0, tools_width, win_height)
         self.current_tool = "MATERIAL"
         self.current_filename = filename
         self.bg_image_loaded = False
@@ -32,7 +38,7 @@ class Editor:
         self.last_cell = None
         
         # Initialize GUI
-        self.manager = pygame_gui.UIManager((width + 200, width))
+        self.manager = pygame_gui.UIManager((win_width, win_height))
         self._setup_ui_buttons()
     
     def _setup_ui_buttons(self):
@@ -75,6 +81,7 @@ class Editor:
         #grid_pixel_width = win_width - tools_width
 
         self.width = grid_pixel_width
+        self.panel_x = win_width - tools_width
 
         # Resize grid geometry
         self.grid_obj.cell_size = self.width // self.rows
@@ -112,7 +119,7 @@ class Editor:
     
     def _handle_tools_panel_events(self, event):
         """Handle tools panel selection events"""
-        if event.pos[0] >= self.width:  # Click in tools panel
+        if event.pos[0] >= self.panel_x:  # Click in tools panel
             tool_type, selected_material = self.tools_panel.handle_event(event)
             if tool_type is not None:
                 self._process_tool_selection(tool_type, selected_material)
@@ -310,7 +317,7 @@ class Editor:
             
             # Draw white separator bar between grid and tools
             win_width, win_height = self.win.get_size() #pygame method to get current window size
-            separator_x = self.width #use current window width
+            separator_x = self.panel_x #use current window width
             
             pygame.draw.rect(
                 self.win, 
