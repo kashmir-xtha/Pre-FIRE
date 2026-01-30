@@ -14,7 +14,8 @@ class Agent:
 
         self.move_timer = 0
         self.update_timer = 0
-        self.MOVE_INTERVAL = 0.1  # seconds
+        self.age = 20
+        self.MOVE_INTERVAL = 1 if self.age > 25 else 0.1  # seconds
         self.UPDATE_INTERVAL = 0.5  # seconds
         self.last_health = self.health
         
@@ -59,6 +60,9 @@ class Agent:
         self.move_timer += dt
         self.update_timer += dt
 
+        if self.spot.is_end():
+            return True
+        
         # 1. Fire damage (instant death in fire)
         if self.spot.is_fire():
             self.health = 0

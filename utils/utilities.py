@@ -63,6 +63,24 @@ class SimulationState(Enum):
     SIM_EDITOR = 1
     SIM_QUIT = 2
 
+class TempConstants:
+    def __init__(self):
+        self.AMBIENT_TEMP = fire_constants.AMBIENT_TEMP.value       # °C
+        self.DIFFUSION_RATE = fire_constants.DIFFUSION_RATE.value       # heat spreading
+        self.COOLING_RATE = fire_constants.COOLING_RATE.value        # loss to environment
+        self.IGNITION_TEMP = fire_constants.IGNITION_TEMP.value
+        self.BURN_TEMP = fire_constants.BURN_TEMP.value
+        self.HEAT_TRANSFER = fire_constants.HEAT_TRANSFER.value
+        self.FIRE_SPREAD_PROBABILITY = fire_constants.FIRE_SPREAD_PROBABILITY.value #10%
+        self.SMOKE_DIFFUSION = smoke_constants.SMOKE_DIFFUSION.value    # how much smoke spreads
+        self.SMOKE_DECAY = smoke_constants.SMOKE_DECAY.value
+        self.MAX_SMOKE = smoke_constants.MAX_SMOKE.value
+        self.SMOKE_PRODUCTION = smoke_constants.SMOKE_PRODUCTION.value
+
+temp = TempConstants()
+def rTemp():
+    return temp
+    
 def get_neighbors(r, c, rows, cols):
     # Moore neighborhood
     for dr in [-1, 0, 1]:

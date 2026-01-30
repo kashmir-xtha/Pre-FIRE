@@ -1,4 +1,4 @@
-from utils.utilities import Color, state_value, material_id, fire_constants
+from utils.utilities import Color, state_value, material_id, fire_constants, rTemp
 import pygame
 
 class Spot:
@@ -194,7 +194,7 @@ class Spot:
             pygame.draw.rect(win, self._color,
                             (self.x, self.y, self.width, self.width))
 
-    def update_temperature(self, neighbor_data, dt):
+    def update_temperature(self, neighbor_data, tempConstant, dt):
         """
         Update temperature based on neighbor data
         
@@ -205,7 +205,7 @@ class Spot:
         if self.is_barrier() or self.is_start() or self.is_end():
             # Just cool down slowly
             cooling = self.get_material_properties()["cooling_rate"] * \
-                     (self._temperature - fire_constants.AMBIENT_TEMP.value) * dt
+                     (self._temperature - tempConstant.AMBIENT_TEMP) * dt
             self.add_temperature(-cooling)
             return
         
@@ -227,7 +227,7 @@ class Spot:
         
         # Natural cooling
         cooling = self.get_material_properties()["cooling_rate"] * \
-                 (self._temperature - fire_constants.AMBIENT_TEMP.value) * dt
+                 (self._temperature - tempConstant.AMBIENT_TEMP) * dt
         
         # Additional heating if on fire
         heating = 150.0 * dt if self.is_fire() else 0.0
@@ -235,7 +235,7 @@ class Spot:
         # Apply all changes
         self.add_temperature(heat_transfer - cooling + heating)
     
-    def update_fire_state(self, neighbor_fire_states, dt):
+    def update_fire_state(self, neighbor_fire_states, tempConstants, dt):
         """
         Update fire state based on neighbor information
         
@@ -266,7 +266,7 @@ class Spot:
         for has_fire, neighbor_temp in neighbor_fire_states:
             if has_fire:
                 # Direct flame contact
-                if random.random() < fire_constants.FIRE_SPREAD_PROBABILITY.value * dt:
+                if random.random() < tempConstants.FIRE_SPREAD_PROBABILITY * dt:
                     self.set_on_fire()
                     return True
         
@@ -280,7 +280,7 @@ class Spot:
         :param dt: Delta time
         """
         from utils.utilities import smoke_constants
-        
+        temp_constants = rTemp()
         # Walls block smoke
         if self.is_barrier():
             self.set_smoke(0.0)
@@ -288,11 +288,11 @@ class Spot:
         
         # Fire produces smoke
         if self.is_fire():
-            smoke_production = smoke_constants.SMOKE_PRODUCTION.value * dt  # 9 units per second
+            smoke_production = temp_constants.SMOKE_PRODUCTION * dt  # 9 units per second
             self.add_smoke(min(1.0, smoke_production))
             # Clamp to max
-            if self._smoke > smoke_constants.MAX_SMOKE.value:
-                self._smoke = smoke_constants.MAX_SMOKE.value
+            if self._smoke > temp_constants.MAX_SMOKE:
+                self._smoke = temp_constants.MAX_SMOKE
             return
         
         # Calculate diffusion from neighbors
@@ -300,15 +300,15 @@ class Spot:
             for n_smoke in neighbor_smoke_levels:
                 smoke_diff = n_smoke - self._smoke
                 if smoke_diff > 0:
-                    diffusion = smoke_constants.SMOKE_DIFFUSION.value * smoke_diff
+                    diffusion = temp_constants.SMOKE_DIFFUSION * smoke_diff
                     self.add_smoke(diffusion)
         
         # Apply natural decay
-        decay_factor = 1.0 - (smoke_constants.SMOKE_DECAY.value * dt)
+        decay_factor = 1.0 - (temp_constants.SMOKE_DECAY * dt)
         self._smoke *= decay_factor
         
         # Clamp to valid range
-        self._smoke = max(0.0, min(smoke_constants.MAX_SMOKE.value, self._smoke))
+        self._smoke = max(0.0, min(temp_constants.MAX_SMOKE, self._smoke))
     
     def consume_fuel_update(self, dt):
         """

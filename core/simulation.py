@@ -1,7 +1,9 @@
 import pygame
+import pygame_gui
 from environment.fire import randomfirespot, update_fire_with_materials, update_temperature_with_materials
 from environment.smoke import spread_smoke, draw_smoke
-from utils.utilities import Color, Dimensions, state_value, visualize_2d, SimulationState
+from utils.utilities import Color, Dimensions, state_value, visualize_2d, SimulationState, rTemp
+from ui.slider import create_fire_control_sliders
 
 class Simulation:
     def __init__(self, win, grid, agent, rows, width, bg_image=None):
@@ -30,7 +32,21 @@ class Simulation:
             'avg_temp': 20,
             'path_length': 0
         }
-    
+
+        self.manager = pygame_gui.UIManager(self.win.get_size())
+        self.temp = rTemp()
+        self.create_sliders()
+
+    def create_sliders(self):
+        start_y = self.win.get_size()[1] - 350
+
+        self.slider_group = create_fire_control_sliders(
+            manager=self.manager,
+            x=self.width + 10,
+            start_y=start_y,
+            temp_obj=self.temp
+        )
+
     def _handle_window_resize(self, event):
         """Handle window resize events"""
         if event.type == pygame.VIDEORESIZE:
@@ -38,11 +54,26 @@ class Simulation:
             # Update window width for grid area
             # Grid area takes all space except 200px for panel
             self.width = win_width - self.tools_width if win_width > 200 else win_width
+
+            # Update GUI manager resolution (don't recreate it!)
+            self.manager.set_window_resolution(event.size)
+            
+            # Recreate sliders at new positions
+            # First, kill existing sliders
+            if hasattr(self, "slider_group"):
+                self.slider_group.clear()
+            
+            # Recreate them
+            self.create_sliders()
             return True
         return False
 
     def handle_events(self):
         for event in pygame.event.get():
+            self.manager.process_events(event)
+            if hasattr(self, "slider_group"):
+                self.slider_group.handle_event(event)
+            
             if event.type == pygame.QUIT:
                 return SimulationState.SIM_QUIT.value
 
@@ -166,8 +197,6 @@ class Simulation:
         if self.agent and self.agent.spot:
             self.agent.spot.width = cell_size
     
-        
-
         # Drawing path
         if self.agent.path and self.agent.path_show:
             for p in self.agent.path:
@@ -197,7 +226,8 @@ class Simulation:
 
         # Draw simulation panel
         self.draw_sim_panel()
-        
+        self.manager.draw_ui(self.win)
+
         pygame.display.update()
 
     # ---------------- MAIN LOOP ----------------
@@ -210,7 +240,7 @@ class Simulation:
             last_time = current_time
             
             self.clock.tick(120)
-            
+            self.manager.update(dt)
             # Handle events
             action = self.handle_events()
             if action == SimulationState.SIM_EDITOR.value:
@@ -271,7 +301,7 @@ class Simulation:
             f"Time: {self.metrics['elapsed_time']:.1f}s",
             f"Health: {self.metrics['agent_health']:.0f}",
             f"Fire Cells: {self.metrics['fire_cells']}",
-            f"Avg Smoke: {self.metrics['avg_smoke']}",
+            f"Avg Smoke: {self.metrics['avg_smoke']:.3f}",
             f"Avg Temp: {self.metrics['avg_temp']:.1f}°C",
             f"Path Length: {self.metrics['path_length']}",
             "Controls:",

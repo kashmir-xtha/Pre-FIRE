@@ -1,5 +1,5 @@
 import random
-from utils.utilities import get_neighbors
+from utils.utilities import get_neighbors, rTemp
 from environment.materials import MATERIALS, material_id
 
 def update_fire_with_materials(grid, dt=1.0):
@@ -22,7 +22,8 @@ def update_fire_with_materials(grid, dt=1.0):
                     neighbor_fire_states.append((neighbor.is_fire(), neighbor.temperature))
             
             # Let spot decide if it catches fire
-            if spot.update_fire_state(neighbor_fire_states, dt):
+            temp = rTemp()
+            if spot.update_fire_state(neighbor_fire_states, temp, dt):
                 new_fires.append(spot)
     
     # Second pass: update fuel consumption for existing fires
@@ -58,7 +59,8 @@ def update_temperature_with_materials(grid, dt=1.0):
                         neighbor_data.append((neighbor.temperature, transfer_coeff))
             
             # Update temperature
-            spot.update_temperature(neighbor_data, dt)
+            tempConst = rTemp()
+            spot.update_temperature(neighbor_data, tempConst, dt)
 
 def randomfirespot(grid, ROWS, max_dist=30):
     """Place fire on a flammable material - try multiple times if needed"""
@@ -74,8 +76,10 @@ def randomfirespot(grid, ROWS, max_dist=30):
             material = material_id(grid.grid[r][c].material)
             if MATERIALS[material]["fuel"] > 0:
                 print(f"Placing fire on material: {MATERIALS[material]['name']} at ({r}, {c})")
-                grid.grid[r][c].set_as_fire_source(1200.0)
-                grid.grid[r][c].set_material(material)
+                for nr, nc in get_neighbors(r, c, ROWS, ROWS):
+                    grid.grid[nr][nc].set_as_fire_source(1200.0)
+                    grid.grid[nr][nc].set_material(material)
+                
                 return True
 
         attempts += 1
