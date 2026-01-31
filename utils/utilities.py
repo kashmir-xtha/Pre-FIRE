@@ -5,6 +5,8 @@ from tkinter import filedialog
 import numpy as np
 import matplotlib.pyplot as plt
 import pygame
+import json
+import os
 
 class Dimensions(Enum):
     WIDTH = 780
@@ -170,3 +172,16 @@ def pick_save_csv_file(default_name="layout.csv"):
     )
     root.destroy()
     return filename
+
+# ------------------ WINDOW STATE ------------------
+def save_window_state(is_maximized):
+    state = {"maximized": is_maximized}
+    with open("data/window_state.json", "w") as f:
+        json.dump(state, f)
+
+def load_window_state():
+    if os.path.exists("data/window_state.json"):
+        with open("data/window_state.json", "r") as f:
+            state = json.load(f)
+            return state.get("maximized", False)
+    return False

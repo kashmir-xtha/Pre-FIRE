@@ -234,10 +234,9 @@ class Editor:
             return True  # Signal to exit editor
         
         elif event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
-            pygame.quit()
-            sys.exit()
+            return False  # Signal to quit program
         
-        return False
+        return None
     
     def _toggle_background_image(self):
         """Toggle background image visibility"""
@@ -330,8 +329,7 @@ class Editor:
                     continue  # Skip further processing if resized
 
                 if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
+                    return None
                 
                 # Handle different event types
                 if event.type == pygame_gui.UI_BUTTON_PRESSED:
@@ -352,8 +350,11 @@ class Editor:
                     self.last_cell = None
                 
                 elif event.type == pygame.KEYDOWN:
-                    if self._handle_keyboard_events(event):
+                    result = self._handle_keyboard_events(event)
+                    if result is True:
                         return self.grid_obj
+                    elif result is False:
+                        return None
                 
                 self.manager.process_events(event)
             
@@ -395,4 +396,5 @@ def floor_image_to_csv(image_path, csv_path, rows=60, cols=60, wall_color=(0, 0,
 def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_2.csv"):
     """Legacy function - creates an Editor instance and runs it"""
     editor = Editor(win, rows, width, bg_image, filename)
-    return editor.run()
+    result = editor.run()
+    return result
