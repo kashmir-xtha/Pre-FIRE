@@ -1,7 +1,6 @@
 import pygame_gui
 import pygame
 
-
 class Slider:
     def __init__(self, label, getter, setter, manager,
                  x, y, width=180, min_val=0.0, max_val=1.0):

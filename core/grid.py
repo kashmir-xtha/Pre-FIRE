@@ -1,6 +1,5 @@
 import pygame
-from environment.materials import MATERIALS
-from utils.utilities import state_value, Color, fire_constants, material_id
+from utils.utilities import Color
 
 class Grid:
     def __init__(self, rows, width):

@@ -116,6 +116,8 @@ class Simulation:
                     spot.make_end()
                 elif disc.get('is_fire_source'):
                     spot.set_as_fire_source(disc.get('temperature') if disc.get('temperature') else 1200.0)
+                    print("YOO")
+                    pass
                 else:
                     spot.set_material(disc.get('material'))
 
@@ -132,6 +134,9 @@ class Simulation:
 
         self.frame_count += 1
         
+        update_temperature_with_materials(self.grid, dt)
+        update_fire_with_materials(self.grid, dt)
+
         # Generate fire once
         if not self.fire_set:
             if self.grid.fire_sources:
@@ -139,10 +144,7 @@ class Simulation:
                     self.grid.grid[r][c].set_as_fire_source()
                 self.fire_set = True
             else:
-                self.fire_set = randomfirespot(self.grid, self.rows)
-
-        update_temperature_with_materials(self.grid, dt)
-        update_fire_with_materials(self.grid, dt)
+                randomfirespot(self.grid, self.rows)
 
         for r in range(self.rows):
             for c in range(self.rows):

@@ -1,5 +1,6 @@
 import sys
 import pygame
+import ctypes
 from editor.buildinglayout import run_editor
 from core.agent import Agent
 from core.simulation import Simulation
@@ -11,6 +12,9 @@ WIN = pygame.display.set_mode(
     pygame.RESIZABLE # Set window size and make it resizable according to monitor resolution
 )
 pygame.display.set_caption("Fire & Smoke Simulation")
+hwnd = pygame.display.get_wm_info()['window'] #HWND - handle to the window
+ctypes.windll.user32.ShowWindow(hwnd, 3)  # 3 - MAXIMIZE THE WINDOW
+
 image_directory = "data\\layout_images"
 csv_directory = "data\\layout_csv"
 

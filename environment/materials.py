@@ -13,7 +13,7 @@ MATERIALS = {
     material_id.WOOD: {
         "name": "Wood",
         "color": (139, 69, 19),
-        "fuel": 1.0,
+        "fuel": 5.0,
         "ignition_temp": 250.0,  # Reduced ignition temperature
         "cooling_rate": 0.02,   # Slower cooling
         "heat_transfer": 0.08,   # Lower heat transfer

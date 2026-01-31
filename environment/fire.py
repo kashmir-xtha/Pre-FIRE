@@ -74,14 +74,13 @@ def randomfirespot(grid, ROWS, max_dist=30):
         # Check if cell is empty and has fuel
         if grid.grid[r][c].is_empty() and is_valid_fire_start(grid, r, c, max_dist):
             material = material_id(grid.grid[r][c].material)
-            if MATERIALS[material]["fuel"] > 0:
+            if grid.grid[r][c].fuel > 0:
                 print(f"Placing fire on material: {MATERIALS[material]['name']} at ({r}, {c})")
-                for nr, nc in get_neighbors(r, c, ROWS, ROWS):
-                    grid.grid[nr][nc].set_as_fire_source(1200.0)
-                    grid.grid[nr][nc].set_material(material)
-                
+                grid.fire_sources.add((r, c))
+                # grid.grid[r][c].set_as_fire_source(1200.0)
+                # grid.grid[r][c].set_material(material)
                 return True
-
+            
         attempts += 1
     
     # If no flammable material found, try to set fire on any empty cell
@@ -92,7 +91,7 @@ def randomfirespot(grid, ROWS, max_dist=30):
             print("No flammable material found, forcing fire on non-flammable material")
 
         if grid.grid[r][c].is_empty() or is_valid_fire_start(grid, r, c, max_dist):
-            grid.grid[r][c].set_as_fire_source(1200.0)
+            grid.fire_sources.add((r, c))
             print("Forced fire on non-flammable material")
             return True
     
