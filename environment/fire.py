@@ -67,21 +67,28 @@ def randomfirespot(grid, ROWS, max_dist=30):
     attempts = 0
     max_attempts = 500  # Increased attempts
     
+    u, v = 0, 0
+    max_weight = 0
+
     while attempts < max_attempts:
         r = random.randint(1, ROWS - 2)
         c = random.randint(1, ROWS - 2)
-        
+        weight = 0
         # Check if cell is empty and has fuel
         if grid.grid[r][c].is_empty() and is_valid_fire_start(grid, r, c, max_dist):
-            material = material_id(grid.grid[r][c].material)
-            if grid.grid[r][c].fuel > 0:
-                print(f"Placing fire on material: {MATERIALS[material]['name']} at ({r}, {c})")
-                grid.fire_sources.add((r, c))
-                # grid.grid[r][c].set_as_fire_source(1200.0)
-                # grid.grid[r][c].set_material(material)
-                return True
+            for nr, nc in get_neighbors(r, c, ROWS, ROWS):
+                weight += grid.grid[nr][nc].fuel
+            weight /= 8
+            if weight > max_weight:
+                max_weight = weight
+                u, v = r, c
             
         attempts += 1
+    material = material_id(grid.grid[r][c].material)
+    if grid.grid[u][v].fuel > 0:
+        print(f"Placing fire on material: {MATERIALS[material]['name']} at ({r}, {c})")
+        grid.fire_sources.add((u, v))
+        return True
     
     # If no flammable material found, try to set fire on any empty cell
     for _ in range(100):

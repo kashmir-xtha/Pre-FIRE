@@ -145,12 +145,12 @@ class Simulation:
                 self.fire_set = True
             else:
                 randomfirespot(self.grid, self.rows)
-
+                
         for r in range(self.rows):
             for c in range(self.rows):
                 if self.grid.grid[r][c].is_fire() and self.grid.grid[r][c].fuel <= 0:
                     self.grid.grid[r][c].extinguish_fire()
-        
+                    
         # Smoke spread
         spread_smoke(self.grid.grid)
 
