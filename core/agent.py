@@ -1,6 +1,7 @@
 import pygame
 from queue import PriorityQueue
-from utils.utilities import Color, get_neighbors, state_value
+from utils.utilities import Color, get_neighbors, state_value, rTemp
+temp = rTemp()
 
 class Agent:
     def __init__(self, grid, start_spot):
@@ -14,8 +15,7 @@ class Agent:
 
         self.move_timer = 0
         self.update_timer = 0
-        self.age = 20
-        self.MOVE_INTERVAL = 1 if self.age > 25 else 0.1  # seconds
+        self.MOVE_INTERVAL = temp.AGENT_MOVE_TIMER  # seconds
         self.UPDATE_INTERVAL = 0.5  # seconds
         self.last_health = self.health
         
@@ -27,6 +27,7 @@ class Agent:
             self.spot = self.grid.start
     
     def move_along_path(self):
+        self.MOVE_INTERVAL = temp.MOVE_TIMER # To have dynamic 
         if not self.path or len(self.path) <= 1:
             return
 

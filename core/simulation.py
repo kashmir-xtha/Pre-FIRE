@@ -20,7 +20,8 @@ class Simulation:
         self.running = True
         self.paused = False
         self.frame_count = 0
-        self.fire_set = False
+        self.fire_set = False  
+        self.restart_timer = False
 
         self.font = pygame.font.Font(None, 24)
         self.start_time = pygame.time.get_ticks()
@@ -86,6 +87,7 @@ class Simulation:
                     return SimulationState.SIM_QUIT.value
                 
                 elif event.key == pygame.K_p:
+                    self.start_time = pygame.time.get_ticks() - self.start_time
                     self.paused = not self.paused
 
                 elif event.key == pygame.K_r:
@@ -101,7 +103,9 @@ class Simulation:
         self.frame_count = 0
         self.fire_set = False
         self.start_time = pygame.time.get_ticks()
-
+        print(self.agent.MOVE_INTERVAL)
+        temp = rTemp()
+        print(temp.MOVE_TIMER)
         # Reset all spots using proper methods
         for row in self.grid.grid:
             for spot in row:

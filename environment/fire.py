@@ -94,6 +94,7 @@ def randomfirespot(grid, ROWS, max_dist=30):
     # start fire 
     # for r in range(ROWS):
     #     for c in range(ROWS):
+    #         weight = 0
     #         if grid.grid[r][c].is_empty() and is_valid_fire_start(grid, r, c, max_dist):
     #             for nr, nc in get_neighbors(r, c, ROWS, ROWS):
     #                 weight += grid.grid[nr][nc].fuel
