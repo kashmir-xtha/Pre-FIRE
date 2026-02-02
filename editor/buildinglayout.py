@@ -1,7 +1,6 @@
 import pygame
 import pygame_gui
 import csv
-import sys
 from utils.utilities import ToolType, Color
 from PIL import Image
 from editor.tools import ToolsPanel

@@ -103,9 +103,6 @@ class Simulation:
         self.frame_count = 0
         self.fire_set = False
         self.start_time = pygame.time.get_ticks()
-        print(self.agent.MOVE_INTERVAL)
-        temp = rTemp()
-        print(temp.MOVE_TIMER)
         # Reset all spots using proper methods
         for row in self.grid.grid:
             for spot in row:
