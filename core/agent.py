@@ -1,6 +1,7 @@
 import pygame
 from queue import PriorityQueue
 from utils.utilities import Color, get_neighbors, rTemp
+import math
 temp = rTemp()
 
 class Agent:
@@ -18,13 +19,26 @@ class Agent:
         self.MOVE_INTERVAL = temp.AGENT_MOVE_TIMER  # seconds
         self.UPDATE_INTERVAL = 0.5  # seconds
         self.last_health = self.health
+
+        # Load agent image
+        try:
+            self.agent_image = pygame.image.load('data/agent.png')
+            self.original_image = self.agent_image.copy()
+        except:
+            print("Warning: agent.png not found, using fallback circle")
+            self.agent_image = None
+            self.original_image = None
         
+        # Movement direction tracking (0=right, 45=down-right, 90=down, etc.)
+        self.current_angle = 0
+
     def reset(self):
         self.health = 100
         self.alive = True
         self.path = []
         if self.grid.start:
             self.spot = self.grid.start
+        self.current_angle = 0
     
     def move_along_path(self):
         self.MOVE_INTERVAL = temp.AGENT_MOVE_TIMER # To have dynamic 
@@ -119,28 +133,7 @@ class Agent:
         center_y = self.spot.y + cell_size // 2
         radius = max(1, cell_size // 2)  
         
-        # Health-based color
-        health_ratio = self.health / 100
-        if health_ratio > 0.7:
-            color = Color.BLUE.value
-        elif health_ratio > 0.3:
-            color = (0, 128, 255)  # Light blue
-        else:
-            color = (255, 100, 100)  # Reddish
-        
-        # Draw agent body
-        pygame.draw.circle(win, color, (center_x, center_y), radius)
-        
-        # Draw health bar
-        if self.health < 100:
-            health_width = max(3, int(health_ratio * (cell_size - 4)))
-            health_color = (0, 255, 0) if health_ratio > 0.5 else (255, 255, 0) if health_ratio > 0.2 else (255, 0, 0)
-            pygame.draw.rect(win, health_color, 
-                            (center_x - cell_size//2 + 2, 
-                            center_y - cell_size//2 - 5, 
-                            health_width, 3))
-        
-        # Draw direction indicator if moving
+        # Determine rotation based on path direction (8 directions)
         if self.path and len(self.path) > 1:
             next_spot = self.path[1]
             # Ensure next spot has correct cell size
@@ -149,14 +142,55 @@ class Agent:
             
             dx = next_spot.x - self.spot.x
             dy = next_spot.y - self.spot.y
+            
+            # Calculate angle using atan2 for 8 directions
             if dx != 0 or dy != 0:
-                length = max(0.1, (dx**2 + dy**2)**0.5)
-                dx, dy = dx/length, dy/length
-                end_x = center_x + dx * radius * 0.8
-                end_y = center_y + dy * radius * 0.8
-                pygame.draw.line(win, (255, 255, 255), 
-                            (center_x, center_y), 
-                            (end_x, end_y), 2)
+                angle_radians = math.atan2(dy, dx)
+                angle_degrees = math.degrees(angle_radians)
+                
+                # Round to nearest 45 degrees for 8-directional movement
+                # Directions: 0°(E), 45°(SE), 90°(S), 135°(SW), 180°(W), 225°(NW), 270°(N), 315°(NE)
+                self.current_angle = round(angle_degrees / 45) * 45 - 90
+        
+        if self.agent_image is not None:
+            # Scale image to fit the cell
+            image_size = int(cell_size * 3.25)  # 120% of cell size
+            scaled_image = pygame.transform.scale(self.original_image, (image_size, image_size))
+            
+            # Apply health-based tint
+            health_ratio = self.health / 100
+            if health_ratio <= 0.3:
+                # Red tint for low health
+                tinted_image = scaled_image.copy()
+                tinted_image.fill((255, 100, 100, 128), special_flags=pygame.BLEND_MULT)
+                scaled_image = tinted_image
+            elif health_ratio <= 0.7:
+                # Slight yellow tint for medium health
+                tinted_image = scaled_image.copy()
+                tinted_image.fill((255, 200, 150, 200), special_flags=pygame.BLEND_MULT)
+                scaled_image = tinted_image
+            
+            # Rotate the image based on current angle (8 directions)
+            rotated_image = pygame.transform.rotate(scaled_image, -self.current_angle)
+            
+            # Get the rect of the rotated image and center it
+            rotated_rect = rotated_image.get_rect(center=(center_x, center_y))
+            
+            # Draw the rotated agent image
+            win.blit(rotated_image, rotated_rect.topleft)
+        else:
+            # Fallback to circle if image not loaded
+            # Health-based color
+            health_ratio = self.health / 100
+            if health_ratio > 0.7:
+                color = Color.BLUE.value
+            elif health_ratio > 0.3:
+                color = (0, 128, 255)  # Light blue
+            else:
+                color = (255, 100, 100)  # Reddish
+            
+            # Draw agent body
+            pygame.draw.circle(win, color, (center_x, center_y), radius)
 
 # HEURISTIC FUNCTION
 # def heuristic(a, b):

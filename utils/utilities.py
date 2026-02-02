@@ -73,7 +73,7 @@ class TempConstants:
         self.SMOKE_DECAY = smoke_constants.SMOKE_DECAY.value
         self.MAX_SMOKE = smoke_constants.MAX_SMOKE.value
         self.SMOKE_PRODUCTION = smoke_constants.SMOKE_PRODUCTION.value
-        self.AGENT_MOVE_TIMER = 1
+        self.AGENT_MOVE_TIMER = 0.1
         self.PARAMS = {
             "FIRE_SPREAD_PROBABILITY": {
                 "label": "Fire Spread Probability",
