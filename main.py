@@ -25,7 +25,7 @@ def main():
     # This loop allows switching between editor and simulation modes
     try:
         while(True):
-            grid = run_editor(WIN, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE, csv_filename)
+            grid = run_editor(WIN, Dimensions.ROWS.value, BG_IMAGE, csv_filename)
             if grid is None:
                 sys.exit()
             agent = Agent(grid, grid.start)

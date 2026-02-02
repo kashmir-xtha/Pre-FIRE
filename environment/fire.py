@@ -65,11 +65,14 @@ def update_temperature_with_materials(grid, dt=1.0):
 def randomfirespot(grid, ROWS, max_dist=30):
     """Place fire on a flammable material - try multiple times if needed"""
     attempts = 0
-    max_attempts = 500  # Increased attempts
+    max_attempts = 500  
     
     u, v = 0, 0
     max_weight = 0
 
+    # this while loop doesnt always select wood or highest burning rate material because it selects
+    # any spot (r, c) at random at most 500 times so if the r, c spot never overlaps with the wood
+    # the wood would never be selected 
     while attempts < max_attempts:
         r = random.randint(1, ROWS - 2)
         c = random.randint(1, ROWS - 2)
@@ -84,9 +87,24 @@ def randomfirespot(grid, ROWS, max_dist=30):
                 u, v = r, c
             
         attempts += 1
+
+    # Actual code for fuel weight based burning but if no wood or uneven fuel matrial are on the grid
+    # it burns the same (59, 59) spot which is the case most commanly so it is commented out for now
+    # in the future give each material a "FIRE_START" which determines how likely is this material to
+    # start fire 
+    # for r in range(ROWS):
+    #     for c in range(ROWS):
+    #         if grid.grid[r][c].is_empty() and is_valid_fire_start(grid, r, c, max_dist):
+    #             for nr, nc in get_neighbors(r, c, ROWS, ROWS):
+    #                 weight += grid.grid[nr][nc].fuel
+    #             weight /= 8
+    #             if weight > max_weight:
+    #                 max_weight = weight
+    #                 u, v = r, c
+
     material = material_id(grid.grid[r][c].material)
     if grid.grid[u][v].fuel > 0:
-        print(f"Placing fire on material: {MATERIALS[material]['name']} at ({r}, {c})")
+        print(f"Placing fire on material: {MATERIALS[material]['name']} at ({u}, {v})")
         grid.fire_sources.add((u, v))
         return True
     

@@ -260,7 +260,6 @@ class Spot:
                 return True
         
         # Check for fire spread from neighbors
-        from utils.utilities import fire_constants
         import random
         
         for has_fire, neighbor_temp in neighbor_fire_states:
@@ -279,7 +278,6 @@ class Spot:
         :param neighbor_smoke_levels: list of neighbor smoke value
         :param dt: Delta time
         """
-        from utils.utilities import smoke_constants
         temp_constants = rTemp()
         # Walls block smoke
         if self.is_barrier():
@@ -288,7 +286,7 @@ class Spot:
         
         # Fire produces smoke
         if self.is_fire():
-            smoke_production = temp_constants.SMOKE_PRODUCTION * dt  # 9 units per second
+            smoke_production = temp_constants.SMOKE_PRODUCTION * dt
             self.add_smoke(min(1.0, smoke_production))
             # Clamp to max
             if self._smoke > temp_constants.MAX_SMOKE:

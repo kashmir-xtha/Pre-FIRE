@@ -3,14 +3,13 @@ import pygame_gui
 import csv
 import sys
 from utils.utilities import ToolType, Color
-from environment.materials import MATERIALS
 from PIL import Image
 from editor.tools import ToolsPanel
 from utils.utilities import load_layout, save_layout, pick_csv_file, pick_save_csv_file
 
 # ------------------ EDITOR CLASS ------------------
 class Editor:
-    def __init__(self, win, rows, width, bg_image=None, filename="layout_csv\\layout_1.csv"):
+    def __init__(self, win, rows, bg_image=None, filename="layout_csv\\layout_1.csv"):
         from core.grid import Grid
         
         self.win = win
@@ -393,8 +392,8 @@ def floor_image_to_csv(image_path, csv_path, rows=60, cols=60, wall_color=(0, 0,
         writer.writerows(grid)
 
 # LEGACY FUNCTION (for compatibility)
-def run_editor(win, rows, width, bg_image=None, filename="layout_csv\\layout_2.csv"):
+def run_editor(win, rows, bg_image=None, filename="layout_csv\\layout_2.csv"):
     """Legacy function - creates an Editor instance and runs it"""
-    editor = Editor(win, rows, width, bg_image, filename)
+    editor = Editor(win, rows, bg_image, filename)
     result = editor.run()
     return result

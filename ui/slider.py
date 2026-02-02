@@ -1,35 +1,52 @@
-import pygame_gui
 import pygame
+import pygame_gui
 
 class Slider:
     def __init__(self, label, getter, setter, manager,
                  x, y, width=180, min_val=0.0, max_val=1.0):
 
+        self.manager = manager
         self.label = label
         self._getter = getter
         self._setter = setter
+        self.min_val = min_val
+        self.max_val = max_val
+        self.x = x
+        self.y = y
+        self.width = width
 
-        # Label
+        self._build()
+
+    def _build(self):
         self.label_element = pygame_gui.elements.UILabel(
-            pygame.Rect(x, y, width, 25),
-            text=label,
-            manager=manager
+            pygame.Rect(self.x, self.y, self.width, 25),
+            text=self.label,
+            manager=self.manager
         )
 
-        # Slider
         self.slider = pygame_gui.elements.UIHorizontalSlider(
-            pygame.Rect(x, y + 25, width, 30),
+            pygame.Rect(self.x, self.y + 25, self.width, 30),
             start_value=self._getter(),
-            value_range=(min_val, max_val),
-            manager=manager
+            value_range=(self.min_val, self.max_val),
+            manager=self.manager
         )
 
-        # Value display
         self.value_label = pygame_gui.elements.UILabel(
-            pygame.Rect(x, y + 60, width, 20),
+            pygame.Rect(self.x, self.y + 60, self.width, 20),
             text=f"{self._getter():.3f}",
-            manager=manager
+            manager=self.manager
         )
+
+    def rebind(self, label, getter, setter, min_val, max_val):
+        self.destroy()
+
+        self.label = label
+        self._getter = getter
+        self._setter = setter
+        self.min_val = min_val
+        self.max_val = max_val
+
+        self._build()
 
     def update(self, event):
         if event.type == pygame_gui.UI_HORIZONTAL_SLIDER_MOVED:
@@ -44,63 +61,68 @@ class Slider:
         self.slider.kill()
         self.value_label.kill()
 
-
-class SliderGroup:
-    def __init__(self, manager):
+class ControlPanel:
+    def __init__(self, manager, x, y, temp_obj):
         self.manager = manager
-        self.sliders = []
+        self.x = x
+        self.y = y
+        self.temp = temp_obj
 
-    def add_slider(self, slider):
-        self.sliders.append(slider)
+        self.label_to_param = {
+            meta["label"]: name
+            for name, meta in self.temp.PARAMS.items()
+        }
+        self.param_names = list(self.label_to_param.values())
+
+        self.dropdown = pygame_gui.elements.UIDropDownMenu(
+            options_list=list(self.label_to_param.keys()),
+            starting_option=list(self.label_to_param.keys())[0],
+            relative_rect=pygame.Rect(x, y, 180, 30),
+            manager=manager
+        )
+
+        self.slider = None
+        self._create_slider(self.param_names[0])
+
+    def _create_slider(self, param_name):
+        meta = self.temp.PARAMS[param_name]
+
+        getter = lambda p=param_name: getattr(self.temp, p)
+        setter = lambda v, p=param_name: setattr(self.temp, p, v)
+
+        if self.slider:
+            self.slider.rebind(
+                meta["label"],
+                getter,
+                setter,
+                meta["min"],
+                meta["max"]
+            )
+        else:
+            self.slider = Slider(
+                meta["label"],
+                getter,
+                setter,
+                self.manager,
+                self.x,
+                self.y + 40,
+                min_val=meta["min"],
+                max_val=meta["max"]
+            )
 
     def handle_event(self, event):
-        for slider in self.sliders:
-            slider.update(event)
+        if self.slider:
+            self.slider.update(event)
 
-    def clear(self):
-        for slider in self.sliders:
-            slider.destroy()
-        self.sliders.clear()
+        if event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
+            if event.ui_element == self.dropdown:
+                param_name = self.label_to_param[event.text]
+                self._create_slider(param_name)
 
+    def destroy(self):
+        self.dropdown.kill()
+        if self.slider:
+            self.slider.destroy()
 
-def create_fire_control_sliders(manager, x, start_y, temp_obj, spacing=80):
-    group = SliderGroup(manager)
-
-    group.add_slider(
-        Slider(
-            "Fire Spread Probability",
-            lambda: temp_obj.FIRE_SPREAD_PROBABILITY,
-            lambda v: setattr(temp_obj, "FIRE_SPREAD_PROBABILITY", v),
-            manager,
-            x, start_y,
-            min_val=0.0, max_val=1.0
-        )
-    )
-
-    start_y += spacing
-
-    group.add_slider(
-        Slider(
-            "Smoke Decay",
-            lambda: temp_obj.SMOKE_DECAY,
-            lambda v: setattr(temp_obj, "SMOKE_DECAY", v),
-            manager,
-            x, start_y,
-            min_val=0.0, max_val=1.0
-        )
-    )
-
-    start_y += spacing
-
-    group.add_slider(
-        Slider(
-            "Smoke Diffusion",
-            lambda: temp_obj.SMOKE_DIFFUSION,
-            lambda v: setattr(temp_obj, "SMOKE_DIFFUSION", v),
-            manager,
-            x, start_y,
-            min_val=0.0, max_val=0.2
-        )
-    )
-
-    return group
+def create_control_panel(manager, x, y, temp_obj):
+    return ControlPanel(manager, x, y, temp_obj)

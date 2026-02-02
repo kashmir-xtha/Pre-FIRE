@@ -2,8 +2,8 @@ import pygame
 import pygame_gui
 from environment.fire import randomfirespot, update_fire_with_materials, update_temperature_with_materials
 from environment.smoke import spread_smoke, draw_smoke
-from utils.utilities import Color, Dimensions, state_value, visualize_2d, SimulationState, rTemp
-from ui.slider import create_fire_control_sliders
+from utils.utilities import Color, Dimensions, state_value, SimulationState, rTemp
+from ui.slider import create_control_panel
 
 class Simulation:
     def __init__(self, win, grid, agent, rows, width, bg_image=None):
@@ -40,10 +40,10 @@ class Simulation:
     def create_sliders(self):
         start_y = self.win.get_size()[1] - 350
 
-        self.slider_group = create_fire_control_sliders(
+        self.slider_group = create_control_panel(
             manager=self.manager,
             x=self.width + 10,
-            start_y=start_y,
+            y=start_y,
             temp_obj=self.temp
         )
 

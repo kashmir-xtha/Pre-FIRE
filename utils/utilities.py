@@ -68,16 +68,33 @@ class SimulationState(Enum):
 class TempConstants:
     def __init__(self):
         self.AMBIENT_TEMP = fire_constants.AMBIENT_TEMP.value       # °C
-        self.DIFFUSION_RATE = fire_constants.DIFFUSION_RATE.value       # heat spreading
-        self.COOLING_RATE = fire_constants.COOLING_RATE.value        # loss to environment
-        self.IGNITION_TEMP = fire_constants.IGNITION_TEMP.value
-        self.BURN_TEMP = fire_constants.BURN_TEMP.value
-        self.HEAT_TRANSFER = fire_constants.HEAT_TRANSFER.value
         self.FIRE_SPREAD_PROBABILITY = fire_constants.FIRE_SPREAD_PROBABILITY.value #10%
         self.SMOKE_DIFFUSION = smoke_constants.SMOKE_DIFFUSION.value    # how much smoke spreads
         self.SMOKE_DECAY = smoke_constants.SMOKE_DECAY.value
         self.MAX_SMOKE = smoke_constants.MAX_SMOKE.value
         self.SMOKE_PRODUCTION = smoke_constants.SMOKE_PRODUCTION.value
+        self.PARAMS = {
+            "FIRE_SPREAD_PROBABILITY": {
+                "label": "Fire Spread Probability",
+                "min": 0.0,
+                "max": 1.0
+            },
+            "SMOKE_DIFFUSION": {
+                "label": "Smoke Diffusion",
+                "min": 0.0,
+                "max": 0.5
+            },
+            "SMOKE_DECAY": {
+                "label": "Smoke Decay",
+                "min": 0.0,
+                "max": 1.0
+            },
+            "SMOKE_PRODUCTION": {
+                "label": "Smoke Production",
+                "min": 0.0,
+                "max": 1.0
+            }
+        }
 
 temp = TempConstants()
 def rTemp():
@@ -152,6 +169,10 @@ def load_layout(grid, filename="layout_csv\\layout_1.csv"):
                         end.add(spot)
     except FileNotFoundError:
         print(f"Layout file {filename} not found. Starting with empty grid.")
+    # fname, bname = os.path.split(filename)
+    # fname = os.path.splitext(bname)[0]
+    # print(fname[len(fname) - 1])
+    # loadImage(f"layout_images", filename, fname[len(fname) - 1])
     return start, end
 
 def pick_csv_file():
