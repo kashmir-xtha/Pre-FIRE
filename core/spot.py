@@ -286,7 +286,7 @@ class Spot:
         
         # Fire produces smoke
         if self.is_fire():
-            smoke_production = temp_constants.SMOKE_PRODUCTION * dt
+            smoke_production = 3 * temp_constants.SMOKE_PRODUCTION * dt
             self.add_smoke(min(1.0, smoke_production))
             # Clamp to max
             if self._smoke > temp_constants.MAX_SMOKE:
