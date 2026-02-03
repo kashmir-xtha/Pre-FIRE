@@ -3,47 +3,38 @@ from utils.utilities import get_neighbors, smoke_constants
 
 def spread_smoke(grid, dt = 1.0):
     """
-    Enhanced smoke diffusion model using Gaussian diffusion.
-    
-    state_grid : 2D grid of cell types (EMPTY, WALL, FIRE, START, END)
-    smoke_grid : 2D grid of smoke density [0..1]
-    
-    This model makes smoke spread much faster and further than fire,
-    creating a realistic evacuation warning system.
+    Smoke diffusion (optimized):
+    - Use generators to avoid building temporary lists per cell
     """
-    # Create next smoke grid
     rows = len(grid) if grid else 0
-    cols = len(grid[0]) if rows > 0 else 0 
+    cols = len(grid[0]) if rows > 0 else 0
+    get_n = get_neighbors
 
     for r in range(rows):
         for c in range(cols):
-            neighbor_smoke_data = []
-            for nr, nc in get_neighbors(r, c, rows, cols):
-                neighbor_smoke_data.append(grid[nr][nc].smoke)
-
-            grid[r][c].update_smoke_level(neighbor_smoke_data, dt)
+            # Pass a generator to avoid list allocation
+            neighbor_iter = (grid[nr][nc].smoke for nr, nc in get_n(r, c, rows, cols))
+            grid[r][c].update_smoke_level(neighbor_iter, dt)
         
             
 def draw_smoke(grid, surface):
     """
     Draw smoke on the given surface with improved visibility.
-    Smoke is drawn under fire cells so fire remains visible.
+    - Reuse a single small Surface per frame and fill it with varying alpha/color
+    to avoid costly allocations each cell
     """
-    # Use provided cell_size or grid's cell_size
     cell = grid[0][0].width if len(grid) > 0 and len(grid[0]) > 0 else 20
     rows = len(grid) if grid else 0
-    
+
+    # Reuse a single per-cell surface (SRCALPHA) to minimize allocations
+    smoke_surface = pygame.Surface((cell, cell), pygame.SRCALPHA)
+
     for r in range(rows):
+        row = grid[r]
         for c in range(rows):
-            s = grid[r][c].smoke
+            s = row[c].smoke
             if s > 0.01:  # Only draw if smoke is noticeable
-                # Create smoke overlay with alpha
-                smoke_surface = pygame.Surface((cell, cell), pygame.SRCALPHA)
-                
-                # Smoke visibility: higher density = more opaque and darker
-                alpha = min(220, int(s * 280))  # s is between 0 and 1
-                
-                # Smoke color gets darker with density
+                alpha = min(220, int(s * 280))  # s in [0,1]
                 gray_level = max(40, 150 - int(s * 100))
                 smoke_surface.fill((gray_level, gray_level, gray_level, alpha))
                 surface.blit(smoke_surface, (c * cell, r * cell))
