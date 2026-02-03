@@ -152,18 +152,15 @@ class Simulation:
             self.agent.path = self.agent.best_path()
 
     def update(self, dt):
-        """Time-based update with delta time
+        """Time-based update with delta time"""
 
-        NOTE: Do NOT call `should_update_simulation()` here. The caller (`run`) uses
-        the return value from `TimeManager.update()` to decide whether to call
-        `update()`. Checking again here can cause a race where the step request
-        is consumed before this check and the update would no-op (skipping physics)
-        """
         update_count = self.time_manager.get_update_count()
         for _ in range(update_count):
             # Pass dt from time_manager for physics consistency
             update_dt = self.time_manager.get_delta_time()
-            self.time_manager.total_time += update_dt
+            if self.time_manager.step_size > 1:
+                self.time_manager.total_time += update_dt
+		
             update_temperature_with_materials(self.grid, update_dt)
             update_fire_with_materials(self.grid, update_dt)
 
