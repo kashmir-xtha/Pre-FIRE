@@ -119,7 +119,7 @@ class ControlPanel:
                 param_name = self.label_to_param[event.text]
                 self._create_slider(param_name)
 
-    def destroy(self):
+    def clear(self):
         self.dropdown.kill()
         if self.slider:
             self.slider.destroy()

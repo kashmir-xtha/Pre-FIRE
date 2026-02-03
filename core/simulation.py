@@ -4,6 +4,7 @@ from environment.fire import randomfirespot, update_fire_with_materials, update_
 from environment.smoke import spread_smoke, draw_smoke
 from utils.utilities import Color, Dimensions, state_value, SimulationState, rTemp
 from ui.slider import create_control_panel
+from utils.time_manager import TimeManager
 
 class Simulation:
     def __init__(self, win, grid, agent, rows, width, bg_image=None):
@@ -16,15 +17,15 @@ class Simulation:
         self.width = self.win.get_size()[0] - self.tools_width  # Initial grid width (window width - panel width)
         self.bg_image = bg_image
 
-        self.clock = pygame.time.Clock()
+        self.time_manager = TimeManager(fps=120, step_size=1)  # Keep your 120 FPS
+
         self.running = True
-        self.paused = False
-        self.frame_count = 0
+       
         self.fire_set = False  
         self.restart_timer = False
 
         self.font = pygame.font.Font(None, 24)
-        self.start_time = pygame.time.get_ticks()
+        
         self.metrics = {
             'elapsed_time': 0,
             'agent_health': self.agent.health if self.agent else 0,
@@ -39,7 +40,7 @@ class Simulation:
         self.create_sliders()
 
     def create_sliders(self):
-        start_y = self.win.get_size()[1] - 350
+        start_y = self.win.get_size()[1] - 250
 
         self.slider_group = create_control_panel(
             manager=self.manager,
@@ -86,9 +87,32 @@ class Simulation:
                 if event.key == pygame.K_ESCAPE:
                     return SimulationState.SIM_QUIT.value
                 
-                elif event.key == pygame.K_p:
-                    self.start_time = pygame.time.get_ticks() - self.start_time
-                    self.paused = not self.paused
+                elif event.key == pygame.K_p or event.key == pygame.K_SPACE:
+                    # Replace old pause logic
+                    self.time_manager.toggle_pause()
+                    print(f"Simulation {'paused' if self.time_manager.is_paused() else 'resumed'}")
+
+                elif event.key == pygame.K_s:
+                    # Toggle step-by-step mode
+                    if self.time_manager.toggle_step_mode():
+                        print("Step-by-step mode ON (press 'n' for next step)")
+                    else:
+                        print("Step-by-step mode OFF")
+
+                elif event.key == pygame.K_n:
+                    # Next step in step mode
+                    if self.time_manager.request_next_step():
+                        print("Advancing one step")
+
+                elif event.key == pygame.K_PLUS or event.key == pygame.K_EQUALS:
+                    # Increase speed
+                    new_speed = self.time_manager.set_speed(self.time_manager.get_step_size() + 1)
+                    print(f"Speed: {new_speed}x")
+
+                elif event.key == pygame.K_MINUS:
+                    # Decrease speed
+                    new_speed = self.time_manager.set_speed(self.time_manager.get_step_size() - 1)
+                    print(f"Speed: {new_speed}x")
 
                 elif event.key == pygame.K_r:
                     self.reset()
@@ -100,15 +124,16 @@ class Simulation:
 
     def reset(self):
         self.grid.clear_simulation_visuals()
-        self.frame_count = 0
         self.fire_set = False
-        self.start_time = pygame.time.get_ticks()
+        
+        # Reset the time manager timer
+        self.time_manager.reset_timer()
+        
         # Reset all spots using proper methods
         for row in self.grid.grid:
             for spot in row:
                 disc = spot.to_dict()
                 spot.reset()
-                # If it was a barrier, restore it
                 if disc.get('state') == state_value.WALL.value:
                     spot.make_barrier()
                 elif disc.get('state') == state_value.START.value:
@@ -117,8 +142,6 @@ class Simulation:
                     spot.make_end()
                 elif disc.get('is_fire_source'):
                     spot.set_as_fire_source(disc.get('temperature') if disc.get('temperature') else 1200.0)
-                    print("YOO")
-                    pass
                 else:
                     spot.set_material(disc.get('material'))
 
@@ -129,38 +152,44 @@ class Simulation:
             self.agent.path = self.agent.best_path()
 
     def update(self, dt):
-        """Time-based update with delta time"""
-        if self.paused:
-            return
+        """Time-based update with delta time
 
-        self.frame_count += 1
-        
-        update_temperature_with_materials(self.grid, dt)
-        update_fire_with_materials(self.grid, dt)
+        NOTE: Do NOT call `should_update_simulation()` here. The caller (`run`) uses
+        the return value from `TimeManager.update()` to decide whether to call
+        `update()`. Checking again here can cause a race where the step request
+        is consumed before this check and the update would no-op (skipping physics)
+        """
+        update_count = self.time_manager.get_update_count()
+        for _ in range(update_count):
+            # Pass dt from time_manager for physics consistency
+            update_dt = self.time_manager.get_delta_time()
+            self.time_manager.total_time += update_dt
+            update_temperature_with_materials(self.grid, update_dt)
+            update_fire_with_materials(self.grid, update_dt)
 
-        # Generate fire once
-        if not self.fire_set:
-            if self.grid.fire_sources:
-                for r, c in self.grid.fire_sources:
-                    self.grid.grid[r][c].set_as_fire_source()
-                self.fire_set = True
-            else:
-                randomfirespot(self.grid, self.rows)
-                
-        for r in range(self.rows):
-            for c in range(self.rows):
-                if self.grid.grid[r][c].is_fire() and self.grid.grid[r][c].fuel <= 0:
-                    self.grid.grid[r][c].extinguish_fire()
+            # Generate fire once
+            if not self.fire_set:
+                if self.grid.fire_sources:
+                    for r, c in self.grid.fire_sources:
+                        self.grid.grid[r][c].set_as_fire_source()
+                    self.fire_set = True
+                else:
+                    randomfirespot(self.grid, self.rows)
                     
-        # Smoke spread
-        spread_smoke(self.grid.grid)
+            for r in range(self.rows):
+                for c in range(self.rows):
+                    if self.grid.grid[r][c].is_fire() and self.grid.grid[r][c].fuel <= 0:
+                        self.grid.grid[r][c].extinguish_fire()
+                        
+            # Smoke spread
+            spread_smoke(self.grid.grid)
 
-        # Update agent with delta time
-        if self.agent:
-            self.agent.update(dt)
-        
-        #update metrics
-        self.update_metrics()
+            # Update agent with delta time
+            if self.agent:
+                self.agent.update(update_dt)
+            
+            # Update metrics
+            self.update_metrics()
 
     # DRAW FUNCTION
     def draw(self):
@@ -233,16 +262,8 @@ class Simulation:
 
     # ---------------- MAIN LOOP ----------------
     def run(self):
-        last_time = pygame.time.get_ticks()
-        
         while self.running:
-            current_time = pygame.time.get_ticks()
-            dt = (current_time - last_time) / 1000.0  # Convert to seconds
-            last_time = current_time
-            
-            self.clock.tick(120)
-            self.manager.update(dt)
-            # Handle events
+            # Handle events first so step-by-step requests ("n") are registered
             action = self.handle_events()
             if action == SimulationState.SIM_EDITOR.value:
                 self.running = False
@@ -252,14 +273,23 @@ class Simulation:
                 self.running = False
                 return SimulationState.SIM_QUIT.value
 
-            self.update(dt)  
+            # Now update time manager (which will consume next-step requests)
+            should_update = self.time_manager.update()
+
+            # Update GUI manager with proper dt (after time update)
+            self.manager.update(self.time_manager.get_delta_time())
+
+            # Update simulation if time_manager says so
+            if should_update:
+                self.update(self.time_manager.get_delta_time())
+
             self.draw()
 
         return SimulationState.SIM_QUIT.value
 
     def update_metrics(self):
-        # Time
-        self.metrics['elapsed_time'] = (pygame.time.get_ticks() - self.start_time) / 1000
+        # Use time_manager for elapsed time
+        self.metrics['elapsed_time'] = self.time_manager.get_total_time()
         
         # Agent
         if self.agent:
@@ -300,6 +330,9 @@ class Simulation:
         y_offset = 60
         metrics = [
             f"Time: {self.metrics['elapsed_time']:.1f}s",
+            f"Step: {self.time_manager.get_simulation_step()}",
+            f"FPS: {self.time_manager.get_fps():.1f}",
+            f"Speed: {self.time_manager.get_step_size()}x",
             f"Health: {self.metrics['agent_health']:.0f}",
             f"Fire Cells: {self.metrics['fire_cells']}",
             f"Avg Smoke: {self.metrics['avg_smoke']:.3f}",
@@ -307,16 +340,35 @@ class Simulation:
             f"Path Length: {self.metrics['path_length']}",
             "Controls:",
             "P: Pause/Resume",
+            "S: Step Mode",
+            "N: Next Step",
+            "+/-: Speed",
             "R: Reset",
             "E: Editor Mode",
             "ESC: Quit"
         ]
+        
+        # Add status indicator
+        if self.time_manager.is_paused():
+            status = "PAUSED"
+            status_color = (255, 200, 0)  # Yellow
+        elif self.time_manager.is_step_mode():
+            status = "STEP MODE"
+            status_color = (0, 200, 255)  # Cyan
+        else:
+            status = "RUNNING"
+            status_color = (0, 255, 0)  # Green
+        
+        status_surface = self.font.render(f"Status: {status}", True, status_color)
+        self.win.blit(status_surface, (self.width + 15, y_offset))
+        y_offset += 25
         
         for text in metrics:
             if text:
                 text_surface = self.font.render(text, True, (220, 220, 220))
                 self.win.blit(text_surface, (self.width + 15, y_offset))
             y_offset += 25
+
         
         # Draw agent status
         if self.agent:
