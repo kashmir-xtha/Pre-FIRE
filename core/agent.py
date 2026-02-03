@@ -74,7 +74,7 @@ class Agent:
         # Timers
         self.move_timer += dt
         self.update_timer += dt
-
+        #print(self.move_timer)
         if self.spot.is_end():
             return True
         

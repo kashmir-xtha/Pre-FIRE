@@ -155,11 +155,14 @@ class Simulation:
         """Time-based update with delta time"""
 
         update_count = self.time_manager.get_update_count()
+        scaled_dt = self.time_manager.get_delta_time() / update_count
+        
         for _ in range(update_count):
-            # Pass dt from time_manager for physics consistency
             update_dt = self.time_manager.get_delta_time()
             if self.time_manager.step_size > 1:
                 self.time_manager.total_time += update_dt
+            # Pass scaled dt for physics consistency
+            update_dt = scaled_dt
 		
             update_temperature_with_materials(self.grid, update_dt)
             update_fire_with_materials(self.grid, update_dt)
