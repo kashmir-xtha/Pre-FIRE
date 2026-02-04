@@ -1,5 +1,5 @@
 import pygame
-from utils.utilities import Color
+from utils.utilities import Color, get_neighbors
 
 class Grid:
     def __init__(self, rows, width):
@@ -9,9 +9,12 @@ class Grid:
 
         self.grid = self._make_grid()
         
-        self.fire_sources = set()  # Set of (r, c) tuples for fire source spots
+        # OPTIMIZATION: Precompute neighbor references
+        self.neighbor_map = self._precompute_neighbors()
+        
+        self.fire_sources = set()
         self.start = None
-        self.exits = set() # Set of exit spots
+        self.exits = set()
 
     def add_exit(self, spot):
         self.exits.add(spot)
@@ -26,7 +29,6 @@ class Grid:
         return spot in self.exits
 
     def _make_grid(self):
-        # Import here to avoid circular import
         from core.spot import Spot
         grid = []
         for r in range(self.rows):
@@ -34,6 +36,28 @@ class Grid:
             for c in range(self.rows):
                 grid[r].append(Spot(r, c, self.cell_size))
         return grid
+
+    def _precompute_neighbors(self):
+        """
+        Optimization: Store direct references to neighbor Spot objects.
+        This avoids calling get_neighbors() and doing grid[r][c] lookups 
+        every single frame for every single cell.
+        """
+        map_data = []
+        rows = self.rows
+        # Localize grid for speed
+        grid = self.grid
+        
+        for r in range(rows):
+            row_map = []
+            for c in range(rows):
+                neighbors = []
+                # Use the utility to get coords, but store the OBJECTS
+                for nr, nc in get_neighbors(r, c, rows, rows):
+                    neighbors.append(grid[nr][nc])
+                row_map.append(neighbors)
+            map_data.append(row_map)
+        return map_data
 
     def get_spot(self, r, c):
         if self.in_bounds(r, c):
@@ -44,13 +68,11 @@ class Grid:
         return 0 <= r < self.rows and 0 <= c < self.rows
     
     def set_material(self, r, c, material_id):
-        """Set material for a specific spot"""
         spot = self.get_spot(r, c)
         if spot:
             spot.set_material(material_id)
     
     def clear_simulation_visuals(self):
-        """Clear all simulation visuals (fire, smoke, path) but keep walls, start, end"""
         for row in self.grid:
             for spot in row:
                 if spot.is_fire():
@@ -60,9 +82,12 @@ class Grid:
     
     def draw_grid(self, win):
         gap = self.cell_size
+        width = self.width
+        # Optimization: Don't recreate color tuple every line
+        color = Color.GREY.value
         for i in range(self.rows):
-            pygame.draw.line(win, Color.GREY.value, (0, i * gap), (self.width, i * gap))
-            pygame.draw.line(win, Color.GREY.value, (i * gap, 0), (i * gap, self.width))
+            pygame.draw.line(win, color, (0, i * gap), (width, i * gap))
+            pygame.draw.line(win, color, (i * gap, 0), (i * gap, width))
     
     def draw(self, win, tools_panel=None, bg_image=None):
         if bg_image:
@@ -76,16 +101,8 @@ class Grid:
             tools_panel.draw(win)
     
     def get_clicked_pos(self, pos):
-        '''
-        Docstring for get_clicked_pos
-        
-        :param pos: This is the event.pos from pygame
-        :return: (row, col) tuple corresponding to grid cell clicked
-        '''
         gap = self.cell_size
         x, y = pos
-        
-        # Only process clicks within grid area
         if x < self.width:
             row = y // gap
             col = x // gap

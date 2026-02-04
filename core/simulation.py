@@ -180,7 +180,7 @@ class Simulation:
                         self.grid.grid[r][c].extinguish_fire()
                         
             # Smoke spread
-            spread_smoke(self.grid.grid, update_dt)
+            spread_smoke(self.grid, update_dt)
 
             # Update agent with delta time
             if self.agent:
