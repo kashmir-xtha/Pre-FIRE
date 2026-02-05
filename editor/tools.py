@@ -2,6 +2,10 @@ import pygame
 from utils.utilities import Color, ToolType, material_id as MaterialID
 from environment.materials import MATERIALS
 
+GREEN = Color.GREEN.value
+FIRE_COLOR = Color.FIRE_COLOR.value
+RED = Color.FIRE_COLOR.value
+
 class ToolButton:
     def __init__(self, x, y, width, height, material_id, name, color, tool_type):
         self.rect = pygame.Rect(x, y, width, height)
@@ -58,9 +62,9 @@ class ToolsPanel:
             tools.append((ToolType.MATERIAL, value, MATERIALS[value]["name"], MATERIALS[value]["color"]))
 
         # Special tools
-        tools.append((ToolType.FIRE_SOURCE, None, "Fire", Color.FIRE_COLOR.value))
-        tools.append((ToolType.START, None, "Start", Color.GREEN.value))
-        tools.append((ToolType.END, None, "End", Color.RED.value))
+        tools.append((ToolType.FIRE_SOURCE, None, "Fire", FIRE_COLOR))
+        tools.append((ToolType.START, None, "Start", GREEN))
+        tools.append((ToolType.END, None, "End", RED))
         
         self.buttons.clear()
         for i, (tool_type, material_id, name, color) in enumerate(tools):

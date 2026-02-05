@@ -6,6 +6,9 @@ from PIL import Image
 from editor.tools import ToolsPanel
 from utils.utilities import load_layout, save_layout, pick_csv_file, pick_save_csv_file
 
+# Global constant for white color - accessed once at import time
+WHITE = Color.WHITE.value
+
 # ------------------ EDITOR CLASS ------------------
 class Editor:
     def __init__(self, win, rows, bg_image=None, filename="layout_csv\\layout_1.csv"):
@@ -304,10 +307,9 @@ class Editor:
     def run(self):
         """Main editor loop"""
         clock = pygame.time.Clock()
-        
         while True:
             time_delta = clock.tick(60) / 1000.0
-            self.win.fill(Color.WHITE.value)
+            self.win.fill(WHITE)
             
             # Draw everything
             self.grid_obj.draw(self.win, self.tools_panel, self.bg_image)
@@ -318,7 +320,7 @@ class Editor:
             
             pygame.draw.rect(
                 self.win, 
-                Color.WHITE.value, 
+                WHITE, 
                 (separator_x, 0, 2, win_height)
             )# Draw white separator
 

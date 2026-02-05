@@ -1,6 +1,20 @@
 from utils.utilities import Color, state_value, material_id, fire_constants, rTemp
 import pygame
 
+WHITE = Color.WHITE.value
+BLACK = Color.BLACK.value
+GREEN = Color.GREEN.value
+RED = Color.RED.value
+FIRE_COLOR = Color.FIRE_COLOR.value
+
+EMPTY = state_value.EMPTY.value
+WALL = state_value.WALL.value
+FIRE = state_value.FIRE.value
+START = state_value.START.value
+END =  state_value.END.value
+
+AMBIENT_TEMP = fire_constants.AMBIENT_TEMP.value
+
 class Spot:
     def __init__(self, row, col, width):
         self.row = row
@@ -10,9 +24,9 @@ class Spot:
         self.width = width
         
         # Private attributes with controlled access
-        self._color = Color.WHITE.value
-        self._state = state_value.EMPTY.value
-        self._temperature = fire_constants.AMBIENT_TEMP.value
+        self._color = WHITE
+        self._state = EMPTY
+        self._temperature = AMBIENT_TEMP
         self._smoke = 0.0
         self._fuel = 1.0
         self._material = material_id.AIR  # Store as enum, not integer
@@ -50,9 +64,9 @@ class Spot:
     # --- State-changing methods with validation ---
     def reset(self):
         """Reset spot to default state"""
-        self._color = Color.WHITE.value
-        self._state = state_value.EMPTY.value
-        self._temperature = fire_constants.AMBIENT_TEMP.value
+        self._color = WHITE
+        self._state = EMPTY
+        self._temperature = AMBIENT_TEMP
         self._smoke = 0.0
         self._fuel = 1.0
         self._material = material_id.AIR
@@ -60,21 +74,21 @@ class Spot:
     
     def make_barrier(self):
         """Make this spot a barrier/wall"""
-        self._color = Color.BLACK.value
-        self._state = state_value.WALL.value
+        self._color = BLACK
+        self._state = WALL
         self._material = material_id.CONCRETE
         self._fuel = 0.0  # Walls don't burn
     
     def make_start(self):
         """Make this spot the starting position"""
-        self._color = Color.GREEN.value
-        self._state = state_value.START.value
+        self._color = GREEN
+        self._state = START
         self._material = material_id.AIR  # Start spot should be air
     
     def make_end(self):
         """Make this spot an exit"""
-        self._color = Color.RED.value
-        self._state = state_value.END.value
+        self._color = RED
+        self._state = END
         self._material = material_id.AIR  # End spot should be air
     
     def set_color(self, color):
@@ -93,14 +107,14 @@ class Spot:
 
     def set_on_fire(self, initial_temp=600.0):
         """Set this spot on fire"""
-        self._state = state_value.FIRE.value
-        self._color = Color.FIRE_COLOR.value
+        self._state = FIRE
+        self._color = FIRE_COLOR
         self._temperature = max(self._temperature, initial_temp)
     
     def extinguish_fire(self):
         """Extinguish fire and reset to material"""
         if self.is_fire():
-            self._state = state_value.EMPTY.value
+            self._state = EMPTY
             self._update_color_from_material()
             if self._is_fire_source:
                 self._is_fire_source = False
@@ -124,34 +138,34 @@ class Spot:
     
     def add_temperature(self, amount):
         """Add temperature with bounds checking"""
-        self._temperature = max(fire_constants.AMBIENT_TEMP.value, 
+        self._temperature = max(AMBIENT_TEMP, 
                               min(1200.0, self._temperature + amount))
     
     def set_temperature(self, temp):
         """Set temperature with bounds checking"""
-        self._temperature = max(fire_constants.AMBIENT_TEMP.value, min(1200.0, temp))
+        self._temperature = max(AMBIENT_TEMP, min(1200.0, temp))
     
     def consume_fuel(self, amount):
         """Consume fuel with bounds checking"""
         self._fuel = max(0.0, self._fuel - amount)
-        if self._fuel <= 0 and self._state == state_value.FIRE.value:
+        if self._fuel <= 0 and self._state == FIRE:
             self.extinguish_fire()
     
     # --- Query methods ---
     def is_barrier(self): 
-        return self._state == state_value.WALL.value
+        return self._state == WALL
     
     def is_start(self): 
-        return self._state == state_value.START.value
+        return self._state == START
     
     def is_end(self): 
-        return self._state == state_value.END.value
+        return self._state == END
     
     def is_fire(self): 
-        return self._state == state_value.FIRE.value
+        return self._state == FIRE
     
     def is_empty(self): 
-        return self._state == state_value.EMPTY.value
+        return self._state == EMPTY
     
     def is_flammable(self):
         """Check if this spot can catch fire"""
@@ -190,7 +204,7 @@ class Spot:
     
     def draw(self, win):
         """Draw the spot on the window"""
-        if self._color != Color.WHITE.value:
+        if self._color != WHITE:
             pygame.draw.rect(win, self._color,
                             (self.x, self.y, self.width, self.width))
 

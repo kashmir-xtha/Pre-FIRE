@@ -6,6 +6,21 @@ from utils.utilities import Color, Dimensions, state_value, SimulationState, rTe
 from ui.slider import create_control_panel
 from utils.time_manager import TimeManager
 
+# Global constants for colors - accessed once at import time
+WHITE = Color.WHITE.value
+PURPLE = Color.PURPLE.value
+
+SIM_QUIT = SimulationState.SIM_QUIT.value
+SIM_EDITOR = SimulationState.SIM_EDITOR.value
+SIM_CONTINUE = SimulationState.SIM_CONTINUE.value
+
+WALL = state_value.WALL.value
+EMPTY = state_value.EMPTY.value
+START = state_value.START.value
+END = state_value.END.value
+
+
+
 class Simulation:
     def __init__(self, win, grid, agent, rows, width, bg_image=None):
         self.win = win
@@ -77,7 +92,7 @@ class Simulation:
                 self.slider_group.handle_event(event)
             
             if event.type == pygame.QUIT:
-                return SimulationState.SIM_QUIT.value
+                return SIM_QUIT
 
             elif event.type == pygame.VIDEORESIZE:
                 self._handle_window_resize(event)
@@ -85,7 +100,7 @@ class Simulation:
 
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    return SimulationState.SIM_QUIT.value
+                    return SIM_QUIT
                 
                 elif event.key == pygame.K_p or event.key == pygame.K_SPACE:
                     # Replace old pause logic
@@ -118,9 +133,9 @@ class Simulation:
                     self.reset()
 
                 elif event.key == pygame.K_e:
-                    return SimulationState.SIM_EDITOR.value
+                    return SIM_EDITOR
 
-        return SimulationState.SIM_CONTINUE.value
+        return SIM_CONTINUE
 
     def reset(self):
         self.grid.clear_simulation_visuals()
@@ -134,11 +149,11 @@ class Simulation:
             for spot in row:
                 disc = spot.to_dict()
                 spot.reset()
-                if disc.get('state') == state_value.WALL.value:
+                if disc.get('state') == WALL:
                     spot.make_barrier()
-                elif disc.get('state') == state_value.START.value:
+                elif disc.get('state') == START:
                     spot.make_start()
-                elif disc.get('state') == state_value.END.value:
+                elif disc.get('state') == END:
                     spot.make_end()
                 elif disc.get('is_fire_source'):
                     spot.set_as_fire_source(disc.get('temperature') if disc.get('temperature') else 1200.0)
@@ -199,7 +214,7 @@ class Simulation:
         win_width, win_height = self.win.get_size()
         
         # Clear the entire window
-        self.win.fill(Color.WHITE.value)
+        self.win.fill(WHITE)
 
         # Calculate grid dimensions (fixed square based on original grid)
         grid_width = self.width
@@ -213,7 +228,7 @@ class Simulation:
         
         # Create a temporary surface for the grid area with exact grid dimensions
         grid_surface = pygame.Surface((grid_pixel_width, grid_height))
-        grid_surface.fill(Color.WHITE.value)
+        grid_surface.fill(WHITE)
         
         # IMPORTANT: Update grid cell size for proper drawing
         self.grid.cell_size = cell_size
@@ -232,7 +247,7 @@ class Simulation:
                     rect = pygame.Rect(p.x, p.y, p.width, p.width)
                     pygame.draw.rect(
                         grid_surface,
-                        Color.PURPLE.value,
+                        PURPLE,
                         rect
                     )
         
@@ -250,7 +265,7 @@ class Simulation:
 
         # Draw the white separator bar between grid and panel
         panel_x = self.width
-        pygame.draw.rect(self.win, Color.WHITE.value, (panel_x, 0, 2, win_height))
+        pygame.draw.rect(self.win, WHITE, (panel_x, 0, 2, win_height))
 
         # Draw simulation panel
         self.draw_sim_panel()
@@ -263,13 +278,13 @@ class Simulation:
         while self.running:
             # Handle events first so step-by-step requests ("n") are registered
             action = self.handle_events()
-            if action == SimulationState.SIM_EDITOR.value:
+            if action == SIM_EDITOR:
                 self.running = False
-                return SimulationState.SIM_EDITOR.value
+                return SIM_EDITOR
 
-            if action == SimulationState.SIM_QUIT.value:
+            if action == SIM_QUIT:
                 self.running = False
-                return SimulationState.SIM_QUIT.value
+                return SIM_QUIT
 
             # Now update time manager (which will consume next-step requests)
             should_update = self.time_manager.update()
@@ -283,7 +298,7 @@ class Simulation:
 
             self.draw()
 
-        return SimulationState.SIM_QUIT.value
+        return SIM_QUIT
 
     def update_metrics(self):
         # Use time_manager for elapsed time

@@ -1,6 +1,9 @@
 import pygame
 from utils.utilities import Color, get_neighbors
 
+# Global constant for grid color - accessed once at import time
+GRID_COLOR = Color.GREY.value
+
 class Grid:
     def __init__(self, rows, width):
         self.rows = rows
@@ -83,8 +86,8 @@ class Grid:
     def draw_grid(self, win):
         gap = self.cell_size
         width = self.width
-        # Optimization: Don't recreate color tuple every line
-        color = Color.GREY.value
+        # Optimization: Use pre-resolved global color constant
+        color = GRID_COLOR
         for i in range(self.rows):
             pygame.draw.line(win, color, (0, i * gap), (width, i * gap))
             pygame.draw.line(win, color, (i * gap, 0), (i * gap, width))

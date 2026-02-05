@@ -3,7 +3,7 @@ from queue import PriorityQueue
 from utils.utilities import Color, get_neighbors, rTemp
 import math
 temp = rTemp()
-
+BLUE = Color.BLUE.value
 class Agent:
     def __init__(self, grid, start_spot):
         self.grid = grid
@@ -183,7 +183,7 @@ class Agent:
             # Health-based color
             health_ratio = self.health / 100
             if health_ratio > 0.7:
-                color = Color.BLUE.value
+                color = BLUE
             elif health_ratio > 0.3:
                 color = (0, 128, 255)  # Light blue
             else:
