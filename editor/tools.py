@@ -4,7 +4,7 @@ from environment.materials import MATERIALS
 
 GREEN = Color.GREEN.value
 FIRE_COLOR = Color.FIRE_COLOR.value
-RED = Color.FIRE_COLOR.value
+RED = Color.RED.value
 
 class ToolButton:
     def __init__(self, x, y, width, height, material_id, name, color, tool_type):

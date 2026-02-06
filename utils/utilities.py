@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pygame
 import json
 import os
+import sys
 
 class Dimensions(Enum):
     WIDTH = 780
@@ -201,14 +202,34 @@ def pick_save_csv_file(default_name="layout.csv"):
     return filename
 
 # ------------------ WINDOW STATE ------------------
-def save_window_state(is_maximized):
+def user_data_path(filename):#Used for storing user-generated, writable data like preferences, logs, or saved states
+    #points to a permanent writable directory 
+    """
+    Returns a writable path for user-generated files.
+    Works both for normal Python runs and PyInstaller executables.
+    """
+    base_dir = os.path.join(os.path.expanduser("~"), ".prefire")
+    os.makedirs(base_dir, exist_ok=True)
+    return os.path.join(base_dir, filename)
+
+
+def save_window_state(is_maximized): 
     state = {"maximized": is_maximized}
-    with open("data/window_state.json", "w") as f:
+    path = user_data_path("window_state.json")
+    with open(path, "w") as f:
         json.dump(state, f)
 
+
 def load_window_state():
-    if os.path.exists("data/window_state.json"):
-        with open("data/window_state.json", "r") as f:
+    path = user_data_path("window_state.json")
+    if os.path.exists(path):
+        with open(path, "r") as f:
             state = json.load(f)
             return state.get("maximized", False)
     return False
+
+def resource_path(relative_path):#Used for reading bundled, read-only resources inside .exe or source folder
+    #Points to a temporary folder inside the PyInstaller .exe environment
+    if hasattr(sys, "_MEIPASS"):#points to the temporary folder created by pyinstaller
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)

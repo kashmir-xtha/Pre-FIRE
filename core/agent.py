@@ -1,6 +1,6 @@
 import pygame
 from queue import PriorityQueue
-from utils.utilities import Color, get_neighbors, rTemp
+from utils.utilities import Color, get_neighbors, rTemp, resource_path
 import math
 temp = rTemp()
 BLUE = Color.BLUE.value
@@ -22,7 +22,8 @@ class Agent:
 
         # Load agent image
         try:
-            self.agent_image = pygame.image.load('data/agent.png')
+            agent_img_pth = resource_path("data/agent.png")
+            self.agent_image = pygame.image.load(agent_img_pth)
             self.original_image = self.agent_image.copy()
         except:
             print("Warning: agent.png not found, using fallback circle")

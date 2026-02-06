@@ -4,7 +4,7 @@ import ctypes
 from editor.buildinglayout import run_editor
 from core.agent import Agent
 from core.simulation import Simulation
-from utils.utilities import Dimensions, SimulationState, loadImage, load_window_state, save_window_state
+from utils.utilities import Dimensions, SimulationState, loadImage, load_window_state, save_window_state, resource_path
 
 pygame.init()
 WIN = pygame.display.set_mode(
@@ -16,8 +16,9 @@ hwnd = pygame.display.get_wm_info()['window'] #HWND - handle to the window
 if load_window_state():
     ctypes.windll.user32.ShowWindow(hwnd, 3)  # 3 - MAXIMIZE THE WINDOW
 
-image_directory = "data\\layout_images"
-csv_directory = "data\\layout_csv"
+
+image_directory = resource_path("data/layout_images")
+csv_directory = resource_path("data/layout_csv")
 
 def main():
     BG_IMAGE, csv_filename = loadImage(image_directory, csv_directory, 2)
