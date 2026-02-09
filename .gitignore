@@ -3,3 +3,4 @@ window_state.json
 __pycache__
 PreFIRE.spec
 build
+benchmark_results.txt
