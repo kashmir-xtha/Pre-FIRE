@@ -1,7 +1,7 @@
 import sys
 import pygame
 import ctypes
-from editor.buildinglayout import run_editor
+from editor.editor import run_editor
 from core.agent import Agent
 from core.simulation import Simulation
 from utils.utilities import Dimensions, SimulationState, loadImage, load_window_state, save_window_state, resource_path

@@ -1,0 +1,572 @@
+
+=== Benchmark Run @ 2026-02-09 20:38:01 ===
+--- top calls (threshold > 1000) ---
+spot.temperature                         5094698
+~.<method 'append' of 'list' objects>    4750033
+spot.is_fire                             4267907
+enum.__hash__                            3969482
+~.<built-in method builtins.hash>        3969482
+spot._material_props                     3965875
+spot.smoke                               3490074
+spot.get_material_properties             3457832
+~.<built-in method builtins.max>         1545562
+~.<built-in method builtins.min>         1512001
+spot.is_barrier                          1331070
+spot.add_smoke                           758364
+spot.draw                                644400
+spot.is_end                              543094
+spot.is_start                            534878
+utilities.rTemp                          352997
+spot.update_temperature                  352800
+spot.update_smoke_level                  352800
+spot.add_temperature                     352800
+spot.fuel                                281355
+spot.update_fire_state                   250802
+spot.is_flammable                        250802
+spot.is_hot_enough_to_ignite             250018
+~.<built-in method pygame.draw.rect>     117590
+utilities.get_neighbors                  76207
+spot.set_smoke                           74284
+~.<method 'blit' of 'pygame.surface.Surface' objects> 43695
+~.<method 'fill' of 'pygame.surface.Surface' objects> 40904
+agent.danger_heuristic                   31996
+spot.consume_fuel                        28380
+spot.consume_fuel_update                 28380
+~.<built-in method pygame.draw.line>     21480
+~.<built-in method builtins.len>         17106
+~.<method '__exit__' of '_thread.lock' objects> 16230
+~.<built-in method builtins.abs>         15414
+~.<method 'random' of '_random.Random' objects> 13219
+~.<method 'lower' of 'str' objects>      12878
+enum.__get__                             12234
+enum.value                               12234
+~.<method 'acquire' of '_thread.lock' objects> 11333
+threading._is_owned                      11247
+threading.__enter__                      11245
+threading.__exit__                       11245
+~.<method '__enter__' of '_thread.lock' objects> 11245
+threading.notify                         11225
+queue._qsize                             9946
+~.<built-in method builtins.isinstance>  9889
+sysfont.<genexpr>                        8086
+agent.heuristic                          7707
+~.<built-in method math.sqrt>            7707
+~.<method 'isalnum' of 'str' objects>    7526
+~.<method 'add' of 'set' objects>        6246
+queue.put                                6242
+queue._put                               6242
+~.<built-in method _heapq.heappush>      6232
+~.<method 'split' of 'str' objects>      5533
+colour_parser.<genexpr>                  5370
+~.<built-in method nt.fspath>            5258
+~.<built-in method sys.intern>           5164
+~.<built-in method pygame.event.get>     5141
+queue.get                                4971
+queue._get                               4971
+queue.empty                              4961
+~.<built-in method _heapq.heappop>       4961
+~.<method 'remove' of 'set' objects>     4961
+spot.reset                               4380
+~.<method 'strip' of 'str' objects>      3656
+spot._update_color_from_material         3623
+enum.__new__                             3601
+enum.__call__                            3601
+utilities.parse_cell_value               3600
+spot.__init__                            3600
+spot.set_material                        3600
+layered_gui_group.alive                  3482
+~.<built-in method _operator.truth>      3482
+~.<method 'replace' of 'str' objects>    3093
+~.<built-in method _operator.index>      3000
+~.<method 'render' of 'pygame.font.Font' objects> 2931
+ui_container.get_container               2763
+<frozen ntpath>.splitroot                2625
+drawable_shape.update                    2084
+<frozen abc>.__instancecheck__           1819
+~.<built-in method _abc._abc_instancecheck> 1819
+layered_gui_group.rect                   1740
+~.<method 'join' of 'str' objects>       1735
+layered_gui_group.visible                1733
+~.<method 'rfind' of 'str' objects>      1708
+layered_gui_group._get_visible           1705
+~.<method 'rstrip' of 'str' objects>     1703
+ui_element.hovered                       1698
+~.<method 'collidepoint' of 'pygame.rect.Rect' objects> 1496
+~.<method 'copy' of 'pygame.rect.Rect' objects> 1443
+ui_manager.get_mouse_position            1416
+pathlib.__init__                         1398
+ui_element.get_image_clipping_rect       1355
+ui_container.get_rect                    1333
+ui_element.hover_point                   1318
+ui_element.update                        1318
+fire.direction_blocked                   1291
+~.<built-in method builtins.getattr>     1231
+~.<method 'getrandbits' of '_random.Random' objects> 1110
+rect_drawable_shape.collide_point        1042
+drawable_shape.has_fresh_surface         1042
+No of function calls: 43179566 in 13.44003
+
+--- top cumulative ---
+         43179566 function calls (43179269 primitive calls) in 13.437 seconds
+
+   Ordered by: cumulative time
+   List reduced from 820 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000   13.436   13.436 D:\Python\fire simulation\Pre-FIRE\benchmark.py:12(run)
+        1    0.000    0.000   13.436   13.436 D:\Python\fire simulation\Pre-FIRE\main.py:23(main)
+        1    0.022    0.022   11.779   11.779 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:284(run)
+       98    0.055    0.001   10.756    0.110 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:176(update)
+       98    1.654    0.017    5.814    0.059 D:\Python\fire simulation\Pre-FIRE\environment\fire.py:49(update_temperature_with_materials)
+       98    1.141    0.012    2.701    0.028 D:\Python\fire simulation\Pre-FIRE\environment\fire.py:5(update_fire_with_materials)
+  3457832    1.444    0.000    2.585    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:193(get_material_properties)
+       98    0.415    0.004    1.787    0.018 D:\Python\fire simulation\Pre-FIRE\environment\smoke.py:4(spread_smoke)
+        1    0.000    0.000    1.484    1.484 D:\Python\fire simulation\Pre-FIRE\editor\editor.py:396(run_editor)
+        1    0.003    0.003    1.370    1.370 D:\Python\fire simulation\Pre-FIRE\editor\editor.py:307(run)
+   352800    0.630    0.000    1.290    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:216(update_temperature)
+   352800    0.546    0.000    1.188    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:293(update_smoke_level)
+  3969482    0.619    0.000    1.006    0.000 C:\Users\Ashish\AppData\Local\Programs\Python\Python312\Lib\enum.py:1267(__hash__)
+      179    0.959    0.005    0.959    0.005 {method 'tick' of 'pygame.time.Clock' objects}
+       98    0.103    0.001    0.913    0.009 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:215(draw)
+   250802    0.376    0.000    0.908    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:257(update_fire_state)
+  4750033    0.556    0.000    0.556    0.000 {method 'append' of 'list' objects}
+      179    0.075    0.000    0.556    0.003 D:\Python\fire simulation\Pre-FIRE\core\grid.py:95(draw)
+   758364    0.215    0.000    0.425    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:140(add_smoke)
+  5094698    0.398    0.000    0.398    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:53(temperature)
+  3969482    0.387    0.000    0.387    0.000 {built-in method builtins.hash}
+  4267907    0.333    0.000    0.333    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:173(is_fire)
+  3965875    0.322    0.000    0.322    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:21(_material_props)
+    43695    0.271    0.000    0.271    0.000 {method 'blit' of 'pygame.surface.Surface' objects}
+   352800    0.130    0.000    0.262    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:148(add_temperature)
+  1512001    0.250    0.000    0.250    0.000 {built-in method builtins.min}
+  3490074    0.242    0.000    0.242    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:57(smoke)
+   250802    0.136    0.000    0.231    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:179(is_flammable)
+  1545562    0.226    0.000    0.226    0.000 {built-in method builtins.max}
+   250018    0.129    0.000    0.218    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:183(is_hot_enough_to_ignite)
+
+
+
+--- top tottime ---
+         43179566 function calls (43179269 primitive calls) in 13.437 seconds
+
+   Ordered by: internal time
+   List reduced from 820 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+       98    1.654    0.017    5.814    0.059 D:\Python\fire simulation\Pre-FIRE\environment\fire.py:49(update_temperature_with_materials)
+  3457832    1.444    0.000    2.585    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:193(get_material_properties)
+       98    1.141    0.012    2.701    0.028 D:\Python\fire simulation\Pre-FIRE\environment\fire.py:5(update_fire_with_materials)
+      179    0.959    0.005    0.959    0.005 {method 'tick' of 'pygame.time.Clock' objects}
+   352800    0.630    0.000    1.290    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:216(update_temperature)
+  3969482    0.619    0.000    1.006    0.000 C:\Users\Ashish\AppData\Local\Programs\Python\Python312\Lib\enum.py:1267(__hash__)
+  4750033    0.556    0.000    0.556    0.000 {method 'append' of 'list' objects}
+   352800    0.546    0.000    1.188    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:293(update_smoke_level)
+       98    0.415    0.004    1.787    0.018 D:\Python\fire simulation\Pre-FIRE\environment\smoke.py:4(spread_smoke)
+  5094698    0.398    0.000    0.398    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:53(temperature)
+  3969482    0.387    0.000    0.387    0.000 {built-in method builtins.hash}
+   250802    0.376    0.000    0.908    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:257(update_fire_state)
+  4267907    0.333    0.000    0.333    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:173(is_fire)
+  3965875    0.322    0.000    0.322    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:21(_material_props)
+    43695    0.271    0.000    0.271    0.000 {method 'blit' of 'pygame.surface.Surface' objects}
+  1512001    0.250    0.000    0.250    0.000 {built-in method builtins.min}
+  3490074    0.242    0.000    0.242    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:57(smoke)
+  1545562    0.226    0.000    0.226    0.000 {built-in method builtins.max}
+   758364    0.215    0.000    0.425    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:140(add_smoke)
+       98    0.141    0.001    0.214    0.002 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:312(update_metrics)
+   250802    0.136    0.000    0.231    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:179(is_flammable)
+    21480    0.132    0.000    0.132    0.000 {built-in method pygame.draw.line}
+  1331070    0.130    0.000    0.130    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:164(is_barrier)
+   352800    0.130    0.000    0.262    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:148(add_temperature)
+   250018    0.129    0.000    0.218    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:183(is_hot_enough_to_ignite)
+      178    0.123    0.001    0.123    0.001 {built-in method pygame.display.update}
+       98    0.103    0.001    0.913    0.009 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:215(draw)
+   117590    0.094    0.000    0.094    0.000 {built-in method pygame.draw.rect}
+    40904    0.085    0.000    0.085    0.000 {method 'fill' of 'pygame.surface.Surface' objects}
+       98    0.078    0.001    0.181    0.002 D:\Python\fire simulation\Pre-FIRE\environment\smoke.py:54(draw_smoke)
+
+
+
+
+=== Benchmark Run @ 2026-02-09 20:38:25 ===
+--- top calls (threshold > 1000) ---
+spot.temperature                         9155871
+~.<method 'append' of 'list' objects>    8509484
+spot.is_fire                             7570134
+enum.__hash__                            7321116
+~.<built-in method builtins.hash>        7321116
+spot._material_props                     7317509
+spot.smoke                               6488289
+spot.get_material_properties             6456972
+~.<built-in method builtins.max>         2907940
+~.<built-in method builtins.min>         2874353
+spot.is_barrier                          2372451
+spot.add_smoke                           1406355
+spot.is_end                              961550
+spot.is_start                            953370
+spot.draw                                918000
+utilities.rTemp                          659167
+spot.update_temperature                  658800
+spot.update_smoke_level                  658800
+spot.add_temperature                     658800
+spot.fuel                                523202
+spot.update_fire_state                   427218
+spot.is_flammable                        427218
+spot.is_hot_enough_to_ignite             425754
+~.<built-in method pygame.draw.rect>     238012
+~.<method 'blit' of 'pygame.surface.Surface' objects> 147532
+~.<method 'fill' of 'pygame.surface.Surface' objects> 142966
+spot.set_smoke                           138714
+spot.consume_fuel                        80663
+spot.consume_fuel_update                 80663
+utilities.get_neighbors                  74596
+agent.danger_heuristic                   31018
+~.<built-in method pygame.draw.line>     30600
+~.<method 'random' of '_random.Random' objects> 29717
+~.<built-in method builtins.len>         18651
+~.<built-in method builtins.abs>         16000
+~.<method '__exit__' of '_thread.lock' objects> 15726
+~.<built-in method builtins.isinstance>  14080
+~.<method 'lower' of 'str' objects>      12878
+enum.__get__                             12319
+enum.value                               12319
+~.<method 'acquire' of '_thread.lock' objects> 11008
+threading._is_owned                      10922
+threading.__enter__                      10920
+threading.__exit__                       10920
+~.<method '__enter__' of '_thread.lock' objects> 10920
+threading.notify                         10900
+queue._qsize                             9588
+~.<built-in method sys.intern>           9120
+sysfont.<genexpr>                        8086
+agent.heuristic                          8000
+~.<built-in method math.sqrt>            8000
+~.<method 'isalnum' of 'str' objects>    7526
+~.<built-in method nt.fspath>            6720
+~.<method 'add' of 'set' objects>        6100
+queue.put                                6096
+queue._put                               6096
+~.<built-in method _heapq.heappush>      6086
+~.<method 'split' of 'str' objects>      6066
+layered_gui_group.alive                  5876
+~.<built-in method _operator.truth>      5876
+colour_parser.<genexpr>                  5370
+~.<built-in method pygame.event.get>     5038
+queue.get                                4792
+queue._get                               4792
+queue.empty                              4782
+~.<built-in method _heapq.heappop>       4782
+~.<method 'remove' of 'set' objects>     4782
+~.<method 'render' of 'pygame.font.Font' objects> 4651
+ui_container.get_container               4647
+spot.reset                               4380
+~.<method 'replace' of 'str' objects>    4187
+spot._update_color_from_material         3965
+~.<method 'strip' of 'str' objects>      3656
+enum.__new__                             3601
+enum.__call__                            3601
+spot.__init__                            3600
+spot.set_material                        3600
+utilities.parse_cell_value               3600
+drawable_shape.update                    3578
+<frozen abc>.__instancecheck__           3487
+~.<built-in method _abc._abc_instancecheck> 3487
+<frozen ntpath>.splitroot                3361
+layered_gui_group.visible                3360
+layered_gui_group._get_visible           3332
+~.<built-in method _operator.index>      3000
+layered_gui_group.rect                   2939
+ui_element.hovered                       2870
+~.<method 'collidepoint' of 'pygame.rect.Rect' objects> 2683
+~.<built-in method builtins.getattr>     2536
+pathlib.__init__                         2472
+ui_manager.get_mouse_position            2409
+~.<method 'copy' of 'pygame.rect.Rect' objects> 2363
+ui_element.get_image_clipping_rect       2280
+ui_container.get_rect                    2245
+ui_element.update                        2226
+ui_element.hover_point                   2218
+~.<method 'join' of 'str' objects>       2093
+rect_drawable_shape.collide_point        1807
+drawable_shape.has_fresh_surface         1789
+~.<method 'rfind' of 'str' objects>      1706
+~.<method 'rstrip' of 'str' objects>     1703
+ui_element.check_hover                   1606
+spot.set_on_fire                         1368
+fire.direction_blocked                   1307
+~.<built-in method __new__ of type object at 0x00007FFE99D658F0> 1266
+~.<built-in method builtins.hasattr>     1254
+_adapters.__init__                       1236
+pathlib.__new__                          1236
+~.<method 'getrandbits' of '_random.Random' objects> 1123
+ui_button.hover_point                    1061
+ui_button.update                         1057
+~.<method 'reverse' of 'list' objects>   1042
+~.<method 'startswith' of 'str' objects> 1017
+layered_gui_group.get_sprites_from_layer 1004
+No of function calls: 78456077 in 22.06272
+
+--- top cumulative ---
+         78456077 function calls (78455708 primitive calls) in 22.059 seconds
+
+   Ordered by: cumulative time
+   List reduced from 829 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000   22.059   22.059 D:\Python\fire simulation\Pre-FIRE\benchmark.py:12(run)
+        1    0.001    0.001   22.059   22.059 D:\Python\fire simulation\Pre-FIRE\main.py:23(main)
+        1    0.031    0.031   20.538   20.538 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:284(run)
+      183    0.103    0.001   18.623    0.102 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:176(update)
+      183    2.898    0.016   10.353    0.057 D:\Python\fire simulation\Pre-FIRE\environment\fire.py:49(update_temperature_with_materials)
+  6456972    2.633    0.000    4.732    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:193(get_material_properties)
+      183    1.878    0.010    4.416    0.024 D:\Python\fire simulation\Pre-FIRE\environment\fire.py:5(update_fire_with_materials)
+      183    0.723    0.004    3.148    0.017 D:\Python\fire simulation\Pre-FIRE\environment\smoke.py:4(spread_smoke)
+   658800    1.098    0.000    2.261    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:216(update_temperature)
+   658800    0.963    0.000    2.109    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:293(update_smoke_level)
+  7321116    1.136    0.000    1.829    0.000 C:\Users\Ashish\AppData\Local\Programs\Python\Python312\Lib\enum.py:1267(__hash__)
+      183    0.154    0.001    1.712    0.009 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:215(draw)
+   427218    0.596    0.000    1.457    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:257(update_fire_state)
+        1    0.000    0.000    1.310    1.310 D:\Python\fire simulation\Pre-FIRE\editor\editor.py:396(run_editor)
+        1    0.003    0.003    1.214    1.214 D:\Python\fire simulation\Pre-FIRE\editor\editor.py:307(run)
+  8509484    0.954    0.000    0.954    0.000 {method 'append' of 'list' objects}
+      255    0.853    0.003    0.853    0.003 {method 'tick' of 'pygame.time.Clock' objects}
+  1406355    0.388    0.000    0.759    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:140(add_smoke)
+      255    0.105    0.000    0.719    0.003 D:\Python\fire simulation\Pre-FIRE\core\grid.py:95(draw)
+  7321116    0.693    0.000    0.693    0.000 {built-in method builtins.hash}
+  9155871    0.649    0.000    0.649    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:53(temperature)
+  7570134    0.576    0.000    0.576    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:173(is_fire)
+  7317509    0.575    0.000    0.575    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:21(_material_props)
+      183    0.203    0.001    0.476    0.003 D:\Python\fire simulation\Pre-FIRE\environment\smoke.py:54(draw_smoke)
+   658800    0.226    0.000    0.441    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:148(add_temperature)
+  2874353    0.422    0.000    0.422    0.000 {built-in method builtins.min}
+   147532    0.418    0.000    0.418    0.000 {method 'blit' of 'pygame.surface.Surface' objects}
+  6488289    0.414    0.000    0.414    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:57(smoke)
+  2907940    0.409    0.000    0.409    0.000 {built-in method builtins.max}
+      183    0.265    0.001    0.395    0.002 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:312(update_metrics)
+
+
+
+--- top tottime ---
+         78456077 function calls (78455708 primitive calls) in 22.059 seconds
+
+   Ordered by: internal time
+   List reduced from 829 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      183    2.898    0.016   10.353    0.057 D:\Python\fire simulation\Pre-FIRE\environment\fire.py:49(update_temperature_with_materials)
+  6456972    2.633    0.000    4.732    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:193(get_material_properties)
+      183    1.878    0.010    4.416    0.024 D:\Python\fire simulation\Pre-FIRE\environment\fire.py:5(update_fire_with_materials)
+  7321116    1.136    0.000    1.829    0.000 C:\Users\Ashish\AppData\Local\Programs\Python\Python312\Lib\enum.py:1267(__hash__)
+   658800    1.098    0.000    2.261    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:216(update_temperature)
+   658800    0.963    0.000    2.109    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:293(update_smoke_level)
+  8509484    0.954    0.000    0.954    0.000 {method 'append' of 'list' objects}
+      255    0.853    0.003    0.853    0.003 {method 'tick' of 'pygame.time.Clock' objects}
+      183    0.723    0.004    3.148    0.017 D:\Python\fire simulation\Pre-FIRE\environment\smoke.py:4(spread_smoke)
+  7321116    0.693    0.000    0.693    0.000 {built-in method builtins.hash}
+  9155871    0.649    0.000    0.649    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:53(temperature)
+   427218    0.596    0.000    1.457    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:257(update_fire_state)
+  7570134    0.576    0.000    0.576    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:173(is_fire)
+  7317509    0.575    0.000    0.575    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:21(_material_props)
+  2874353    0.422    0.000    0.422    0.000 {built-in method builtins.min}
+   147532    0.418    0.000    0.418    0.000 {method 'blit' of 'pygame.surface.Surface' objects}
+  6488289    0.414    0.000    0.414    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:57(smoke)
+  2907940    0.409    0.000    0.409    0.000 {built-in method builtins.max}
+  1406355    0.388    0.000    0.759    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:140(add_smoke)
+      183    0.265    0.001    0.395    0.002 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:312(update_metrics)
+   658800    0.226    0.000    0.441    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:148(add_temperature)
+   427218    0.218    0.000    0.371    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:179(is_flammable)
+  2372451    0.215    0.000    0.215    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:164(is_barrier)
+   425754    0.203    0.000    0.351    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:183(is_hot_enough_to_ignite)
+      183    0.203    0.001    0.476    0.003 D:\Python\fire simulation\Pre-FIRE\environment\smoke.py:54(draw_smoke)
+      254    0.169    0.001    0.169    0.001 {built-in method pygame.display.update}
+      183    0.154    0.001    1.712    0.009 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:215(draw)
+   142966    0.153    0.000    0.153    0.000 {method 'fill' of 'pygame.surface.Surface' objects}
+   238012    0.152    0.000    0.152    0.000 {built-in method pygame.draw.rect}
+    30600    0.147    0.000    0.147    0.000 {built-in method pygame.draw.line}
+
+
+
+
+=== Benchmark Run @ 2026-02-09 20:41:54 (limit=10s) ===
+--- top calls (threshold > 1000) ---
+spot.temperature                         4481296
+~.<method 'append' of 'list' objects>    4182209
+spot.is_fire                             3768952
+enum.__hash__                            3458735
+~.<built-in method builtins.hash>        3458735
+spot._material_props                     3455128
+spot.smoke                               3031970
+spot.get_material_properties             2999140
+~.<built-in method builtins.max>         1335902
+~.<built-in method builtins.min>         1302040
+spot.is_barrier                          1175969
+spot.draw                                716400
+spot.add_smoke                           656107
+spot.is_end                              480645
+spot.is_start                            472219
+utilities.rTemp                          306171
+spot.update_temperature                  306000
+spot.update_smoke_level                  306000
+spot.add_temperature                     306000
+spot.fuel                                244285
+spot.update_fire_state                   224734
+spot.is_flammable                        224734
+spot.is_hot_enough_to_ignite             224054
+~.<built-in method pygame.draw.rect>     104311
+utilities.get_neighbors                  76558
+spot.set_smoke                           64430
+agent.danger_heuristic                   32548
+~.<method 'blit' of 'pygame.surface.Surface' objects> 28967
+~.<method 'fill' of 'pygame.surface.Surface' objects> 26132
+~.<built-in method pygame.draw.line>     23880
+spot.consume_fuel                        17381
+spot.consume_fuel_update                 17381
+~.<built-in method builtins.len>         17113
+~.<built-in method builtins.abs>         16816
+~.<method '__exit__' of '_thread.lock' objects> 16403
+~.<method 'lower' of 'str' objects>      12878
+enum.__get__                             12221
+enum.value                               12221
+~.<method 'acquire' of '_thread.lock' objects> 11467
+threading._is_owned                      11381
+threading.__enter__                      11379
+threading.__exit__                       11379
+~.<method '__enter__' of '_thread.lock' objects> 11379
+threading.notify                         11359
+queue._qsize                             10024
+~.<method 'random' of '_random.Random' objects> 9425
+~.<built-in method builtins.isinstance>  9292
+agent.heuristic                          8408
+~.<built-in method math.sqrt>            8408
+sysfont.<genexpr>                        8086
+~.<method 'isalnum' of 'str' objects>    7526
+~.<method 'add' of 'set' objects>        6341
+queue._put                               6337
+queue.put                                6337
+~.<built-in method _heapq.heappush>      6327
+~.<method 'split' of 'str' objects>      5453
+colour_parser.<genexpr>                  5370
+~.<built-in method pygame.event.get>     5199
+~.<built-in method nt.fspath>            5042
+queue.get                                5010
+queue._get                               5010
+queue.empty                              5000
+~.<built-in method _heapq.heappop>       5000
+~.<method 'remove' of 'set' objects>     5000
+~.<built-in method sys.intern>           4568
+spot.reset                               4380
+~.<method 'strip' of 'str' objects>      3656
+enum.__new__                             3601
+enum.__call__                            3601
+utilities.parse_cell_value               3600
+spot.__init__                            3600
+spot.set_material                        3600
+spot._update_color_from_material         3600
+layered_gui_group.alive                  3369
+~.<built-in method _operator.truth>      3369
+~.<built-in method _operator.index>      3000
+~.<method 'render' of 'pygame.font.Font' objects> 2988
+~.<method 'replace' of 'str' objects>    2931
+ui_container.get_container               2675
+<frozen ntpath>.splitroot                2517
+drawable_shape.update                    1982
+~.<method 'rfind' of 'str' objects>      1706
+layered_gui_group.rect                   1703
+~.<method 'rstrip' of 'str' objects>     1703
+~.<method 'join' of 'str' objects>       1681
+ui_element.hovered                       1648
+<frozen abc>.__instancecheck__           1554
+~.<built-in method _abc._abc_instancecheck> 1554
+~.<method 'collidepoint' of 'pygame.rect.Rect' objects> 1472
+layered_gui_group.visible                1468
+layered_gui_group._get_visible           1440
+~.<method 'copy' of 'pygame.rect.Rect' objects> 1399
+ui_manager.get_mouse_position            1359
+fire.direction_blocked                   1357
+ui_element.get_image_clipping_rect       1311
+ui_container.get_rect                    1289
+ui_element.hover_point                   1274
+ui_element.update                        1274
+pathlib.__init__                         1236
+~.<method 'getrandbits' of '_random.Random' objects> 1105
+No of function calls: 37941409 in 12.35145
+
+--- top cumulative ---
+         37941409 function calls (37941112 primitive calls) in 12.345 seconds
+
+   Ordered by: cumulative time
+   List reduced from 805 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000   12.345   12.345 D:\Python\fire simulation\Pre-FIRE\benchmark.py:27(run)
+        1    0.006    0.006   12.345   12.345 D:\Python\fire simulation\Pre-FIRE\main.py:23(main)
+        1    0.020    0.020   10.091   10.091 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:284(run)
+       85    0.047    0.001    9.298    0.109 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:176(update)
+       85    1.419    0.017    4.993    0.059 D:\Python\fire simulation\Pre-FIRE\environment\fire.py:49(update_temperature_with_materials)
+       85    1.023    0.012    2.386    0.028 D:\Python\fire simulation\Pre-FIRE\environment\fire.py:5(update_fire_with_materials)
+  2999140    1.254    0.000    2.237    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:193(get_material_properties)
+        1    0.000    0.000    2.032    2.032 D:\Python\fire simulation\Pre-FIRE\editor\editor.py:396(run_editor)
+        1    0.004    0.004    1.923    1.923 D:\Python\fire simulation\Pre-FIRE\editor\editor.py:307(run)
+       85    0.359    0.004    1.528    0.018 D:\Python\fire simulation\Pre-FIRE\environment\smoke.py:4(spread_smoke)
+      199    1.395    0.007    1.395    0.007 {method 'tick' of 'pygame.time.Clock' objects}
+   306000    0.540    0.000    1.099    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:216(update_temperature)
+   306000    0.471    0.000    1.014    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:293(update_smoke_level)
+  3458735    0.536    0.000    0.865    0.000 C:\Users\Ashish\AppData\Local\Programs\Python\Python312\Lib\enum.py:1267(__hash__)
+   224734    0.330    0.000    0.795    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:257(update_fire_state)
+       85    0.091    0.001    0.742    0.009 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:215(draw)
+      199    0.081    0.000    0.574    0.003 D:\Python\fire simulation\Pre-FIRE\core\grid.py:95(draw)
+  4182209    0.483    0.000    0.483    0.000 {method 'append' of 'list' objects}
+   656107    0.184    0.000    0.358    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:140(add_smoke)
+  4481296    0.340    0.000    0.340    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:53(temperature)
+  3458735    0.329    0.000    0.329    0.000 {built-in method builtins.hash}
+  3768952    0.294    0.000    0.294    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:173(is_fire)
+  3455128    0.281    0.000    0.281    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:21(_material_props)
+    28967    0.248    0.000    0.248    0.000 {method 'blit' of 'pygame.surface.Surface' objects}
+   306000    0.112    0.000    0.215    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:148(add_temperature)
+  3031970    0.202    0.000    0.202    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:57(smoke)
+   224734    0.118    0.000    0.199    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:179(is_flammable)
+  1302040    0.197    0.000    0.197    0.000 {built-in method builtins.min}
+   224054    0.112    0.000    0.190    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:183(is_hot_enough_to_ignite)
+  1335902    0.190    0.000    0.190    0.000 {built-in method builtins.max}
+
+
+
+--- top tottime ---
+         37941409 function calls (37941112 primitive calls) in 12.345 seconds
+
+   Ordered by: internal time
+   List reduced from 805 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+       85    1.419    0.017    4.993    0.059 D:\Python\fire simulation\Pre-FIRE\environment\fire.py:49(update_temperature_with_materials)
+      199    1.395    0.007    1.395    0.007 {method 'tick' of 'pygame.time.Clock' objects}
+  2999140    1.254    0.000    2.237    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:193(get_material_properties)
+       85    1.023    0.012    2.386    0.028 D:\Python\fire simulation\Pre-FIRE\environment\fire.py:5(update_fire_with_materials)
+   306000    0.540    0.000    1.099    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:216(update_temperature)
+  3458735    0.536    0.000    0.865    0.000 C:\Users\Ashish\AppData\Local\Programs\Python\Python312\Lib\enum.py:1267(__hash__)
+  4182209    0.483    0.000    0.483    0.000 {method 'append' of 'list' objects}
+   306000    0.471    0.000    1.014    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:293(update_smoke_level)
+       85    0.359    0.004    1.528    0.018 D:\Python\fire simulation\Pre-FIRE\environment\smoke.py:4(spread_smoke)
+  4481296    0.340    0.000    0.340    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:53(temperature)
+   224734    0.330    0.000    0.795    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:257(update_fire_state)
+  3458735    0.329    0.000    0.329    0.000 {built-in method builtins.hash}
+  3768952    0.294    0.000    0.294    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:173(is_fire)
+  3455128    0.281    0.000    0.281    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:21(_material_props)
+    28967    0.248    0.000    0.248    0.000 {method 'blit' of 'pygame.surface.Surface' objects}
+  3031970    0.202    0.000    0.202    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:57(smoke)
+  1302040    0.197    0.000    0.197    0.000 {built-in method builtins.min}
+  1335902    0.190    0.000    0.190    0.000 {built-in method builtins.max}
+   656107    0.184    0.000    0.358    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:140(add_smoke)
+      198    0.136    0.001    0.136    0.001 {built-in method pygame.display.update}
+    23880    0.135    0.000    0.135    0.000 {built-in method pygame.draw.line}
+       85    0.121    0.001    0.182    0.002 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:312(update_metrics)
+   224734    0.118    0.000    0.199    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:179(is_flammable)
+  1175969    0.114    0.000    0.114    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:164(is_barrier)
+   224054    0.112    0.000    0.190    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:183(is_hot_enough_to_ignite)
+   306000    0.112    0.000    0.215    0.000 D:\Python\fire simulation\Pre-FIRE\core\spot.py:148(add_temperature)
+       85    0.091    0.001    0.742    0.009 D:\Python\fire simulation\Pre-FIRE\core\simulation.py:215(draw)
+   104311    0.089    0.000    0.089    0.000 {built-in method pygame.draw.rect}
+        1    0.083    0.083    0.083    0.083 {built-in method pygame.base.quit}
+      199    0.081    0.000    0.574    0.003 D:\Python\fire simulation\Pre-FIRE\core\grid.py:95(draw)
+
+
+

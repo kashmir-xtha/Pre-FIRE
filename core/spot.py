@@ -16,6 +16,15 @@ END =  state_value.END.value
 AMBIENT_TEMP = fire_constants.AMBIENT_TEMP.value
 
 class Spot:
+    _material_props_cache = None
+
+    @classmethod
+    def _material_props(cls):
+        if cls._material_props_cache is None:
+            from environment.materials import MATERIALS
+            cls._material_props_cache = MATERIALS
+        return cls._material_props_cache
+
     def __init__(self, row, col, width):
         self.row = row
         self.col = col
@@ -97,10 +106,10 @@ class Spot:
     
     def set_material(self, material):
         """Set material with proper initialization"""
-        from environment.materials import MATERIALS
         self._material = material
-        self._fuel = MATERIALS[material]["fuel"]
-        self._state = MATERIALS[material]["default_state"]
+        props = self._material_props()
+        self._fuel = props[material]["fuel"]
+        self._state = props[material]["default_state"]
         # Only update color if not special state
         if not self.is_start() and not self.is_end():
             self._update_color_from_material()
@@ -169,25 +178,21 @@ class Spot:
     
     def is_flammable(self):
         """Check if this spot can catch fire"""
-        from environment.materials import MATERIALS
-        return MATERIALS[self._material]["fuel"] > 0
+        return self._material_props()[self._material]["fuel"] > 0
     
     def is_hot_enough_to_ignite(self):
         """Check if temperature is above ignition point"""
-        from environment.materials import MATERIALS
-        ignition_temp = MATERIALS[self._material]["ignition_temp"]
+        ignition_temp = self._material_props()[self._material]["ignition_temp"]
         return self._temperature >= ignition_temp
     
     # --- Helper methods ---
     def _update_color_from_material(self):
         """Update color based on current material"""
-        from environment.materials import MATERIALS
-        self._color = MATERIALS[self._material]["color"]
+        self._color = self._material_props()[self._material]["color"]
     
     def get_material_properties(self):
         """Get material properties dictionary"""
-        from environment.materials import MATERIALS
-        return MATERIALS[self._material]
+        return self._material_props()[self._material]
     
     def to_dict(self):
         """Convert spot to dictionary for debugging/serialization"""

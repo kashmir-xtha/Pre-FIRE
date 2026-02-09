@@ -34,7 +34,7 @@ class state_value(Enum):
     END = 9
 
 class smoke_constants(Enum):
-    SMOKE_DIFFUSION = 0.16    # how much smoke spreads
+    SMOKE_DIFFUSION = 0.06    # how much smoke spreads
     SMOKE_DECAY = 0.01       # smoke loss per step
     MAX_SMOKE = 1.0
     SMOKE_PRODUCTION = 0.25  # units per second
@@ -144,17 +144,21 @@ def loadImage(image_directory, csv_directory, i):
     return BG_IMAGE, csv_filename
 
 # ------------------ SAVE / LOAD ------------------
-def spot_to_value(spot):
-    if spot.is_barrier(): return state_value.WALL.value
-    if spot.is_start(): return state_value.START.value
-    if spot.is_end(): return state_value.END.value
-    return state_value.EMPTY.value
+def spot_to_cell_value(spot):
+    return f"{spot.state}|{spot.material.value}"
+
+def parse_cell_value(value):
+    value = value.strip()
+    if "|" in value:
+        state_str, material_str = value.split("|", 1)
+        return int(state_str), int(material_str)
+    return int(value), None
 
 def save_layout(grid, filename="layout_csv\\layout_1.csv"):
     with open(filename, "w", newline="") as f:
         writer = csv.writer(f)
         for row in grid:
-            writer.writerow([spot_to_value(s) for s in row])
+            writer.writerow([spot_to_cell_value(s) for s in row])
 
 def load_layout(grid, filename="layout_csv\\layout_1.csv"):
     start = None
@@ -166,14 +170,27 @@ def load_layout(grid, filename="layout_csv\\layout_1.csv"):
                 for c, val in enumerate(row):
                     spot = grid[r][c]
                     spot.reset()
-                    if int(val) == state_value.WALL.value:
+                    try:
+                        cell_state, cell_material = parse_cell_value(val)
+                    except ValueError:
+                        continue
+
+                    if cell_material is not None:
+                        try:
+                            spot.set_material(material_id(cell_material))
+                        except ValueError:
+                            pass
+
+                    if cell_state == state_value.WALL.value:
                         spot.make_barrier()
-                    elif int(val) == state_value.START.value:
+                    elif cell_state == state_value.START.value:
                         spot.make_start()
                         start = spot
-                    elif int(val) == state_value.END.value:
+                    elif cell_state == state_value.END.value:
                         spot.make_end()
                         end.add(spot)
+                    elif cell_state == state_value.FIRE.value:
+                        spot.set_on_fire()
     except FileNotFoundError:
         print(f"Layout file {filename} not found. Starting with empty grid.")
     # fname, bname = os.path.split(filename)

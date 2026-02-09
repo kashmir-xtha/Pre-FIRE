@@ -40,7 +40,14 @@ class Simulation:
         self.restart_timer = False
 
         self.font = pygame.font.Font(None, 24)
-        
+        self.history = {
+            "time": [],
+            "fire_cells": [],
+            "avg_temp": [],
+            "avg_smoke": [],
+            "agent_health": [],
+            "path_length": []
+        }
         self.metrics = {
             'elapsed_time': 0,
             'agent_health': self.agent.health if self.agent else 0,
@@ -283,6 +290,8 @@ class Simulation:
                 return SIM_EDITOR
 
             if action == SIM_QUIT:
+                # plot_fire_environment(self.history)
+                # plot_path_length(self.history)
                 self.running = False
                 return SIM_QUIT
 
@@ -325,6 +334,13 @@ class Simulation:
         self.metrics['avg_smoke'] = total_smoke/cells
         self.metrics['fire_cells'] = fire_count
         self.metrics['avg_temp'] = total_temp / cells
+
+        self.history["time"].append(self.metrics["elapsed_time"])
+        self.history["fire_cells"].append(self.metrics["fire_cells"])
+        self.history["avg_temp"].append(self.metrics["avg_temp"])
+        self.history["avg_smoke"].append(self.metrics["avg_smoke"] * 500)
+        self.history["agent_health"].append(self.metrics["agent_health"])
+        self.history["path_length"].append(self.metrics["path_length"])
     
     def draw_sim_panel(self):
         # Draw panel background
@@ -418,3 +434,37 @@ def draw_temperature(grid, win, rows):
                 color = (255, int(255 * (1 - intensity)), 0, alpha)
                 surface.fill(color)
                 win.blit(surface, (c * cell, r * cell))
+
+def plot_fire_environment(history):
+    import matplotlib.pyplot as plt
+    time = history["time"]
+
+    plt.figure(figsize=(10, 6))
+
+    plt.plot(time, history["fire_cells"], label="Fire Cells")
+    plt.plot(time, history["avg_temp"], label="Average Temperature (°C)")
+    plt.plot(time, history["avg_smoke"], label="Average Smoke Density")
+
+    plt.xlabel("Time (seconds)")
+    plt.ylabel("Magnitude")
+    plt.title("Fire, Temperature, and Smoke Evolution Over Time")
+    plt.legend()
+    plt.grid(True)
+
+    plt.tight_layout()
+    plt.show()
+def plot_path_length(history):
+    import matplotlib.pyplot as plt
+    time = history["time"]
+    path_length = history["path_length"]
+
+    plt.figure(figsize=(10, 5))
+
+    plt.plot(time, path_length)
+    plt.xlabel("Time (seconds)")
+    plt.ylabel("Path Length (cells)")
+    plt.title("Path Length Variation Due to Dynamic Replanning")
+    plt.grid(True)
+
+    plt.tight_layout()
+    plt.show()
