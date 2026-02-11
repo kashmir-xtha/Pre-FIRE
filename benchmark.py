@@ -43,19 +43,23 @@ stats = pstats.Stats(profiler)
 stats.sort_stats("calls")
 
 call_counts = defaultdict(int)
+cumulative_times = defaultdict(float)
 
 for func, data in stats.stats.items():
+    #cc, nc, tt, ct, callers = data #format from cprofile
     filename, lineno, funcname = func
-    total_calls = data[1]   
+    total_calls = data[1]   #nc
+    cumulative_time = data[3] #ct
 
     module = os.path.splitext(os.path.basename(filename))[0]
     key = f"{module}.{funcname}"
 
     call_counts[key] += total_calls
+    cumulative_times[key] += cumulative_time
 
-for name, count in sorted(call_counts.items(), key=lambda x: x[1], reverse=True):
-    if count > THRESHOLD:
-        print(f"{name:40s} {count}")
+for name in sorted(call_counts, key=lambda x: call_counts[x], reverse=True):
+    if call_counts[name] > THRESHOLD:
+        print(f"{name:40s} {call_counts[name]:10d}  {cumulative_times[name]:10.5f}")
 
 print("No of function calls:", sum(call_counts.values()), f" in {end_time-start_time:.5f}")
 
@@ -78,10 +82,22 @@ def _format_call_counts(counts):
     ))
     return "\n".join(lines)
 
+def _format_cumulative_times(times):
+    lines = ["--- top cumulative time ---"]
+    for name, ct in sorted(times.items(), key=lambda x: x[1], reverse=True):
+        lines.append(f"{name:40s} {ct:.5f}")
+    return "\n".join(lines)
+
 def _write_results():
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     header = f"\n=== Benchmark Run @ {timestamp} (limit={BENCH_DURATION_SECONDS}s) ===\n"
-    data = _format_call_counts(call_counts) + "\n\n" + _format_stats(profiler)
+    data = (
+    _format_call_counts(call_counts)
+    + "\t"
+    + _format_cumulative_times(cumulative_times)
+    + "\t"
+    + _format_stats(profiler)
+    )
     with open(RESULTS_FILE, "a", encoding="utf-8") as f:
         f.write(header)
         f.write(data)

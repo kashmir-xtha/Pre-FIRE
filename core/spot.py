@@ -213,55 +213,108 @@ class Spot:
             pygame.draw.rect(win, self._color,
                             (self.x, self.y, self.width, self.width))
 
+    # def update_temperature_from_flux(self, heat_flux, tempConstant, dt):
+    #     """
+    #     Apply net heat flux (from grid diffusion) and local effects
+    #     such as combustion and temperature clamping.
+
+    #     Parameters
+    #     ----------
+    #     heat_flux : float
+    #         Net heat contribution from neighbors and cooling (already material-weighted)
+    #     tempConstant : TempConstants
+    #         Global temperature constants
+    #     dt : float
+    #         Time step (seconds)
+    #     """
+
+    #     # Special cells do not accumulate temperature normally
+    #     if self.is_barrier() or self.is_start() or self.is_end():
+    #         # Slowly relax to ambient
+    #         ambient = tempConstant.AMBIENT_TEMP
+    #         self._temperature += (ambient - self._temperature) * 0.02 * dt
+    #         return
+
+    #     # Apply diffusion + cooling contribution
+    #     self._temperature += heat_flux * dt
+
+    #     # Combustion heating (local source term)
+    #     if self.is_fire() and self._fuel > 0:
+    #         props = self.get_material_properties()
+
+    #         heat_release = props.get("heat_release_rate", 150.0)  # °C/s equivalent
+    #         fuel_burn_rate = props.get("fuel_burn_rate", 0.01)    # kg/s
+
+    #         # Heat added by fire
+    #         self._temperature += heat_release * dt
+
+    #         # Fuel consumption
+    #         self._fuel -= fuel_burn_rate * dt
+    #         self._fuel = max(self._fuel, 0.0)
+
+    #         # Fire extinguishes if fuel depleted
+    #         if self._fuel <= 0:
+    #             self.extinguish_fire()
+
+    #     # Prevent unphysical values
+    #     self._temperature = max(
+    #         tempConstant.AMBIENT_TEMP,
+    #         min(self._temperature, 5000)
+    #     )
+
     def update_temperature_from_flux(self, heat_flux, tempConstant, dt):
         """
         Apply net heat flux (from grid diffusion) and local effects
         such as combustion and temperature clamping.
 
-        Parameters
-        ----------
-        heat_flux : float
-            Net heat contribution from neighbors and cooling (already material-weighted)
-        tempConstant : TempConstants
-            Global temperature constants
-        dt : float
-            Time step (seconds)
+        Optimizations:
+        - Cache boolean flags to avoid repeated method calls
+        - Cache material properties to avoid repeated dict creation
+        - Inline small calculations
+        - Reduce repeated multiplications
         """
 
-        # Special cells do not accumulate temperature normally
-        if self.is_barrier() or self.is_start() or self.is_end():
-            # Slowly relax to ambient
+        # Precompute dt factor for special cells
+        dt_factor_special = 0.02 * dt
+
+        # Cached boolean flag for special cells
+        if getattr(self, 'is_special', None) is None:
+            self.is_special = self.is_barrier or self.is_start or self.is_end
+
+        if self.is_special:
             ambient = tempConstant.AMBIENT_TEMP
-            self._temperature += (ambient - self._temperature) * 0.02 * dt
+            self._temperature += (ambient - self._temperature) * dt_factor_special
             return
 
         # Apply diffusion + cooling contribution
         self._temperature += heat_flux * dt
 
-        # Combustion heating (local source term)
-        if self.is_fire() and self._fuel > 0:
-            props = self.get_material_properties()
+        # Cached fire flag
+        if getattr(self, 'is_fire_flag', None) is None:
+            self.is_fire_flag = getattr(self, '_is_fire', False)
 
+        if self.is_fire_flag and self._fuel > 0:
+
+            # Cache material properties per cell
+            if getattr(self, 'material_props', None) is None:
+                self.material_props = self.get_material_properties()
+
+            props = self.material_props
             heat_release = props.get("heat_release_rate", 150.0)  # °C/s equivalent
             fuel_burn_rate = props.get("fuel_burn_rate", 0.01)    # kg/s
 
-            # Heat added by fire
+            # Apply combustion heat
             self._temperature += heat_release * dt
 
             # Fuel consumption
             self._fuel -= fuel_burn_rate * dt
-            self._fuel = max(self._fuel, 0.0)
-
-            # Fire extinguishes if fuel depleted
             if self._fuel <= 0:
-                self.extinguish_fire()
+                self._fuel = 0.0
+                self.extinguish_fire()  # only call if fuel depleted
 
-        # Prevent unphysical values
-        self._temperature = max(
-            tempConstant.AMBIENT_TEMP,
-            min(self._temperature, 5000)
-        )
-
+        # Clamp temperature to physical bounds
+        ambient = tempConstant.AMBIENT_TEMP
+        self._temperature = max(ambient, min(self._temperature, 5000))
 
     def update_temperature(self, neighbor_data, tempConstant, dt):
         """

@@ -181,8 +181,8 @@ class Simulation:
                 else:
                     spot.set_material(disc.get('material'))
 
-            # Sync numpy arrays so smoke/temp don't carry over into the next update
-            self.grid.update_np_arrays()
+        # Sync numpy arrays so smoke/temp don't carry over into the next update
+        self.grid.update_np_arrays()
 
         if self.agent:
             self.agent.reset()
