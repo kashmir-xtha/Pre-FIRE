@@ -202,7 +202,7 @@ def heuristic(a, b):
     import math
     dx = abs(a[0] - b[0])
     dy = abs(a[1] - b[1])
-    return max(dx, dy) + (math.sqrt(2) - 0.1 - 1) * min(dx, dy)
+    return max(dx, dy) + (1.4142 - 0.1 - 1) * min(dx, dy)
 
 # PATH RECONSTRUCTION
 def reconstruct_path(came_from, current):

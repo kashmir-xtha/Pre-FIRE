@@ -1,5 +1,6 @@
 import pygame
 from utils.utilities import Color, get_neighbors
+import numpy as np
 
 # Global constant for grid color - accessed once at import time
 GRID_COLOR = Color.GREY.value
@@ -18,6 +19,24 @@ class Grid:
         self.fire_sources = set()
         self.start = None
         self.exits = set()
+
+        # Numpy Arrays
+        self.temp_np = np.zeros((rows, rows), dtype=np.float32)
+        self.smoke_np = np.zeros((rows, rows), dtype=np.float32)
+        self.fuel_np = np.zeros((rows, rows), dtype=np.float32)
+        self.fire_np = np.zeros((rows, rows), dtype=np.bool_)
+
+        # Material caches (rebuild on edit/reset)
+        self.material_cache_dirty = True
+        self.heat_transfer_np = np.zeros((rows, rows), dtype=np.float32)
+        self.cooling_rate_np = np.zeros((rows, rows), dtype=np.float32)
+        self.heat_capacity_np = np.ones((rows, rows), dtype=np.float32)
+        self.ignition_temp_np = np.full((rows, rows), float("inf"), dtype=np.float32)
+        self.is_barrier_np = np.zeros((rows, rows), dtype=np.bool_)
+        self.is_start_np = np.zeros((rows, rows), dtype=np.bool_)
+        self.is_end_np = np.zeros((rows, rows), dtype=np.bool_)
+
+        self.ensure_material_cache()
 
     def add_exit(self, spot):
         self.exits.add(spot)
@@ -62,6 +81,15 @@ class Grid:
             map_data.append(row_map)
         return map_data
 
+    def update_np_arrays(self):
+        for r in range(self.rows):
+            for c in range(self.rows):
+                spot = self.grid[r][c]
+                self.temp_np[r, c] = spot.temperature
+                self.smoke_np[r, c] = spot.smoke
+                self.fuel_np[r, c] = spot.fuel
+                self.fire_np[r, c] = spot.is_fire()
+                
     def get_spot(self, r, c):
         if self.in_bounds(r, c):
             return self.grid[r][c]
@@ -74,6 +102,34 @@ class Grid:
         spot = self.get_spot(r, c)
         if spot:
             spot.set_material(material_id)
+            self.mark_material_cache_dirty()
+
+    def mark_material_cache_dirty(self):
+        self.material_cache_dirty = True
+
+    def ensure_material_cache(self):
+        if self.material_cache_dirty:
+            self._rebuild_material_cache()
+
+    def _rebuild_material_cache(self):
+        rows = self.rows
+        grid = self.grid
+
+        for r in range(rows):
+            row_spots = grid[r]
+            for c in range(rows):
+                spot = row_spots[c]
+                props = spot.get_material_properties()
+
+                self.heat_transfer_np[r, c] = props.get("heat_transfer", 0.5)
+                self.cooling_rate_np[r, c] = props.get("cooling_rate", 0.01)
+                self.heat_capacity_np[r, c] = props.get("heat_capacity", 1.0)
+                self.ignition_temp_np[r, c] = props.get("ignition_temp", float("inf"))
+                self.is_barrier_np[r, c] = spot.is_barrier()
+                self.is_start_np[r, c] = spot.is_start()
+                self.is_end_np[r, c] = spot.is_end()
+
+        self.material_cache_dirty = False
     
     def clear_simulation_visuals(self):
         for row in self.grid:

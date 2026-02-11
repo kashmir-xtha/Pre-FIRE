@@ -213,6 +213,56 @@ class Spot:
             pygame.draw.rect(win, self._color,
                             (self.x, self.y, self.width, self.width))
 
+    def update_temperature_from_flux(self, heat_flux, tempConstant, dt):
+        """
+        Apply net heat flux (from grid diffusion) and local effects
+        such as combustion and temperature clamping.
+
+        Parameters
+        ----------
+        heat_flux : float
+            Net heat contribution from neighbors and cooling (already material-weighted)
+        tempConstant : TempConstants
+            Global temperature constants
+        dt : float
+            Time step (seconds)
+        """
+
+        # Special cells do not accumulate temperature normally
+        if self.is_barrier() or self.is_start() or self.is_end():
+            # Slowly relax to ambient
+            ambient = tempConstant.AMBIENT_TEMP
+            self._temperature += (ambient - self._temperature) * 0.02 * dt
+            return
+
+        # Apply diffusion + cooling contribution
+        self._temperature += heat_flux * dt
+
+        # Combustion heating (local source term)
+        if self.is_fire() and self._fuel > 0:
+            props = self.get_material_properties()
+
+            heat_release = props.get("heat_release_rate", 150.0)  # °C/s equivalent
+            fuel_burn_rate = props.get("fuel_burn_rate", 0.01)    # kg/s
+
+            # Heat added by fire
+            self._temperature += heat_release * dt
+
+            # Fuel consumption
+            self._fuel -= fuel_burn_rate * dt
+            self._fuel = max(self._fuel, 0.0)
+
+            # Fire extinguishes if fuel depleted
+            if self._fuel <= 0:
+                self.extinguish_fire()
+
+        # Prevent unphysical values
+        self._temperature = max(
+            tempConstant.AMBIENT_TEMP,
+            min(self._temperature, 5000)
+        )
+
+
     def update_temperature(self, neighbor_data, tempConstant, dt):
         """
         Update temperature based on neighbor data

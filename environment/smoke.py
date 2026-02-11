@@ -1,86 +1,173 @@
 import pygame
+import numpy as np
 from utils.utilities import smoke_constants
 
 def spread_smoke(grid_data, dt=1.0):
     """
-    Optimized smoke spread. 
-    Note: 'grid_data' here is the raw 2D list of spots (grid.grid), 
-    but we need the 'grid object' to access the neighbor_map.
-    
-    Since the original signature passed 'grid.grid', we will detect if 
-    we are getting the raw list or the object.
-    
-    BEST PRACTICE: Update your simulation.py to pass the 'grid object' to spread_smoke
-    instead of 'grid.grid'. However, to be safe, we will implement a fallback 
-    or rely on the fact that we can't get neighbor_map from a list.
-    
-    CRITICAL: You must update `simulation.py` line 125:
-    OLD: spread_smoke(self.grid.grid, update_dt)
-    NEW: spread_smoke(self.grid, update_dt)
+    Optimized smoke spread using numpy diffusion on the Grid's smoke array.
+    Barriers block diffusion; fire cells only produce smoke.
     """
     
     # Handle both Grid object and list inputs for compatibility
     if hasattr(grid_data, 'neighbor_map'):
-        # It's the Grid object (Optimized path)
-        neighbor_map = grid_data.neighbor_map
         grid = grid_data.grid
         rows = grid_data.rows
-        cols = grid_data.rows # assuming square
+        cols = grid_data.rows
+        smoke = grid_data.smoke_np
+
+        temp_constants = smoke_constants
+        diffusion = temp_constants.SMOKE_DIFFUSION.value
+        decay = temp_constants.SMOKE_DECAY.value
+        max_smoke = temp_constants.MAX_SMOKE.value
+        production = temp_constants.SMOKE_PRODUCTION.value
+
+        is_barrier = np.zeros((rows, cols), dtype=np.bool_)
+        is_fire = np.zeros((rows, cols), dtype=np.bool_)
+        for r in range(rows):
+            row_spots = grid[r]
+            for c in range(cols):
+                spot = row_spots[c]
+                is_barrier[r, c] = spot.is_barrier()
+                is_fire[r, c] = spot.is_fire()
+
+        coeff = np.full((rows, cols), diffusion, dtype=np.float32)
+        coeff[is_barrier] = 0.0
+
+        smoke_pad = np.pad(smoke, 1, mode="edge")
+        coeff_pad = np.pad(coeff, 1, mode="edge")
+
+        center = smoke
+
+        n = smoke_pad[0:rows, 1:cols + 1]
+        s = smoke_pad[2:rows + 2, 1:cols + 1]
+        w = smoke_pad[1:rows + 1, 0:cols]
+        e = smoke_pad[1:rows + 1, 2:cols + 2]
+        nw = smoke_pad[0:rows, 0:cols]
+        ne = smoke_pad[0:rows, 2:cols + 2]
+        sw = smoke_pad[2:rows + 2, 0:cols]
+        se = smoke_pad[2:rows + 2, 2:cols + 2]
+
+        n_c = coeff_pad[0:rows, 1:cols + 1]
+        s_c = coeff_pad[2:rows + 2, 1:cols + 1]
+        w_c = coeff_pad[1:rows + 1, 0:cols]
+        e_c = coeff_pad[1:rows + 1, 2:cols + 2]
+        nw_c = coeff_pad[0:rows, 0:cols]
+        ne_c = coeff_pad[0:rows, 2:cols + 2]
+        sw_c = coeff_pad[2:rows + 2, 0:cols]
+        se_c = coeff_pad[2:rows + 2, 2:cols + 2]
+
+        coeff_n = np.minimum(coeff, n_c)
+        coeff_s = np.minimum(coeff, s_c)
+        coeff_w = np.minimum(coeff, w_c)
+        coeff_e = np.minimum(coeff, e_c)
+        coeff_nw = np.minimum(coeff, nw_c)
+        coeff_ne = np.minimum(coeff, ne_c)
+        coeff_sw = np.minimum(coeff, sw_c)
+        coeff_se = np.minimum(coeff, se_c)
+        
+        def positive_diff(neighbor, current, edge_coeff):
+            return np.maximum(neighbor - current, 0.0) * edge_coeff
+
+        diffusion_sum = (
+            positive_diff(n, center, coeff_n) +
+            positive_diff(s, center, coeff_s) +
+            positive_diff(w, center, coeff_w) +
+            positive_diff(e, center, coeff_e) +
+            positive_diff(nw, center, coeff_nw) +
+            positive_diff(ne, center, coeff_ne) +
+            positive_diff(sw, center, coeff_sw) +
+            positive_diff(se, center, coeff_se)
+        )
+
+        new_smoke = center + diffusion_sum
+
+        decay_factor = 1.0 - (decay * dt)
+        new_smoke *= decay_factor
+
+        new_smoke[is_fire] = np.minimum(max_smoke, center[is_fire] + (3 * production * dt))
+        new_smoke[is_barrier] = 0.0
+        new_smoke = np.clip(new_smoke, 0.0, max_smoke)
+
+        grid_data.smoke_np = new_smoke
+
+        for r in range(rows):
+            row_spots = grid[r]
+            for c in range(cols):
+                row_spots[c].set_smoke(float(new_smoke[r, c]))
     else:
-        # It's a list (Legacy slow path - fallback)
+        # Legacy slow path - fallback
         from utils.utilities import get_neighbors
         grid = grid_data
         rows = len(grid)
         cols = len(grid[0])
-        neighbor_map = None
 
-    for r in range(rows):
-        row_spots = grid[r]
-        if neighbor_map:
-            row_neighbors = neighbor_map[r]
-            
-        for c in range(cols):
-            spot = row_spots[c]
-            
-            if neighbor_map:
-                # Optimized: Use precomputed objects
-                neighbor_smoke = [n.smoke for n in row_neighbors[c]]
-            else:
-                # Slow fallback
+        for r in range(rows):
+            row_spots = grid[r]
+            for c in range(cols):
+                spot = row_spots[c]
                 neighbor_smoke = [grid[nr][nc].smoke for nr, nc in get_neighbors(r, c, rows, cols)]
+                spot.update_smoke_level(neighbor_smoke, dt)
             
-            spot.update_smoke_level(neighbor_smoke, dt)
-            
-def draw_smoke(grid, surface):
+def draw_smoke(grid_data, surface):
     """
-    Draw smoke. Optimized to minimize surface creation.
+    Draw smoke using a vectorized overlay when a Grid object is provided.
+    Falls back to per-cell rendering for legacy list input.
     """
-    if not grid: return
-    
+    if not grid_data:
+        return
+
+    if hasattr(grid_data, "smoke_np"):
+        rows = grid_data.rows
+        cols = grid_data.rows
+        cell_width = grid_data.grid[0][0].width
+        smoke = grid_data.smoke_np
+
+        mask = smoke > 0.05
+        if not np.any(mask):
+            return
+
+        gray = np.clip(150 - (smoke * 100.0), 40, 150)
+        alpha = np.clip(smoke * 280.0, 0, 220)
+
+        gray = np.where(mask, gray, 0).astype(np.uint8)
+        alpha = np.where(mask, alpha, 0).astype(np.uint8)
+
+        smoke_surface = pygame.Surface((cols, rows), pygame.SRCALPHA)
+        rgb = np.stack([gray.T, gray.T, gray.T], axis=2)
+        alpha_t = alpha.T
+
+        pixels = pygame.surfarray.pixels3d(smoke_surface)
+        pixels_alpha = pygame.surfarray.pixels_alpha(smoke_surface)
+        pixels[:] = rgb
+        pixels_alpha[:] = alpha_t
+        del pixels
+        del pixels_alpha
+
+        scaled = pygame.transform.scale(
+            smoke_surface,
+            (cols * cell_width, rows * cell_width)
+        )
+        surface.blit(scaled, (0, 0))
+        return
+
+    grid = grid_data
     rows = len(grid)
     cols = len(grid[0])
     cell_width = grid[0][0].width
-    
-    # Pre-allocate one reusable surface
+
     smoke_surface = pygame.Surface((cell_width, cell_width), pygame.SRCALPHA)
-    
-    # Optimization: Cache method lookups
     fill_rect = smoke_surface.fill
     blit = surface.blit
-    
+
     for r in range(rows):
-        # Calculate Y once per row
         y_pos = r * cell_width
         row = grid[r]
-        
+
         for c in range(cols):
             s = row[c].smoke
-            if s > 0.05: # threshold slightly raised to skip invisible updates
-                # Calculate color
+            if s > 0.05:
                 alpha = min(220, int(s * 280))
                 gray = max(40, 150 - int(s * 100))
-                
-                # Fill and blit
                 fill_rect((gray, gray, gray, alpha))
                 blit(smoke_surface, (c * cell_width, y_pos))
 

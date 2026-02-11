@@ -1,6 +1,7 @@
 import pygame
 import pygame_gui
-from environment.fire import randomfirespot, update_fire_with_materials, update_temperature_with_materials
+import numpy as np
+from environment.fire import randomfirespot, update_fire_with_materials, update_temperature_with_materials, do_temperature_update
 from environment.smoke import spread_smoke, draw_smoke
 from utils.utilities import Color, Dimensions, state_value, SimulationState, rTemp
 from ui.slider import create_control_panel
@@ -91,6 +92,16 @@ class Simulation:
             self.create_sliders()
             return True
         return False
+    
+    def _handle_grid_click(self, event):
+        """Handle mouse clicks in the grid area"""
+        row, col = self.grid.get_clicked_pos(event.pos)
+        
+        if row is not None and col is not None and self.grid.in_bounds(row, col):
+            spot = self.grid.get_spot(row, col)
+            
+            if event.button == 1:  # Left click - place
+                print(spot.to_dict())
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -98,6 +109,9 @@ class Simulation:
             if hasattr(self, "slider_group"):
                 self.slider_group.handle_event(event)
             
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                self._handle_grid_click(event)
+                
             if event.type == pygame.QUIT:
                 return SIM_QUIT
 
@@ -167,6 +181,9 @@ class Simulation:
                 else:
                     spot.set_material(disc.get('material'))
 
+            # Sync numpy arrays so smoke/temp don't carry over into the next update
+            self.grid.update_np_arrays()
+
         if self.agent:
             self.agent.reset()
 
@@ -184,9 +201,10 @@ class Simulation:
             # Pass scaled dt for physics consistency
             #update_dt = scaled_dt
 		
-            update_temperature_with_materials(self.grid, update_dt)
+            #update_temperature_with_materials(self.grid, update_dt)
+            do_temperature_update(self.grid, update_dt)
             update_fire_with_materials(self.grid, update_dt)
-
+            
             # Generate fire once
             if not self.fire_set:
                 if self.grid.fire_sources:
@@ -195,14 +213,12 @@ class Simulation:
                     self.fire_set = True
                 else:
                     randomfirespot(self.grid, self.rows)
-                    
-            for r in range(self.rows):
-                for c in range(self.rows):
-                    if self.grid.grid[r][c].is_fire() and self.grid.grid[r][c].fuel <= 0:
-                        self.grid.grid[r][c].extinguish_fire()
                         
             # Smoke spread
             spread_smoke(self.grid, update_dt)
+            
+            # Update numpy arrays for rendering after all state changes
+            self.grid.update_np_arrays()  
 
             # Update agent with delta time
             if self.agent:
@@ -262,7 +278,8 @@ class Simulation:
         self.grid.draw(grid_surface, bg_image=self.bg_image)
         
         # Smoke FIRST (background effect)
-        draw_smoke(self.grid.grid, grid_surface)
+        draw_smoke(self.grid, grid_surface)
+        
         # Agent LAST (top layer)
         if self.agent:
             self.agent.draw(grid_surface)
@@ -420,20 +437,45 @@ class Simulation:
 
 def draw_temperature(grid, win, rows):
     """Draw temperature as color overlay"""
+    if not hasattr(grid, "temp_np"):
+        return
+
     cell = grid.cell_size
-    
-    for r in range(rows):
-        for c in range(rows):
-            temp = grid.temperature[r][c]
-            if temp > 30:  # Only draw above ambient
-                # Color gradient from yellow to red
-                intensity = min(1.0, (temp - 30) / 300)  # Scale to 0-1
-                alpha = int(100 * intensity)
-                
-                surface = pygame.Surface((cell, cell), pygame.SRCALPHA)
-                color = (255, int(255 * (1 - intensity)), 0, alpha)
-                surface.fill(color)
-                win.blit(surface, (c * cell, r * cell))
+    temp = grid.temp_np
+
+    intensity = np.clip((temp - 30.0) / 300.0, 0.0, 1.0)
+    alpha = (100.0 * intensity).astype(np.uint8)
+    mask = intensity > 0
+
+    if not np.any(mask):
+        return
+
+    red = np.full_like(alpha, 255, dtype=np.uint8)
+    green = (255.0 * (1.0 - intensity)).astype(np.uint8)
+    blue = np.zeros_like(alpha, dtype=np.uint8)
+
+    red = np.where(mask, red, 0)
+    green = np.where(mask, green, 0)
+    blue = np.where(mask, blue, 0)
+    alpha = np.where(mask, alpha, 0)
+
+    rows, cols = temp.shape
+    overlay = pygame.Surface((cols, rows), pygame.SRCALPHA)
+    rgb = np.stack([red.T, green.T, blue.T], axis=2)
+    alpha_t = alpha.T
+
+    pixels = pygame.surfarray.pixels3d(overlay)
+    pixels_alpha = pygame.surfarray.pixels_alpha(overlay)
+    pixels[:] = rgb
+    pixels_alpha[:] = alpha_t
+    del pixels
+    del pixels_alpha
+
+    scaled = pygame.transform.scale(
+        overlay,
+        (cols * cell, rows * cell)
+    )
+    win.blit(scaled, (0, 0))
 
 def plot_fire_environment(history):
     import matplotlib.pyplot as plt
