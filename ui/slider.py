@@ -1,9 +1,21 @@
+from typing import Callable
+
 import pygame
 import pygame_gui
 
 class Slider:
-    def __init__(self, label, getter, setter, manager,
-                 x, y, width=180, min_val=0.0, max_val=1.0):
+    def __init__(
+        self,
+        label: str,
+        getter: Callable[[], float],
+        setter: Callable[[float], None],
+        manager: pygame_gui.UIManager,
+        x: int,
+        y: int,
+        width: int = 180,
+        min_val: float = 0.0,
+        max_val: float = 1.0,
+    ) -> None:
 
         self.manager = manager
         self.label = label
@@ -17,7 +29,7 @@ class Slider:
 
         self._build()
 
-    def _build(self):
+    def _build(self) -> None:
         self.label_element = pygame_gui.elements.UILabel(
             pygame.Rect(self.x, self.y, self.width, 25),
             text=self.label,
@@ -37,7 +49,14 @@ class Slider:
             manager=self.manager
         )
 
-    def rebind(self, label, getter, setter, min_val, max_val):
+    def rebind(
+        self,
+        label: str,
+        getter: Callable[[], float],
+        setter: Callable[[float], None],
+        min_val: float,
+        max_val: float,
+    ) -> None:
         self.destroy()
 
         self.label = label
@@ -48,7 +67,7 @@ class Slider:
 
         self._build()
 
-    def update(self, event):
+    def update(self, event: pygame.event.Event) -> bool:
         if event.type == pygame_gui.UI_HORIZONTAL_SLIDER_MOVED:
             if event.ui_element == self.slider:
                 self._setter(event.value)
@@ -56,13 +75,13 @@ class Slider:
                 return True
         return False
 
-    def destroy(self):
+    def destroy(self) -> None:
         self.label_element.kill()
         self.slider.kill()
         self.value_label.kill()
 
 class ControlPanel:
-    def __init__(self, manager, x, y, temp_obj):
+    def __init__(self, manager: pygame_gui.UIManager, x: int, y: int, temp_obj) -> None:
         self.manager = manager
         self.x = x
         self.y = y
@@ -84,7 +103,7 @@ class ControlPanel:
         self.slider = None
         self._create_slider(self.param_names[0])
 
-    def _create_slider(self, param_name):
+    def _create_slider(self, param_name: str) -> None:
         meta = self.temp.PARAMS[param_name]
 
         getter = lambda p=param_name: getattr(self.temp, p)
@@ -110,7 +129,7 @@ class ControlPanel:
                 max_val=meta["max"]
             )
 
-    def handle_event(self, event):
+    def handle_event(self, event: pygame.event.Event) -> None:
         if self.slider:
             self.slider.update(event)
 
@@ -119,10 +138,15 @@ class ControlPanel:
                 param_name = self.label_to_param[event.text]
                 self._create_slider(param_name)
 
-    def clear(self):
+    def clear(self) -> None:
         self.dropdown.kill()
         if self.slider:
             self.slider.destroy()
 
-def create_control_panel(manager, x, y, temp_obj):
+def create_control_panel(
+    manager: pygame_gui.UIManager,
+    x: int,
+    y: int,
+    temp_obj,
+) -> ControlPanel:
     return ControlPanel(manager, x, y, temp_obj)

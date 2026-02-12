@@ -1,11 +1,20 @@
+import logging
+from typing import Dict, List, Optional, TYPE_CHECKING
+
+import numpy as np
 import pygame
 import pygame_gui
-import numpy as np
 from environment.fire import randomfirespot, update_fire_with_materials, update_temperature_with_materials, do_temperature_update
 from environment.smoke import spread_smoke, draw_smoke
 from utils.utilities import Color, Dimensions, state_value, SimulationState, rTemp
 from ui.slider import create_control_panel
 from utils.time_manager import TimeManager
+
+if TYPE_CHECKING:
+    from core.agent import Agent
+    from core.grid import Grid
+
+logger = logging.getLogger(__name__)
 
 # Global constants for colors - accessed once at import time
 WHITE = Color.WHITE.value
@@ -23,7 +32,15 @@ END = state_value.END.value
 
 
 class Simulation:
-    def __init__(self, win, grid, agent, rows, width, bg_image=None):
+    def __init__(
+        self,
+        win: pygame.Surface,
+        grid: "Grid",
+        agent: Optional["Agent"],
+        rows: int,
+        width: int,
+        bg_image: Optional[pygame.Surface] = None,
+    ) -> None:
         self.win = win
         self.grid = grid
         self.agent = agent
@@ -62,7 +79,7 @@ class Simulation:
         self.temp = rTemp()
         self.create_sliders()
 
-    def create_sliders(self):
+    def create_sliders(self) -> None:
         start_y = self.win.get_size()[1] - 250
 
         self.slider_group = create_control_panel(
@@ -72,7 +89,7 @@ class Simulation:
             temp_obj=self.temp
         )
 
-    def _handle_window_resize(self, event):
+    def _handle_window_resize(self, event: pygame.event.Event) -> bool:
         """Handle window resize events"""
         if event.type == pygame.VIDEORESIZE:
             win_width, win_height = event.size
@@ -93,7 +110,7 @@ class Simulation:
             return True
         return False
     
-    def _handle_grid_click(self, event):
+    def _handle_grid_click(self, event: pygame.event.Event) -> None:
         """Handle mouse clicks in the grid area"""
         row, col = self.grid.get_clicked_pos(event.pos)
         
@@ -101,9 +118,9 @@ class Simulation:
             spot = self.grid.get_spot(row, col)
             
             if event.button == 1:  # Left click - place
-                print(spot.to_dict())
+                logger.debug("Spot info: %s", spot.to_dict())
 
-    def handle_events(self):
+    def handle_events(self) -> int:
         for event in pygame.event.get():
             self.manager.process_events(event)
             if hasattr(self, "slider_group"):
@@ -126,29 +143,32 @@ class Simulation:
                 elif event.key == pygame.K_p or event.key == pygame.K_SPACE:
                     # Replace old pause logic
                     self.time_manager.toggle_pause()
-                    print(f"Simulation {'paused' if self.time_manager.is_paused() else 'resumed'}")
+                    logger.info(
+                        "Simulation %s",
+                        "paused" if self.time_manager.is_paused() else "resumed",
+                    )
 
                 elif event.key == pygame.K_s:
                     # Toggle step-by-step mode
                     if self.time_manager.toggle_step_mode():
-                        print("Step-by-step mode ON (press 'n' for next step)")
+                        logger.info("Step-by-step mode ON (press 'n' for next step)")
                     else:
-                        print("Step-by-step mode OFF")
+                        logger.info("Step-by-step mode OFF")
 
                 elif event.key == pygame.K_n:
                     # Next step in step mode
                     if self.time_manager.request_next_step():
-                        print("Advancing one step")
+                        logger.info("Advancing one step")
 
                 elif event.key == pygame.K_PLUS or event.key == pygame.K_EQUALS:
                     # Increase speed
                     new_speed = self.time_manager.set_speed(self.time_manager.get_step_size() + 1)
-                    print(f"Speed: {new_speed}x")
+                    logger.info("Speed: %sx", new_speed)
 
                 elif event.key == pygame.K_MINUS:
                     # Decrease speed
                     new_speed = self.time_manager.set_speed(self.time_manager.get_step_size() - 1)
-                    print(f"Speed: {new_speed}x")
+                    logger.info("Speed: %sx", new_speed)
 
                 elif event.key == pygame.K_r:
                     self.reset()
@@ -158,7 +178,7 @@ class Simulation:
 
         return SIM_CONTINUE
 
-    def reset(self):
+    def reset(self) -> None:
         self.grid.clear_simulation_visuals()
         self.fire_set = False
         
@@ -181,6 +201,8 @@ class Simulation:
                 else:
                     spot.set_material(disc.get('material'))
 
+        self.grid.mark_material_cache_dirty()
+        self.grid.ensure_material_cache()
         # Sync numpy arrays so smoke/temp don't carry over into the next update
         self.grid.update_np_arrays()
 
@@ -190,7 +212,7 @@ class Simulation:
         if self.grid.start and bool(self.grid.exits):
             self.agent.path = self.agent.best_path()
 
-    def update(self, dt):
+    def update(self, dt: float) -> None:
         """Time-based update with delta time"""
         update_count = self.time_manager.get_update_count()
         
@@ -228,7 +250,7 @@ class Simulation:
             self.update_metrics()
 
     # DRAW FUNCTION
-    def draw(self):
+    def draw(self) -> None:
         # Clear only the grid area
         # grid_area = pygame.Rect(0, 0, self.width, self.width)
         # pygame.draw.rect(self.win, Color.WHITE.value, grid_area)
@@ -298,7 +320,7 @@ class Simulation:
         pygame.display.update()
 
     # ---------------- MAIN LOOP ----------------
-    def run(self):
+    def run(self) -> int:
         while self.running:
             # Handle events first so step-by-step requests ("n") are registered
             action = self.handle_events()
@@ -326,7 +348,7 @@ class Simulation:
 
         return SIM_QUIT
 
-    def update_metrics(self):
+    def update_metrics(self) -> None:
         # Use time_manager for elapsed time
         self.metrics['elapsed_time'] = self.time_manager.get_total_time()
         
@@ -336,21 +358,26 @@ class Simulation:
             self.metrics['path_length'] = len(self.agent.path) if self.agent.path else 0
         
         # Count fire cells and average temperature
-        fire_count = 0
-        total_temp = 0
-        total_smoke = 0
-        cells = self.rows * self.rows
-        
-        for r in range(self.rows):
-            for c in range(self.rows):
-                if self.grid.grid[r][c].is_fire():
-                    fire_count += 1
-                total_temp += self.grid.grid[r][c].temperature
-                total_smoke += self.grid.grid[r][c].smoke
-        
-        self.metrics['avg_smoke'] = total_smoke/cells
-        self.metrics['fire_cells'] = fire_count
-        self.metrics['avg_temp'] = total_temp / cells
+        if hasattr(self.grid, "temp_np") and hasattr(self.grid, "smoke_np") and hasattr(self.grid, "fire_np"):
+            self.metrics['fire_cells'] = int(np.count_nonzero(self.grid.fire_np))
+            self.metrics['avg_temp'] = float(np.mean(self.grid.temp_np))
+            self.metrics['avg_smoke'] = float(np.mean(self.grid.smoke_np))
+        else:
+            fire_count = 0
+            total_temp = 0
+            total_smoke = 0
+            cells = self.rows * self.rows
+
+            for r in range(self.rows):
+                for c in range(self.rows):
+                    if self.grid.grid[r][c].is_fire():
+                        fire_count += 1
+                    total_temp += self.grid.grid[r][c].temperature
+                    total_smoke += self.grid.grid[r][c].smoke
+
+            self.metrics['avg_smoke'] = total_smoke / cells
+            self.metrics['fire_cells'] = fire_count
+            self.metrics['avg_temp'] = total_temp / cells
 
         self.history["time"].append(self.metrics["elapsed_time"])
         self.history["fire_cells"].append(self.metrics["fire_cells"])
@@ -359,7 +386,7 @@ class Simulation:
         self.history["agent_health"].append(self.metrics["agent_health"])
         self.history["path_length"].append(self.metrics["path_length"])
     
-    def draw_sim_panel(self):
+    def draw_sim_panel(self) -> None:
         # Draw panel background
         clamped_height = max(self.win.get_size()[1], self.width)
         clamped_height = min(clamped_height, Dimensions.WIDTH.value+20)  # Max height for panel
@@ -435,7 +462,7 @@ class Simulation:
             health_text = self.font.render(f"{self.agent.health:.0f}%", True, (255, 255, 255))
             self.win.blit(health_text, (self.width + 100 - health_text.get_width() // 2, status_y + 2))
 
-def draw_temperature(grid, win, rows):
+def draw_temperature(grid: "Grid", win: pygame.Surface, rows: int) -> None:
     """Draw temperature as color overlay"""
     if not hasattr(grid, "temp_np"):
         return
@@ -477,7 +504,7 @@ def draw_temperature(grid, win, rows):
     )
     win.blit(scaled, (0, 0))
 
-def plot_fire_environment(history):
+def plot_fire_environment(history: Dict[str, List[float]]) -> None:
     import matplotlib.pyplot as plt
     time = history["time"]
 
@@ -495,7 +522,7 @@ def plot_fire_environment(history):
 
     plt.tight_layout()
     plt.show()
-def plot_path_length(history):
+def plot_path_length(history: Dict[str, List[float]]) -> None:
     import matplotlib.pyplot as plt
     time = history["time"]
     path_length = history["path_length"]

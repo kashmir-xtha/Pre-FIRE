@@ -1,10 +1,14 @@
-import sys
-import pygame
 import ctypes
+import logging
+import sys
+
+import pygame
 from editor.editor import run_editor
 from core.agent import Agent
 from core.simulation import Simulation
 from utils.utilities import Dimensions, SimulationState, loadImage, load_window_state, save_window_state, resource_path
+
+logger = logging.getLogger(__name__)
 
 pygame.init()
 WIN = pygame.display.set_mode(
@@ -20,7 +24,18 @@ if load_window_state():
 image_directory = resource_path("data/layout_images")
 csv_directory = resource_path("data/layout_csv")
 
-def main():
+def configure_logging() -> None:
+    root_logger = logging.getLogger()
+    if root_logger.handlers:
+        return
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s:%(name)s:%(message)s",
+    )
+
+
+def main() -> None:
+    configure_logging()
     BG_IMAGE, csv_filename = loadImage(image_directory, csv_directory, 2)
 
     # This loop allows switching between editor and simulation modes
@@ -34,10 +49,10 @@ def main():
             sim = Simulation(WIN, grid, agent, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE)
             mode = sim.run()
             if mode == SimulationState.SIM_EDITOR.value:
-                print("Switching to Editor Mode")
+                logger.info("Switching to Editor Mode")
                 continue
             elif mode == SimulationState.SIM_QUIT.value:
-                print("Quitting Simulation")
+                logger.info("Quitting Simulation")
                 sys.exit()
     finally:
         is_maximized = ctypes.windll.user32.IsZoomed(hwnd)

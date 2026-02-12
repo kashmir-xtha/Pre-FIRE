@@ -1,4 +1,6 @@
-from utils.utilities import Color, state_value, material_id, fire_constants, rTemp
+from typing import Dict, Optional, Sequence, Tuple
+
+from utils.utilities import Color, TempConstants, state_value, material_id, fire_constants, rTemp
 import pygame
 
 WHITE = Color.WHITE.value
@@ -15,17 +17,21 @@ END =  state_value.END.value
 
 AMBIENT_TEMP = fire_constants.AMBIENT_TEMP.value
 
+ColorTuple = Tuple[int, int, int]
+MaterialProps = Dict[str, object]
+
+
 class Spot:
-    _material_props_cache = None
+    _material_props_cache: Optional[Dict[material_id, MaterialProps]] = None
 
     @classmethod
-    def _material_props(cls):
+    def _material_props(cls) -> Dict[material_id, MaterialProps]:
         if cls._material_props_cache is None:
             from environment.materials import MATERIALS
             cls._material_props_cache = MATERIALS
         return cls._material_props_cache
 
-    def __init__(self, row, col, width):
+    def __init__(self, row: int, col: int, width: int) -> None:
         self.row = row
         self.col = col
         self.x = col * width
@@ -43,35 +49,35 @@ class Spot:
         
     # --- Property getters for safe access ---
     @property
-    def color(self):
+    def color(self) -> ColorTuple:
         return self._color
     
     @property
-    def state(self):
+    def state(self) -> int:
         return self._state
     
     @property
-    def temperature(self):
+    def temperature(self) -> float:
         return self._temperature
     
     @property
-    def smoke(self):
+    def smoke(self) -> float:
         return self._smoke
     
     @property
-    def fuel(self):
+    def fuel(self) -> float:
         return self._fuel
     
     @property
-    def material(self):
+    def material(self) -> material_id:
         return self._material  # Returns enum
     
     @property
-    def is_fire_source(self):
+    def is_fire_source(self) -> bool:
         return self._is_fire_source
     
     # --- State-changing methods with validation ---
-    def reset(self):
+    def reset(self) -> None:
         """Reset spot to default state"""
         self._color = WHITE
         self._state = EMPTY
@@ -81,30 +87,30 @@ class Spot:
         self._material = material_id.AIR
         self._is_fire_source = False
     
-    def make_barrier(self):
+    def make_barrier(self) -> None:
         """Make this spot a barrier/wall"""
         self._color = BLACK
         self._state = WALL
         self._material = material_id.CONCRETE
         self._fuel = 0.0  # Walls don't burn
     
-    def make_start(self):
+    def make_start(self) -> None:
         """Make this spot the starting position"""
         self._color = GREEN
         self._state = START
         self._material = material_id.AIR  # Start spot should be air
     
-    def make_end(self):
+    def make_end(self) -> None:
         """Make this spot an exit"""
         self._color = RED
         self._state = END
         self._material = material_id.AIR  # End spot should be air
     
-    def set_color(self, color):
+    def set_color(self, color: ColorTuple) -> None:
         """Set the color of the spot (used for path visualization)"""
         self._color = color
     
-    def set_material(self, material):
+    def set_material(self, material: material_id) -> None:
         """Set material with proper initialization"""
         self._material = material
         props = self._material_props()
@@ -114,13 +120,13 @@ class Spot:
         if not self.is_start() and not self.is_end():
             self._update_color_from_material()
 
-    def set_on_fire(self, initial_temp=600.0):
+    def set_on_fire(self, initial_temp: float = 600.0) -> None:
         """Set this spot on fire"""
         self._state = FIRE
         self._color = FIRE_COLOR
         self._temperature = max(self._temperature, initial_temp)
     
-    def extinguish_fire(self):
+    def extinguish_fire(self) -> None:
         """Extinguish fire and reset to material"""
         if self.is_fire():
             self._state = EMPTY
@@ -128,73 +134,73 @@ class Spot:
             if self._is_fire_source:
                 self._is_fire_source = False
     
-    def set_as_fire_source(self, temp=1200.0):
+    def set_as_fire_source(self, temp: float = 1200.0) -> None:
         """Mark this spot as a persistent fire source"""
         self._is_fire_source = True
         self.set_on_fire(temp)
     
-    def remove_fire_source(self):
+    def remove_fire_source(self) -> None:
         """Remove fire source marking"""
         self._is_fire_source = False
     
-    def add_smoke(self, amount):
+    def add_smoke(self, amount: float) -> None:
         """Add smoke with bounds checking"""
         self._smoke = max(0.0, min(1.0, self._smoke + amount))
     
-    def set_smoke(self, amount):
+    def set_smoke(self, amount: float) -> None:
         """Set smoke amount with bounds checking"""
         self._smoke = max(0.0, min(1.0, amount))
     
-    def add_temperature(self, amount):
+    def add_temperature(self, amount: float) -> None:
         """Add temperature with bounds checking"""
         self._temperature = max(AMBIENT_TEMP, 
                               min(1200.0, self._temperature + amount))
     
-    def set_temperature(self, temp):
+    def set_temperature(self, temp: float) -> None:
         """Set temperature with bounds checking"""
         self._temperature = max(AMBIENT_TEMP, min(1200.0, temp))
     
-    def consume_fuel(self, amount):
+    def consume_fuel(self, amount: float) -> None:
         """Consume fuel with bounds checking"""
         self._fuel = max(0.0, self._fuel - amount)
         if self._fuel <= 0 and self._state == FIRE:
             self.extinguish_fire()
     
     # --- Query methods ---
-    def is_barrier(self): 
+    def is_barrier(self) -> bool: 
         return self._state == WALL
     
-    def is_start(self): 
+    def is_start(self) -> bool: 
         return self._state == START
     
-    def is_end(self): 
+    def is_end(self) -> bool: 
         return self._state == END
     
-    def is_fire(self): 
+    def is_fire(self) -> bool: 
         return self._state == FIRE
     
-    def is_empty(self): 
+    def is_empty(self) -> bool: 
         return self._state == EMPTY
     
-    def is_flammable(self):
+    def is_flammable(self) -> bool:
         """Check if this spot can catch fire"""
         return self._material_props()[self._material]["fuel"] > 0
     
-    def is_hot_enough_to_ignite(self):
+    def is_hot_enough_to_ignite(self) -> bool:
         """Check if temperature is above ignition point"""
         ignition_temp = self._material_props()[self._material]["ignition_temp"]
         return self._temperature >= ignition_temp
     
     # --- Helper methods ---
-    def _update_color_from_material(self):
+    def _update_color_from_material(self) -> None:
         """Update color based on current material"""
         self._color = self._material_props()[self._material]["color"]
     
-    def get_material_properties(self):
+    def get_material_properties(self) -> MaterialProps:
         """Get material properties dictionary"""
         return self._material_props()[self._material]
     
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, object]:
         """Convert spot to dictionary for debugging/serialization"""
         return {
             'row': self.row,
@@ -207,73 +213,22 @@ class Spot:
             'is_fire_source': self._is_fire_source
         }
     
-    def draw(self, win):
+    def draw(self, win: pygame.Surface) -> None:
         """Draw the spot on the window"""
         if self._color != WHITE:
             pygame.draw.rect(win, self._color,
                             (self.x, self.y, self.width, self.width))
 
-    # def update_temperature_from_flux(self, heat_flux, tempConstant, dt):
-    #     """
-    #     Apply net heat flux (from grid diffusion) and local effects
-    #     such as combustion and temperature clamping.
-
-    #     Parameters
-    #     ----------
-    #     heat_flux : float
-    #         Net heat contribution from neighbors and cooling (already material-weighted)
-    #     tempConstant : TempConstants
-    #         Global temperature constants
-    #     dt : float
-    #         Time step (seconds)
-    #     """
-
-    #     # Special cells do not accumulate temperature normally
-    #     if self.is_barrier() or self.is_start() or self.is_end():
-    #         # Slowly relax to ambient
-    #         ambient = tempConstant.AMBIENT_TEMP
-    #         self._temperature += (ambient - self._temperature) * 0.02 * dt
-    #         return
-
-    #     # Apply diffusion + cooling contribution
-    #     self._temperature += heat_flux * dt
-
-    #     # Combustion heating (local source term)
-    #     if self.is_fire() and self._fuel > 0:
-    #         props = self.get_material_properties()
-
-    #         heat_release = props.get("heat_release_rate", 150.0)  # °C/s equivalent
-    #         fuel_burn_rate = props.get("fuel_burn_rate", 0.01)    # kg/s
-
-    #         # Heat added by fire
-    #         self._temperature += heat_release * dt
-
-    #         # Fuel consumption
-    #         self._fuel -= fuel_burn_rate * dt
-    #         self._fuel = max(self._fuel, 0.0)
-
-    #         # Fire extinguishes if fuel depleted
-    #         if self._fuel <= 0:
-    #             self.extinguish_fire()
-
-    #     # Prevent unphysical values
-    #     self._temperature = max(
-    #         tempConstant.AMBIENT_TEMP,
-    #         min(self._temperature, 5000)
-    #     )
-
-    def update_temperature_from_flux(self, heat_flux, tempConstant, dt):
+    def update_temperature_from_flux(
+        self,
+        heat_flux: float,
+        tempConstant: TempConstants,
+        dt: float,
+    ) -> None:
         """
         Apply net heat flux (from grid diffusion) and local effects
         such as combustion and temperature clamping.
-
-        Optimizations:
-        - Cache boolean flags to avoid repeated method calls
-        - Cache material properties to avoid repeated dict creation
-        - Inline small calculations
-        - Reduce repeated multiplications
         """
-
         # Precompute dt factor for special cells
         dt_factor_special = 0.02 * dt
 
@@ -316,7 +271,12 @@ class Spot:
         ambient = tempConstant.AMBIENT_TEMP
         self._temperature = max(ambient, min(self._temperature, 5000))
 
-    def update_temperature(self, neighbor_data, tempConstant, dt):
+    def update_temperature(
+        self,
+        neighbor_data: Sequence[Tuple[float, float]],
+        tempConstant: TempConstants,
+        dt: float,
+    ) -> None:
         """
         Update temperature based on neighbor data
         
@@ -357,7 +317,12 @@ class Spot:
         # Apply all changes
         self.add_temperature(heat_transfer - cooling + heating)
     
-    def update_fire_state(self, neighbor_fire_states, tempConstants, dt):
+    def update_fire_state(
+        self,
+        neighbor_fire_states: Sequence[Tuple[bool, float]],
+        tempConstants: TempConstants,
+        dt: float,
+    ) -> bool:
         """
         Update fire state based on neighbor information
         
@@ -393,7 +358,11 @@ class Spot:
         
         return False
     
-    def update_smoke_level(self, neighbor_smoke_levels, dt):
+    def update_smoke_level(
+        self,
+        neighbor_smoke_levels: Sequence[float],
+        dt: float,
+    ) -> None:
         """
         Update smoke level based on neighbors
         
@@ -430,7 +399,7 @@ class Spot:
         # Clamp to valid range
         self._smoke = max(0.0, min(temp_constants.MAX_SMOKE, self._smoke))
     
-    def consume_fuel_update(self, dt):
+    def consume_fuel_update(self, dt: float) -> bool:
         """
         Consume fuel if on fire
         

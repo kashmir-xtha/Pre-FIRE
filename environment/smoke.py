@@ -1,8 +1,21 @@
-import pygame
+import logging
+from typing import Dict, Sequence, Union, TYPE_CHECKING
+
 import numpy as np
+import pygame
+
 from utils.utilities import smoke_constants
 
-def spread_smoke(grid_data, dt=1.0):
+if TYPE_CHECKING:
+    from core.grid import Grid
+    from core.spot import Spot
+
+logger = logging.getLogger(__name__)
+
+def spread_smoke(
+    grid_data: Union["Grid", Sequence[Sequence["Spot"]]],
+    dt: float = 1.0,
+) -> None:
     """
     Optimized smoke spread using numpy diffusion on the Grid's smoke array.
     Barriers block diffusion; fire cells only produce smoke.
@@ -108,7 +121,10 @@ def spread_smoke(grid_data, dt=1.0):
                 neighbor_smoke = [grid[nr][nc].smoke for nr, nc in get_neighbors(r, c, rows, cols)]
                 spot.update_smoke_level(neighbor_smoke, dt)
             
-def draw_smoke(grid_data, surface):
+def draw_smoke(
+    grid_data: Union["Grid", Sequence[Sequence["Spot"]]],
+    surface: pygame.Surface,
+) -> None:
     """
     Draw smoke using a vectorized overlay when a Grid object is provided.
     Falls back to per-cell rendering for legacy list input.
@@ -172,8 +188,8 @@ def draw_smoke(grid_data, surface):
                 blit(smoke_surface, (c * cell_width, y_pos))
 
 # Remaining debug functions kept as is
-def visualize_smoke_density(grid, rows):
-    print("\n=== Smoke Density Visualization ===")
+def visualize_smoke_density(grid: "Grid", rows: int) -> None:
+    logger.info("=== Smoke Density Visualization ===")
     for r in range(min(10, rows)):
         row_str = ""
         for c in range(min(10, rows)):
@@ -187,15 +203,15 @@ def visualize_smoke_density(grid, rows):
                 elif spot.is_fire(): row_str += "F"
                 else: row_str += " "
             else: row_str += " "
-        print(row_str)
+        logger.debug(row_str)
 
-def clear_smoke(grid, rows):
+def clear_smoke(grid: "Grid", rows: int) -> None:
     for r in range(rows):
         for c in range(rows):
             spot = grid.get_spot(r, c)
             if spot: spot.set_smoke(0.0)
 
-def get_smoke_statistics(grid, rows):
+def get_smoke_statistics(grid: "Grid", rows: int) -> Dict[str, float]:
     total_smoke = 0.0
     max_smoke = 0.0
     smoke_cells = 0

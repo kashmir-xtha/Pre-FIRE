@@ -1,4 +1,6 @@
+import logging
 from enum import Enum
+from typing import Any, Generator, Optional, Set, Tuple
 import tkinter as tk
 import csv
 from tkinter import filedialog
@@ -8,6 +10,8 @@ import pygame
 import json
 import os
 import sys
+
+logger = logging.getLogger(__name__)
 
 class Dimensions(Enum):
     WIDTH = 780
@@ -67,7 +71,7 @@ class SimulationState(Enum):
     SIM_QUIT = 2
 
 class TempConstants:
-    def __init__(self):
+    def __init__(self) -> None:
         self.AMBIENT_TEMP = fire_constants.AMBIENT_TEMP.value       # °C
         self.FIRE_SPREAD_PROBABILITY = fire_constants.FIRE_SPREAD_PROBABILITY.value #10%
         self.SMOKE_DIFFUSION = smoke_constants.SMOKE_DIFFUSION.value    # how much smoke spreads
@@ -104,10 +108,10 @@ class TempConstants:
         }
 
 temp = TempConstants()
-def rTemp():
+def rTemp() -> TempConstants:
     return temp
     
-def get_neighbors(r, c, rows, cols):
+def get_neighbors(r: int, c: int, rows: int, cols: int) -> Generator[Tuple[int, int], None, None]:
     # Moore neighborhood
     for dr in [-1, 0, 1]:
         for dc in [-1, 0, 1]:
@@ -117,12 +121,12 @@ def get_neighbors(r, c, rows, cols):
             if 0 <= nr < rows and 0 <= nc < cols:
                 yield nr, nc
 
-def visualize_2d(arr):
+def visualize_2d(arr: Any) -> None:
     h = np.array(arr)
     plt.imshow(h, interpolation='none')
     plt.show()
 
-def loadImage(image_directory, csv_directory, i):
+def loadImage(image_directory: str, csv_directory: str, i: int) -> Tuple[Optional[pygame.Surface], str]:
     '''
     Docstring for loadImage
     
@@ -138,29 +142,29 @@ def loadImage(image_directory, csv_directory, i):
         BG_IMAGE = pygame.transform.scale(BG_IMAGE, (Dimensions.WIDTH.value, Dimensions.WIDTH.value))
         BG_IMAGE.set_alpha(0)
     except:
-        print("Background image not found, proceeding without it.")
+        logger.warning("Background image not found, proceeding without it.")
         BG_IMAGE = None
 
     return BG_IMAGE, csv_filename
 
 # ------------------ SAVE / LOAD ------------------
-def spot_to_cell_value(spot):
+def spot_to_cell_value(spot) -> str:
     return f"{spot.state}|{spot.material.value}"
 
-def parse_cell_value(value):
+def parse_cell_value(value: str) -> Tuple[int, Optional[int]]:
     value = value.strip()
     if "|" in value:
         state_str, material_str = value.split("|", 1)
         return int(state_str), int(material_str)
     return int(value), None
 
-def save_layout(grid, filename="layout_csv\\layout_1.csv"):
+def save_layout(grid, filename: str = "layout_csv\\layout_1.csv") -> None:
     with open(filename, "w", newline="") as f:
         writer = csv.writer(f)
         for row in grid:
             writer.writerow([spot_to_cell_value(s) for s in row])
 
-def load_layout(grid, filename="layout_csv\\layout_1.csv"):
+def load_layout(grid, filename: str = "layout_csv\\layout_1.csv") -> Tuple[Optional[Any], Set[Any]]:
     start = None
     end = set()
     try:
@@ -192,21 +196,21 @@ def load_layout(grid, filename="layout_csv\\layout_1.csv"):
                     elif cell_state == state_value.FIRE.value:
                         spot.set_on_fire()
     except FileNotFoundError:
-        print(f"Layout file {filename} not found. Starting with empty grid.")
+        logger.warning("Layout file %s not found. Starting with empty grid.", filename)
     # fname, bname = os.path.split(filename)
     # fname = os.path.splitext(bname)[0]
     # print(fname[len(fname) - 1])
     # loadImage(f"layout_images", filename, fname[len(fname) - 1])
     return start, end
 
-def pick_csv_file():
+def pick_csv_file() -> str:
     root = tk.Tk()
     root.withdraw()
     return filedialog.askopenfilename(
         filetypes=[("CSV files", "*.csv")]
     )
 
-def pick_save_csv_file(default_name="layout.csv"):
+def pick_save_csv_file(default_name: str = "layout.csv") -> str:
     root = tk.Tk()
     root.withdraw()  # hide tk window
     filename = filedialog.asksaveasfilename(
@@ -219,7 +223,7 @@ def pick_save_csv_file(default_name="layout.csv"):
     return filename
 
 # ------------------ WINDOW STATE ------------------
-def user_data_path(filename):#Used for storing user-generated, writable data like preferences, logs, or saved states
+def user_data_path(filename: str) -> str:#Used for storing user-generated, writable data like preferences, logs, or saved states
     #points to a permanent writable directory 
     """
     Returns a writable path for user-generated files.
@@ -230,14 +234,14 @@ def user_data_path(filename):#Used for storing user-generated, writable data lik
     return os.path.join(base_dir, filename)
 
 
-def save_window_state(is_maximized): 
+def save_window_state(is_maximized: bool) -> None: 
     state = {"maximized": is_maximized}
     path = user_data_path("window_state.json")
     with open(path, "w") as f:
         json.dump(state, f)
 
 
-def load_window_state():
+def load_window_state() -> bool:
     path = user_data_path("window_state.json")
     if os.path.exists(path):
         with open(path, "r") as f:
@@ -245,7 +249,7 @@ def load_window_state():
             return state.get("maximized", False)
     return False
 
-def resource_path(relative_path):#Used for reading bundled, read-only resources inside .exe or source folder
+def resource_path(relative_path: str) -> str:#Used for reading bundled, read-only resources inside .exe or source folder
     #Points to a temporary folder inside the PyInstaller .exe environment
     if hasattr(sys, "_MEIPASS"):#points to the temporary folder created by pyinstaller
         return os.path.join(sys._MEIPASS, relative_path)

@@ -1,17 +1,32 @@
+import csv
+import logging
+from typing import Optional, Tuple, TYPE_CHECKING
+
 import pygame
 import pygame_gui
-import csv
-from utils.utilities import ToolType, Color
 from PIL import Image
+
 from editor.tools import ToolsPanel
-from utils.utilities import load_layout, save_layout, pick_csv_file, pick_save_csv_file
+from utils.utilities import Color, ToolType, load_layout, pick_csv_file, pick_save_csv_file, save_layout
+
+if TYPE_CHECKING:
+    from core.grid import Grid
+    from core.spot import Spot
+
+logger = logging.getLogger(__name__)
 
 # Global constant for white color - accessed once at import time
 WHITE = Color.WHITE.value
 
 # ------------------ EDITOR CLASS ------------------
 class Editor:
-    def __init__(self, win, rows, bg_image=None, filename="layout_csv\\layout_1.csv"):
+    def __init__(
+        self,
+        win: pygame.Surface,
+        rows: int,
+        bg_image: Optional[pygame.Surface] = None,
+        filename: str = "layout_csv\\layout_1.csv",
+    ) -> None:
         from core.grid import Grid
         
         self.win = win
@@ -42,7 +57,7 @@ class Editor:
         self.manager = pygame_gui.UIManager((win_width, win_height))
         self._setup_ui_buttons()
     
-    def _setup_ui_buttons(self):
+    def _setup_ui_buttons(self) -> None:
         """Initialize UI buttons (Save/Load)"""
         button_y = self.win.get_size()[1] - 40  # Bottom of the window
         button_width = 80
@@ -66,7 +81,7 @@ class Editor:
             manager=self.manager
         )
     
-    def _handle_window_resize(self, event):
+    def _handle_window_resize(self, event: pygame.event.Event) -> bool:
         if event.type != pygame.VIDEORESIZE:
             return False
 
@@ -99,7 +114,7 @@ class Editor:
         self._setup_ui_buttons()
         return True
 
-    def _load_initial_layout(self):
+    def _load_initial_layout(self) -> None:
         """Load initial layout if file exists"""
         try:
             start, exits = load_layout(self.grid_obj.grid, self.filename)
@@ -107,10 +122,11 @@ class Editor:
                 self.grid_obj.start = start
             if bool(exits):
                 self.grid_obj.exits = exits
+            self.grid_obj.mark_material_cache_dirty()
         except FileNotFoundError:
             pass  # Start with empty grid
     
-    def _handle_ui_events(self, event):
+    def _handle_ui_events(self, event: pygame.event.Event) -> None:
         """Handle UI button events"""
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
             if event.ui_element == self.save_button:
@@ -118,14 +134,14 @@ class Editor:
             elif event.ui_element == self.load_button:
                 self._load_layout_dialog()
     
-    def _handle_tools_panel_events(self, event):
+    def _handle_tools_panel_events(self, event: pygame.event.Event) -> None:
         """Handle tools panel selection events"""
         if event.pos[0] >= self.panel_x:  # Click in tools panel
             tool_type, selected_material = self.tools_panel.handle_event(event)
             if tool_type is not None:
                 self._process_tool_selection(tool_type, selected_material)
     
-    def _process_tool_selection(self, tool_type, selected_material):
+    def _process_tool_selection(self, tool_type: ToolType, selected_material) -> None:
         """Process tool selection from tools panel"""
         
         if tool_type == ToolType.MATERIAL:
@@ -133,15 +149,15 @@ class Editor:
             self.tools_panel.current_material = selected_material
         elif tool_type == ToolType.START:
             self.current_tool = "START"
-            print("Start position mode - click on grid to place start")
+            logger.info("Start position mode - click on grid to place start")
         elif tool_type == ToolType.END:
             self.current_tool = "END"
-            print("End position mode - click on grid to place end")
+            logger.info("End position mode - click on grid to place end")
         elif tool_type == ToolType.FIRE_SOURCE:
             self.current_tool = "FIRE_SOURCE"
-            print("Fire source mode - click on grid to place fire source")
+            logger.info("Fire source mode - click on grid to place fire source")
 
-    def _handle_grid_click(self, event):
+    def _handle_grid_click(self, event: pygame.event.Event) -> None:
         """Handle mouse clicks in the grid area"""
         row, col = self.grid_obj.get_clicked_pos(event.pos)
         
@@ -160,18 +176,20 @@ class Editor:
                 self._erase_from_grid(spot)
                 self.last_cell = (row, col)
     
-    def _place_on_grid(self, row, col, spot):
+    def _place_on_grid(self, row: int, col: int, spot: "Spot") -> None:
         """Place items on the grid based on current tool"""
         if self.current_tool == "START":
             if self.grid_obj.start:
                 self.grid_obj.start.reset()
-                print("Previous start position removed")
+                logger.info("Previous start position removed")
             self.grid_obj.start = spot
             spot.make_start()
+            self.grid_obj.mark_material_cache_dirty()
         
         elif self.current_tool == "END":
             self.grid_obj.add_exit(spot)
             spot.make_end()
+            self.grid_obj.mark_material_cache_dirty()
         
         elif self.current_tool == "MATERIAL":
             material_id = self.tools_panel.get_current_material()
@@ -180,17 +198,18 @@ class Editor:
         elif self.current_tool == "FIRE_SOURCE":
             self.grid_obj.fire_sources.add((row, col))
             spot.set_as_fire_source()
-            print("Fire source placed")
+            logger.info("Fire source placed")
 
-    def _erase_from_grid(self, spot):
+    def _erase_from_grid(self, spot: "Spot") -> None:
         """Erase items from the grid"""
         spot.reset()
         if spot == self.grid_obj.start:
             self.grid_obj.start = None
         if self.grid_obj.is_exit(spot):
             self.grid_obj.remove_exit(spot)
+        self.grid_obj.mark_material_cache_dirty()
     
-    def _handle_mouse_drag(self, event):
+    def _handle_mouse_drag(self, event: pygame.event.Event) -> None:
         """Handle mouse dragging for continuous drawing/erasing"""
         if event.pos[0] < self.width:  # Only process if in grid area
             row, col = self.grid_obj.get_clicked_pos(event.pos)
@@ -210,28 +229,29 @@ class Editor:
                             self.grid_obj.start = None
                         if spot in self.grid_obj.exits:
                             self.grid_obj.exits.remove(spot)
+                        self.grid_obj.mark_material_cache_dirty()
                     
                     self.last_cell = (row, col)
     
-    def _handle_keyboard_events(self, event):
+    def _handle_keyboard_events(self, event: pygame.event.Event) -> Optional[bool]:
         """Handle keyboard shortcuts"""
         if event.key == pygame.K_i:  # Toggle background image
             self._toggle_background_image()
         
         elif event.key == pygame.K_m:  # Back to material mode
             self.current_tool = "MATERIAL"
-            print("Material mode")
+            logger.info("Material mode")
         
         elif event.key == pygame.K_s:  # Save layout
             save_layout(self.grid_obj.grid, self.current_filename)
-            print("Layout saved")
+            logger.info("Layout saved")
         
         elif event.key == pygame.K_l:  # Load layout
-            print(f"Loading layout... {self.filename}")
+            logger.info("Loading layout... %s", self.filename)
             self._load_from_file(self.filename)
         
         elif event.key == pygame.K_SPACE and self.grid_obj.start and bool(self.grid_obj.exits):
-            print("Starting simulation...")
+            logger.info("Starting simulation...")
             return True  # Signal to exit editor
         
         elif event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
@@ -239,7 +259,7 @@ class Editor:
         
         return None
     
-    def _toggle_background_image(self):
+    def _toggle_background_image(self) -> None:
         """Toggle background image visibility"""
         if not self.bg_image_loaded:
             self.bg_image_loaded = True
@@ -250,21 +270,21 @@ class Editor:
             if self.bg_image:
                 self.bg_image.set_alpha(0)
     
-    def _save_layout_dialog(self):
+    def _save_layout_dialog(self) -> None:
         """Open save dialog and save layout"""
         save_filename = pick_save_csv_file()
         if save_filename:
             save_layout(self.grid_obj.grid, filename=save_filename)
             self.current_filename = save_filename
     
-    def _load_layout_dialog(self):
+    def _load_layout_dialog(self) -> None:
         """Open load dialog and load layout"""
         load_filename = pick_csv_file()
         if load_filename:
             self._load_from_file(load_filename)
             self.current_filename = load_filename
     
-    def _load_from_file(self, filename):
+    def _load_from_file(self, filename: str) -> None:
         """Load layout from a specific file"""
         # Clear old state
         self.grid_obj.start = None
@@ -282,29 +302,31 @@ class Editor:
             self.grid_obj.start = start
         if exits and bool(exits):
             self.grid_obj.exits = exits
+
+        self.grid_obj.mark_material_cache_dirty()
         
         # Hide background image during load
         self.bg_image_loaded = False
         if self.bg_image:
             self.bg_image.set_alpha(0)
         
-        print(f"Layout loaded from {filename}")
+        logger.info("Layout loaded from %s", filename)
     
-    def _import_layout(self):
+    def _import_layout(self) -> None:
         """Import layout from CSV file"""
         csv_filename = pick_csv_file()
         if csv_filename:
             self._load_from_file(csv_filename)
-            print("Layout imported")
+            logger.info("Layout imported")
     
-    def _export_layout(self):
+    def _export_layout(self) -> None:
         """Export layout to CSV file"""
         save_filename = pick_save_csv_file()
         if save_filename:
             save_layout(self.grid_obj.grid, save_filename)
-            print("Layout exported")
+            logger.info("Layout exported")
     
-    def run(self):
+    def run(self) -> Optional["Grid"]:
         """Main editor loop"""
         clock = pygame.time.Clock()
         while True:
@@ -364,29 +386,36 @@ class Editor:
             pygame.display.update()
 
 # CONVERSION FUNCTION
-def floor_image_to_csv(image_path, csv_path, rows=60, cols=60, wall_color=(0, 0, 0), end_color=(255, 0, 0)):
+def floor_image_to_csv(
+    image_path: str,
+    csv_path: str,
+    rows: int = 60,
+    cols: int = 60,
+    wall_color: Tuple[int, int, int] = (0, 0, 0),
+    end_color: Tuple[int, int, int] = (255, 0, 0),
+) -> None:
     """
     Converts a floor layout image into a 60x60 CSV grid.
     """
-    img = Image.open(image_path).convert("RGB")
-    img = img.resize((cols, rows), Image.NEAREST)
-    pixels = img.load()
-    
     grid = []
-    
-    for r in range(rows):
-        row = []
-        for c in range(cols):
-            color = pixels[c, r]
-            
-            if color == wall_color:
-                row.append(1)
-            elif color == end_color:
-                row.append(3)
-            else:
-                row.append(0)
-        
-        grid.append(row)
+    with Image.open(image_path) as img:
+        img = img.convert("RGB")
+        img = img.resize((cols, rows), Image.NEAREST)
+        pixels = img.load()
+
+        for r in range(rows):
+            row = []
+            for c in range(cols):
+                color = pixels[c, r]
+
+                if color == wall_color:
+                    row.append(1)
+                elif color == end_color:
+                    row.append(3)
+                else:
+                    row.append(0)
+
+            grid.append(row)
     
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)

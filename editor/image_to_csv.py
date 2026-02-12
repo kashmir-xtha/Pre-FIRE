@@ -1,10 +1,12 @@
-from PIL import Image
 import csv
 import os
+from typing import List
+
 import numpy as np
+from PIL import Image
 
 # adaptive threshold with otsu's method: 
-def otsu_threshold(img_array):
+def otsu_threshold(img_array: np.ndarray) -> int:
     """Automatically calculates an optimal threshold to separate walls from floors in a grayscale image."""
     hist, _ = np.histogram(img_array, bins=256, range=(0, 256)) # to compute histogram of each pixel intensity
     total = img_array.size
@@ -36,7 +38,7 @@ def otsu_threshold(img_array):
     return threshold #  threshold is the best value to separate two intensity values
 
 # wall thickening function for images with very thin walls
-def thicken_walls(grid, iterations=1):
+def thicken_walls(grid: List[List[int]], iterations: int = 1) -> List[List[int]]:
     """Makes wall cells thicker in the generated grid for better wall continuity."""
     rows = len(grid)
     cols = len(grid[0])
@@ -54,7 +56,7 @@ def thicken_walls(grid, iterations=1):
     return grid
 
 # NOISE REMOVAL
-def remove_isolated_walls(grid):
+def remove_isolated_walls(grid: List[List[int]]) -> List[List[int]]:
     """Removes noise/wall cells that are most likely errors because they have very few neighbors."""
     rows = len(grid)
     cols = len(grid[0])
@@ -75,11 +77,18 @@ def remove_isolated_walls(grid):
     return new_grid
 
 # main conversion function
-def floor_image_to_wall_csv(image_path, csv_path, rows=60, cols=60, thicken_iterations=1):
+def floor_image_to_wall_csv(
+    image_path: str,
+    csv_path: str,
+    rows: int = 60,
+    cols: int = 60,
+    thicken_iterations: int = 1,
+) -> None:
     """Main function to convert a floor plan image into a CSV representing walls and floors."""
     # Load image and convert to grayscale
-    img = Image.open(image_path).convert("L") 
-    img_array = np.array(img) 
+    with Image.open(image_path) as img:
+        img = img.convert("L")
+        img_array = np.array(img)
 
     # Compute adaptive threshold
     threshold = otsu_threshold(img_array)

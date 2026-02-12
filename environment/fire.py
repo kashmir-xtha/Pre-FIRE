@@ -1,10 +1,20 @@
+import logging
 import random
-from core import grid
-from utils.utilities import rTemp
-from environment.materials import MATERIALS, material_id
+from typing import List, Tuple, TYPE_CHECKING
+
 import numpy as np
 
-def do_temperature_update(grid, dt=1.0):
+from core import grid
+from environment.materials import MATERIALS, material_id
+from utils.utilities import rTemp
+
+if TYPE_CHECKING:
+    from core.grid import Grid
+    from core.spot import Spot
+
+logger = logging.getLogger(__name__)
+
+def do_temperature_update(grid: "Grid", dt: float = 1.0) -> None:
     rows = grid.rows
     temp = grid.temp_np
 
@@ -57,7 +67,7 @@ def do_temperature_update(grid, dt=1.0):
             )
 
 
-def update_fire_with_materials(grid, dt=1.0):
+def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
     """
         Collects neighbor data and updates fire state for each cell, then consumes fuel for burning cells.
     """
@@ -138,7 +148,7 @@ def update_fire_with_materials(grid, dt=1.0):
 
     return new_fires
 
-def update_temperature_with_materials(grid, dt=1.0):
+def update_temperature_with_materials(grid: "Grid", dt: float = 1.0) -> None:
     """
     Optimized temperature update
     """
@@ -167,7 +177,7 @@ def update_temperature_with_materials(grid, dt=1.0):
 
             spot.update_temperature(neighbor_data, tempConst, dt)
 
-def collect_neighbor_data(grid, r, c):
+def collect_neighbor_data(grid: "Grid", r: int, c: int) -> List[Tuple[bool, float]]:
     """
     Collects neighbor data for a given cell (r, c) using the precomputed neighbor map.
     Returns a list of tuples: (is_fire, temperature)
@@ -180,7 +190,7 @@ def collect_neighbor_data(grid, r, c):
     
     return neighbor_data
 
-def randomfirespot(grid, ROWS, max_dist=30):
+def randomfirespot(grid: "Grid", ROWS: int, max_dist: int = 30) -> bool:
     attempts = 0
     max_attempts = 500
     u, v = -1, -1
@@ -213,7 +223,12 @@ def randomfirespot(grid, ROWS, max_dist=30):
 
     if u != -1 and grid.grid[u][v].fuel > 0:
         mat_enum = material_id(grid.grid[u][v].material)
-        print(f"Placing fire on material: {MATERIALS[mat_enum]['name']} at ({u}, {v})")
+        logger.info(
+            "Placing fire on material: %s at (%s, %s)",
+            MATERIALS[mat_enum]["name"],
+            u,
+            v,
+        )
         grid.fire_sources.add((u, v))
         return True
 
@@ -226,7 +241,14 @@ def randomfirespot(grid, ROWS, max_dist=30):
 
     return False
 
-def direction_blocked(grid, r, c, dr, dc, max_dist):
+def direction_blocked(
+    grid: "Grid",
+    r: int,
+    c: int,
+    dr: int,
+    dc: int,
+    max_dist: int,
+) -> bool:
     rows = len(grid.grid)
     cols = len(grid.grid[0])
     for d in range(1, max_dist + 1):
@@ -239,7 +261,7 @@ def direction_blocked(grid, r, c, dr, dc, max_dist):
             return True
     return False
 
-def is_valid_fire_start(grid, r, c, max_dist=30):
+def is_valid_fire_start(grid: "Grid", r: int, c: int, max_dist: int = 30) -> bool:
     if grid.grid[r][c].is_barrier() or grid.grid[r][c].is_start() or grid.grid[r][c].is_end():
         return False
     directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]

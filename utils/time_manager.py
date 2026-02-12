@@ -1,9 +1,10 @@
 # time_manager.py
-import pygame
 import time
 
+import pygame
+
 class TimeManager:
-    def __init__(self, fps=60, step_size=1):
+    def __init__(self, fps: int = 60, step_size: int = 1) -> None:
         self.clock = pygame.time.Clock()
         self.fps = fps
         
@@ -21,7 +22,7 @@ class TimeManager:
         self.last_time = time.time()
         self.avg_fps = 0
         
-    def update(self):
+    def update(self) -> bool:
         current_time = time.time()
         self.delta_time = current_time - self.last_time
         self.last_time = current_time
@@ -52,7 +53,7 @@ class TimeManager:
 
         return False
     
-    def should_update_simulation(self):
+    def should_update_simulation(self) -> bool:
         if self.paused:
             return False
         
@@ -64,57 +65,57 @@ class TimeManager:
         
         return True
     
-    def get_update_count(self):
+    def get_update_count(self) -> int:
         if self.step_by_step:
             return 1
         return self.step_size
     
-    def toggle_pause(self):
+    def toggle_pause(self) -> bool:
         self.paused = not self.paused
         return self.paused
     
-    def set_paused(self, paused):
+    def set_paused(self, paused: bool) -> None:
         self.paused = paused
     
-    def toggle_step_mode(self):
+    def toggle_step_mode(self) -> bool:
         self.step_by_step = not self.step_by_step
         if self.step_by_step:
             self.paused = False
         return self.step_by_step
     
-    def request_next_step(self):
+    def request_next_step(self) -> bool:
         if self.step_by_step and not self.next_step_requested:
             self.next_step_requested = True
             return True
         return False
     
-    def set_speed(self, multiplier):
+    def set_speed(self, multiplier: float) -> int:
         self.step_size = max(1, int(multiplier))
         return self.step_size
     
-    def reset_timer(self):
+    def reset_timer(self) -> None:
         self.total_time = 0
         self.simulation_step = 0
         self.frame_count = 0
         self.last_time = time.time()
     
-    def get_delta_time(self):
+    def get_delta_time(self) -> float:
         return self.delta_time
     
-    def get_total_time(self):
+    def get_total_time(self) -> float:
         return self.total_time
     
-    def get_simulation_step(self):
+    def get_simulation_step(self) -> int:
         return self.simulation_step
     
-    def get_fps(self):
+    def get_fps(self) -> float:
         return self.avg_fps
     
-    def is_paused(self):
+    def is_paused(self) -> bool:
         return self.paused
     
-    def is_step_mode(self):
+    def is_step_mode(self) -> bool:
         return self.step_by_step
     
-    def get_step_size(self):
+    def get_step_size(self) -> int:
         return self.step_size

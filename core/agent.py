@@ -1,17 +1,27 @@
-import pygame
-from queue import PriorityQueue
-from utils.utilities import Color, get_neighbors, rTemp, resource_path
+import logging
 import math
+from queue import PriorityQueue
+from typing import Dict, List, Optional, Sequence, Tuple, TYPE_CHECKING
+
+import pygame
+
+from utils.utilities import Color, get_neighbors, rTemp, resource_path
+
+if TYPE_CHECKING:
+    from core.grid import Grid
+    from core.spot import Spot
+
+logger = logging.getLogger(__name__)
 temp = rTemp()
 BLUE = Color.BLUE.value
 class Agent:
-    def __init__(self, grid, start_spot):
+    def __init__(self, grid: "Grid", start_spot: "Spot") -> None:
         self.grid = grid
         self.spot = start_spot
         self.health = 100  # Example health value
         self.alive = (self.health > 0)
         self.speed = 1    # Cells per move
-        self.path = []   # Path to follow
+        self.path: List["Spot"] = []   # Path to follow
         self.path_show = True
 
         self.move_timer = 0
@@ -26,14 +36,14 @@ class Agent:
             self.agent_image = pygame.image.load(agent_img_pth)
             self.original_image = self.agent_image.copy()
         except:
-            print("Warning: agent.png not found, using fallback circle")
+            logger.warning("agent.png not found, using fallback circle")
             self.agent_image = None
             self.original_image = None
         
         # Movement direction tracking (0=right, 45=down-right, 90=down, etc.)
         self.current_angle = 0
 
-    def reset(self):
+    def reset(self) -> None:
         self.health = 100
         self.alive = True
         self.path = []
@@ -41,7 +51,7 @@ class Agent:
             self.spot = self.grid.start
         self.current_angle = 0
     
-    def move_along_path(self):
+    def move_along_path(self) -> None:
         self.MOVE_INTERVAL = temp.AGENT_MOVE_TIMER # To have dynamic 
         if not self.path or len(self.path) <= 1:
             return
@@ -56,7 +66,7 @@ class Agent:
         self.spot = next_spot
         self.path.pop(0)
 
-    def best_path(self):
+    def best_path(self) -> List["Spot"]:
         """Return the best path to the exit considering safety"""
         paths = []
         for exit_spot in self.grid.exits:
@@ -67,7 +77,7 @@ class Agent:
         best_path = min(paths, key=len) if paths else None
         return best_path if best_path else [] 
     
-    def update(self, dt):
+    def update(self, dt: float) -> bool:
         """Time-based update with delta time"""
         if not self.alive:
             return False
@@ -107,7 +117,7 @@ class Agent:
         # Periodic path safety check
         if self.update_timer >= self.UPDATE_INTERVAL:
             if not self.path or not path_still_safe(self.path, self.grid.grid):
-                print("Path not safe, replanning boss")
+                logger.info("Path not safe, replanning")
                 self.path = self.best_path()
                 self.move_timer = 0
                 
@@ -120,7 +130,7 @@ class Agent:
             
         return True
 
-    def draw(self, win):
+    def draw(self, win: pygame.Surface) -> None:
         # Ensure we have a valid cell size
         if not hasattr(self.spot, 'cell_size') or self.spot.cell_size <= 0:
             # Use grid's cell_size as fallback
@@ -197,7 +207,7 @@ class Agent:
 # def heuristic(a, b):
 #     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
-def heuristic(a, b):
+def heuristic(a: Tuple[int, int], b: Tuple[int, int]) -> float:
     """Octile distance (better for 8-directional with diagonal cost √2)"""
     import math
     dx = abs(a[0] - b[0])
@@ -205,8 +215,8 @@ def heuristic(a, b):
     return max(dx, dy) + (1.4142 - 0.1 - 1) * min(dx, dy)
 
 # PATH RECONSTRUCTION
-def reconstruct_path(came_from, current):
-    path = []
+def reconstruct_path(came_from: Dict["Spot", "Spot"], current: "Spot") -> List["Spot"]:
+    path: List["Spot"] = []
     while current in came_from:
         path.append(current)
         current = came_from[current]
@@ -214,7 +224,7 @@ def reconstruct_path(came_from, current):
     return path
 
 # Danger heuristic
-def danger_heuristic(spot, danger_weight=2.0):
+def danger_heuristic(spot: "Spot", danger_weight: float = 2.0) -> float:
     """Calculate danger cost for a cell using Spot properties"""
     # Base danger from fire
     fire_danger = 100 if spot.is_fire() else 0
@@ -228,15 +238,15 @@ def danger_heuristic(spot, danger_weight=2.0):
     return fire_danger + smoke_danger + temp_danger * danger_weight
 
 # ------------------ A* ALGORITHM ------------------
-def a_star(grid_obj, start, end, rows):
+def a_star(grid_obj: "Grid", start: "Spot", end: "Spot", rows: int) -> Optional[List["Spot"]]:
     grid = grid_obj.grid
     count = 0
     open_set = PriorityQueue()
     open_set.put((0, count, start))
     
-    came_from = {}
-    g_score = {spot: float("inf") for row in grid for spot in row}
-    f_score = {spot: float("inf") for row in grid for spot in row}
+    came_from: Dict["Spot", "Spot"] = {}
+    g_score: Dict["Spot", float] = {spot: float("inf") for row in grid for spot in row}
+    f_score: Dict["Spot", float] = {spot: float("inf") for row in grid for spot in row}
     
     g_score[start] = 0
     f_score[start] = heuristic((start.row, start.col), (end.row, end.col))
@@ -293,7 +303,12 @@ def a_star(grid_obj, start, end, rows):
     return None
 
 # PATH SAFETY CHECK
-def path_still_safe(path, grid, lookahead=20, smoke_threshold=0.7):
+def path_still_safe(
+    path: Sequence["Spot"],
+    grid: Sequence[Sequence["Spot"]],
+    lookahead: int = 20,
+    smoke_threshold: float = 0.7,
+) -> bool:
     """
     Check if the planned path is still safe to follow.
     

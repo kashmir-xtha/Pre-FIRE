@@ -1,12 +1,18 @@
-import pygame
-from utils.utilities import Color, get_neighbors
+from typing import Any, List, Optional, TYPE_CHECKING, Tuple
+
 import numpy as np
+import pygame
+
+from utils.utilities import Color, get_neighbors
+
+if TYPE_CHECKING:
+    from core.spot import Spot
 
 # Global constant for grid color - accessed once at import time
 GRID_COLOR = Color.GREY.value
 
 class Grid:
-    def __init__(self, rows, width):
+    def __init__(self, rows: int, width: int) -> None:
         self.rows = rows
         self.width = width
         self.cell_size = width // rows
@@ -38,19 +44,19 @@ class Grid:
 
         self.ensure_material_cache()
 
-    def add_exit(self, spot):
+    def add_exit(self, spot: "Spot") -> None:
         self.exits.add(spot)
 
-    def remove_exit(self, spot):
+    def remove_exit(self, spot: "Spot") -> None:
         self.exits.discard(spot)
 
-    def clear_exits(self):
+    def clear_exits(self) -> None:
         self.exits.clear()
 
-    def is_exit(self, spot):
+    def is_exit(self, spot: "Spot") -> bool:
         return spot in self.exits
 
-    def _make_grid(self):
+    def _make_grid(self) -> List[List["Spot"]]:
         from core.spot import Spot
         grid = []
         for r in range(self.rows):
@@ -59,7 +65,7 @@ class Grid:
                 grid[r].append(Spot(r, c, self.cell_size))
         return grid
 
-    def _precompute_neighbors(self):
+    def _precompute_neighbors(self) -> List[List[List["Spot"]]]:
         """
         Optimization: Store direct references to neighbor Spot objects.
         This avoids calling get_neighbors() and doing grid[r][c] lookups 
@@ -81,7 +87,7 @@ class Grid:
             map_data.append(row_map)
         return map_data
 
-    def update_np_arrays(self):
+    def update_np_arrays(self) -> None:
         for r in range(self.rows):
             for c in range(self.rows):
                 spot = self.grid[r][c]
@@ -90,28 +96,28 @@ class Grid:
                 self.fuel_np[r, c] = spot.fuel
                 self.fire_np[r, c] = spot.is_fire()
                 
-    def get_spot(self, r, c):
+    def get_spot(self, r: int, c: int) -> Optional["Spot"]:
         if self.in_bounds(r, c):
             return self.grid[r][c]
         return None
 
-    def in_bounds(self, r, c):
+    def in_bounds(self, r: int, c: int) -> bool:
         return 0 <= r < self.rows and 0 <= c < self.rows
     
-    def set_material(self, r, c, material_id):
+    def set_material(self, r: int, c: int, material_id) -> None:
         spot = self.get_spot(r, c)
         if spot:
             spot.set_material(material_id)
             self.mark_material_cache_dirty()
 
-    def mark_material_cache_dirty(self):
+    def mark_material_cache_dirty(self) -> None:
         self.material_cache_dirty = True
 
-    def ensure_material_cache(self):
+    def ensure_material_cache(self) -> None:
         if self.material_cache_dirty:
             self._rebuild_material_cache()
 
-    def _rebuild_material_cache(self):
+    def _rebuild_material_cache(self) -> None:
         rows = self.rows
         grid = self.grid
 
@@ -131,7 +137,7 @@ class Grid:
 
         self.material_cache_dirty = False
     
-    def clear_simulation_visuals(self):
+    def clear_simulation_visuals(self) -> None:
         for row in self.grid:
             for spot in row:
                 if spot.is_fire():
@@ -139,7 +145,7 @@ class Grid:
                     spot.remove_fire_source()
         self.fire_sources.clear()
     
-    def draw_grid(self, win):
+    def draw_grid(self, win: pygame.Surface) -> None:
         gap = self.cell_size
         width = self.width
         # Optimization: Use pre-resolved global color constant
@@ -148,7 +154,12 @@ class Grid:
             pygame.draw.line(win, color, (0, i * gap), (width, i * gap))
             pygame.draw.line(win, color, (i * gap, 0), (i * gap, width))
     
-    def draw(self, win, tools_panel=None, bg_image=None):
+    def draw(
+        self,
+        win: pygame.Surface,
+        tools_panel: Optional[Any] = None,
+        bg_image: Optional[pygame.Surface] = None,
+    ) -> None:
         if bg_image:
             win.blit(bg_image, (0, 0))
         for row in self.grid:
@@ -159,7 +170,7 @@ class Grid:
         if tools_panel:
             tools_panel.draw(win)
     
-    def get_clicked_pos(self, pos):
+    def get_clicked_pos(self, pos: Tuple[int, int]) -> Tuple[Optional[int], Optional[int]]:
         gap = self.cell_size
         x, y = pos
         if x < self.width:
@@ -168,7 +179,7 @@ class Grid:
             return row, col
         return None, None
     
-    def update_geometry(self, cell_size):
+    def update_geometry(self, cell_size: int) -> None:
         self.cell_size = cell_size
         for r in range(self.rows):
             for c in range(self.rows):
