@@ -20,7 +20,7 @@ def spread_smoke(
     Optimized smoke spread using numpy diffusion on the Grid's smoke array.
     Barriers block diffusion; fire cells only produce smoke.
     """
-    
+
     # Handle both Grid object and list inputs for compatibility
     if hasattr(grid_data, 'neighbor_map'):
         grid = grid_data.grid
@@ -34,14 +34,9 @@ def spread_smoke(
         max_smoke = temp_constants.MAX_SMOKE.value
         production = temp_constants.SMOKE_PRODUCTION.value
 
-        is_barrier = np.zeros((rows, cols), dtype=np.bool_)
-        is_fire = np.zeros((rows, cols), dtype=np.bool_)
-        for r in range(rows):
-            row_spots = grid[r]
-            for c in range(cols):
-                spot = row_spots[c]
-                is_barrier[r, c] = spot.is_barrier()
-                is_fire[r, c] = spot.is_fire()
+        # Vectorized extraction of is_barrier and is_fire using state lookups
+        is_barrier = grid_data.is_barrier_np
+        is_fire = grid_data.fire_np
 
         coeff = np.full((rows, cols), diffusion, dtype=np.float32)
         coeff[is_barrier] = 0.0
@@ -77,7 +72,7 @@ def spread_smoke(
         coeff_ne = np.minimum(coeff, ne_c)
         coeff_sw = np.minimum(coeff, sw_c)
         coeff_se = np.minimum(coeff, se_c)
-        
+
         def positive_diff(neighbor, current, edge_coeff):
             return np.maximum(neighbor - current, 0.0) * edge_coeff
 
@@ -103,10 +98,12 @@ def spread_smoke(
 
         grid_data.smoke_np = new_smoke
 
+        # Vectorized update of spot objects with direct array access
         for r in range(rows):
             row_spots = grid[r]
+            row_smoke = new_smoke[r]
             for c in range(cols):
-                row_spots[c].set_smoke(float(new_smoke[r, c]))
+                row_spots[c]._smoke = float(row_smoke[c])
     else:
         # Legacy slow path - fallback
         from utils.utilities import get_neighbors

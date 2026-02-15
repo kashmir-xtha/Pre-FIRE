@@ -117,7 +117,7 @@ class Agent:
         # Periodic path safety check
         if self.update_timer >= self.UPDATE_INTERVAL:
             if not self.path or not path_still_safe(self.path, self.grid.grid):
-                logger.info("Path not safe, replanning")
+                logger.info("Path not safe, replanning boss")
                 self.path = self.best_path()
                 self.move_timer = 0
                 

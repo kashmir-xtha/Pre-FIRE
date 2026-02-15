@@ -88,9 +88,16 @@ class Grid:
         return map_data
 
     def update_np_arrays(self) -> None:
-        for r in range(self.rows):
-            for c in range(self.rows):
-                spot = self.grid[r][c]
+        """Optimized array update using vectorized operations where possible"""
+        rows = self.rows
+
+        # Use direct array access for faster updates
+        for r in range(rows):
+            row_spots = self.grid[r]
+            row_slice = slice(r, r + 1)
+
+            for c in range(rows):
+                spot = row_spots[c]
                 self.temp_np[r, c] = spot.temperature
                 self.smoke_np[r, c] = spot.smoke
                 self.fuel_np[r, c] = spot.fuel
