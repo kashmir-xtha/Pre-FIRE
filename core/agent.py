@@ -1,16 +1,21 @@
 import logging
 import math
-from queue import PriorityQueue
-from typing import Dict, List, Optional, Sequence, Tuple, TYPE_CHECKING
-
+from typing import Dict, List, Optional, Sequence, Set, Tuple, TYPE_CHECKING
+import heapq
 import pygame
 
-from utils.utilities import Color, get_neighbors, rTemp, resource_path
+from utils.utilities import Color, rTemp, resource_path
 
 if TYPE_CHECKING:
     from core.grid import Grid
     from core.spot import Spot
 
+
+NEIGHBOR_OFFSETS = (
+        (-1, -1), (-1, 0), (-1, 1),
+        (0, -1),           (0, 1),
+        (1, -1),  (1, 0),  (1, 1)
+)
 logger = logging.getLogger(__name__)
 temp = rTemp()
 BLUE = Color.BLUE.value
@@ -241,8 +246,9 @@ def danger_heuristic(spot: "Spot", danger_weight: float = 2.0) -> float:
 def a_star(grid_obj: "Grid", start: "Spot", end: "Spot", rows: int) -> Optional[List["Spot"]]:
     grid = grid_obj.grid
     count = 0
-    open_set = PriorityQueue()
-    open_set.put((0, count, start))
+    open_heap = [(0.0, count, start)]  # (f_score, tie_breaker, spot)
+    open_set: Set["Spot"] = {start}
+    closed_set: Set["Spot"] = set()
     
     came_from: Dict["Spot", "Spot"] = {}
     g_score: Dict["Spot", float] = {spot: float("inf") for row in grid for spot in row}
@@ -253,30 +259,34 @@ def a_star(grid_obj: "Grid", start: "Spot", end: "Spot", rows: int) -> Optional[
     
     open_set_hash = {start}
     
-    while not open_set.empty():
+    while open_heap:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 return None
         
-        current = open_set.get()[2]
-        open_set_hash.remove(current)
+        _, _, current = heapq.heappop(open_heap)
+        open_set.remove(current)
+        if current in closed_set:
+            continue
+        closed_set.add(current)
         
         if current == end:
             path = reconstruct_path(came_from, end)
             return path
         
         # 8-connected grid
-        for r, c in get_neighbors(current.row, current.col, rows, rows):
-            neighbor = grid[r][c]
-            
-            # Skip if barrier or fire
+        for dr, dc in NEIGHBOR_OFFSETS:
+            nr, nc = current.row + dr, current.col + dc
+            if not (0 <= nr < rows and 0 <= nc < rows):
+                continue
+            neighbor = grid[nr][nc]
             if neighbor.is_barrier() or neighbor.is_fire():
                 continue
             
             # Calculate cost with danger
             danger_cost = danger_heuristic(neighbor, danger_weight=2.0)
-            is_diagonal = (r != current.row) and (c != current.col)
+            is_diagonal = (dr != 0) and (dc != 0)
             
             base_cost = 1
             if is_diagonal:
@@ -296,11 +306,12 @@ def a_star(grid_obj: "Grid", start: "Spot", end: "Spot", rows: int) -> Optional[
                     (neighbor.row, neighbor.col), (end.row, end.col)
                 )
                 
-                if neighbor not in open_set_hash:
+                if neighbor not in open_set:
                     count += 1
-                    open_set.put((f_score[neighbor], count, neighbor))
-                    open_set_hash.add(neighbor)
+                    heapq.heappush(open_heap, (f_score[neighbor], count, neighbor))
+                    open_set.add(neighbor)
     return None
+
 
 # PATH SAFETY CHECK
 def path_still_safe(
