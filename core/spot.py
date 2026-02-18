@@ -43,7 +43,7 @@ class Spot:
         self._state = EMPTY
         self._temperature = AMBIENT_TEMP
         self._smoke = 0.0
-        self._fuel = 1.0
+        self._fuel = self._material_props().get(material_id.AIR, {}).get("fuel", 1.0)
         self._material = material_id.AIR  # Store as enum, not integer
         self._is_fire_source = False
         
@@ -83,7 +83,7 @@ class Spot:
         self._state = EMPTY
         self._temperature = AMBIENT_TEMP
         self._smoke = 0.0
-        self._fuel = 1.0
+        self._fuel = self._material_props().get(material_id.AIR, {}).get("fuel", 1.0)
         self._material = material_id.AIR
         self._is_fire_source = False
     
@@ -234,7 +234,7 @@ class Spot:
 
         # Cached boolean flag for special cells
         if getattr(self, 'is_special', None) is None:
-            self.is_special = self.is_barrier or self.is_start or self.is_end
+            self.is_special = self.is_barrier() or self.is_start() or self.is_end()
 
         if self.is_special:
             ambient = tempConstant.AMBIENT_TEMP
@@ -243,22 +243,20 @@ class Spot:
 
         # Apply diffusion + cooling contribution
         self._temperature += heat_flux * dt
-
-        # Cached fire flag
-        if getattr(self, 'is_fire_flag', None) is None:
-            self.is_fire_flag = getattr(self, '_is_fire', False)
-
-        if self.is_fire_flag and self._fuel > 0:
+    
+        # Check if currently on fire (don't use cached flag since fire state can change)
+        if self.is_fire() and self.fuel > 0:
 
             # Cache material properties per cell
             if getattr(self, 'material_props', None) is None:
                 self.material_props = self.get_material_properties()
-
+            
             props = self.material_props
-            heat_release = props.get("heat_release_rate", 150.0)  # °C/s equivalent
+            heat_release = props.get("heat_release_rate", 500.0)  # °C/s equivalent
             fuel_burn_rate = props.get("fuel_burn_rate", 0.01)    # kg/s
 
             # Apply combustion heat
+            #print(f"Applying combustion heat: {heat_release * dt:.2f}°C for fuel burn: {fuel_burn_rate * dt:.4f}kg")
             self._temperature += heat_release * dt
 
             # Fuel consumption
@@ -271,52 +269,6 @@ class Spot:
         ambient = tempConstant.AMBIENT_TEMP
         self._temperature = max(ambient, min(self._temperature, 5000))
 
-    def update_temperature(
-        self,
-        neighbor_data: Sequence[Tuple[float, float]],
-        tempConstant: TempConstants,
-        dt: float,
-    ) -> None:
-        """
-        Update temperature based on neighbor data
-        
-        :param neighbor_data: List of tuples (neighbor_temp, transfer_coefficient)
-        :param dt: Delta time
-        """
-        # Skip special cells
-        if self.is_barrier() or self.is_start() or self.is_end():
-            # Just cool down slowly
-            cooling = self.get_material_properties()["cooling_rate"] * \
-                     (self._temperature - tempConstant.AMBIENT_TEMP) * dt
-            self.add_temperature(-cooling)
-            return
-        
-        # Calculate heat transfer from neighbors
-        heat_sum = 0.0
-        valid_neighbors = 0
-        
-        for neighbor_temp, transfer_coeff in neighbor_data:
-            temp_diff = neighbor_temp - self._temperature
-            heat_flow = temp_diff * transfer_coeff * dt
-            heat_sum += heat_flow
-            valid_neighbors += 1
-        
-        # Average heat transfer
-        if valid_neighbors > 0:
-            heat_transfer = heat_sum / valid_neighbors
-        else:
-            heat_transfer = 0.0
-        
-        # Natural cooling
-        cooling = self.get_material_properties()["cooling_rate"] * \
-                 (self._temperature - tempConstant.AMBIENT_TEMP) * dt
-        
-        # Additional heating if on fire
-        heating = 150.0 * dt if self.is_fire() else 0.0
-        
-        # Apply all changes
-        self.add_temperature(heat_transfer - cooling + heating)
-    
     def update_fire_state(
         self,
         neighbor_fire_states: Sequence[Tuple[bool, float]],

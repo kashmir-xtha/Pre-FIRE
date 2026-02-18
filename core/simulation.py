@@ -118,7 +118,7 @@ class Simulation:
             spot = self.grid.get_spot(row, col)
             
             if event.button == 1:  # Left click - place
-                logger.debug("Spot info: %s", spot.to_dict())
+                print("Spot info: ", spot.to_dict())
 
     def handle_events(self) -> int:
         for event in pygame.event.get():

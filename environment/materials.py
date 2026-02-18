@@ -9,7 +9,7 @@ MATERIALS = {
         "color": (255, 255, 255),
         "fuel": 1.0,
         "ignition_temp": float("inf"),
-        "cooling_rate": 0.1,  # Increased cooling rate
+        "cooling_rate": 0.01,  # Increased cooling rate
         "heat_transfer": 0.5,  # Reduced heat transfer
         "default_state": EMPTY  # EMPTY
     },
