@@ -26,7 +26,7 @@ MATERIALS = {
         "name": "Wall",
         "color": (0, 0, 0),
         "fuel": 0.0,
-        "ignition_temp": float("inf"),  # Very high ignition temp
+        "ignition_temp": float("1500"),  # Very high ignition temp
         "cooling_rate": 0,    # Very slow cooling
         "heat_transfer": 0,    # Better heat conductor than wood
         "default_state": WALL  # WALL

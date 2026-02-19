@@ -1,7 +1,6 @@
 import ctypes
 import logging
 import sys
-
 import pygame
 from editor.editor import run_editor
 from core.agent import Agent
@@ -20,7 +19,6 @@ hwnd = pygame.display.get_wm_info()['window'] #HWND - handle to the window
 if load_window_state():
     ctypes.windll.user32.ShowWindow(hwnd, 3)  # 3 - MAXIMIZE THE WINDOW
 
-
 image_directory = resource_path("data/layout_images")
 csv_directory = resource_path("data/layout_csv")
 
@@ -32,7 +30,6 @@ def configure_logging() -> None:
         level=logging.INFO,
         format="%(levelname)s:%(name)s:%(message)s",
     )
-
 
 def main() -> None:
     configure_logging()

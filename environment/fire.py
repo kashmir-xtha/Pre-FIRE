@@ -79,6 +79,7 @@ def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
     temp = np.empty((rows, rows), dtype=np.float32)
     fuel = np.empty((rows, rows), dtype=np.float32)
     is_fire = np.zeros((rows, rows), dtype=np.bool_)
+    burned = np.zeros((rows, rows), dtype=np.bool_)
 
     grid.ensure_material_cache()
     ignition_temp = grid.ignition_temp_np
@@ -93,8 +94,16 @@ def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
             temp[r, c] = spot.temperature
             fuel[r, c] = spot.fuel
             is_fire[r, c] = spot.is_fire()
+            burned[r, c] = spot.burned
 
-    candidate = (~is_fire) & (~is_barrier) & (~is_start) & (~is_end) & (fuel > 0)
+    candidate = (
+        (~is_fire) &
+        (~is_barrier) &
+        (~is_start) &
+        (~is_end) &
+        (fuel > 0) &
+        (~burned)
+    )
 
     fire_pad = np.pad(is_fire.astype(np.int8), 1, mode="constant")
     neighbor_fire = (
@@ -139,8 +148,17 @@ def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
                 spot.consume_fuel(spot.fuel - new_fuel)
 
     if np.any(extinguish):
+        # If any materials are replaced we need to rebuild the grid-wide
+        # material cache once after the loop (set_material alone does not
+        # inform the Grid object).
+        dirty = False
         for r, c in np.argwhere(extinguish):
+            
             grid_grid[r][c].extinguish_fire()
+            grid_grid[r][c].set_material(material_id.AIR)
+            dirty = True
+        if dirty:
+            grid.mark_material_cache_dirty()
         is_fire[extinguish] = False
 
     grid.fuel_np = fuel_after

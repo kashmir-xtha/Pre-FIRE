@@ -46,6 +46,7 @@ class Spot:
         self._fuel = self._material_props().get(material_id.AIR, {}).get("fuel", 1.0)
         self._material = material_id.AIR  # Store as enum, not integer
         self._is_fire_source = False
+        self._burned = False  # True once the spot has ever been on fire
         
     # --- Property getters for safe access ---
     @property
@@ -86,6 +87,7 @@ class Spot:
         self._fuel = self._material_props().get(material_id.AIR, {}).get("fuel", 1.0)
         self._material = material_id.AIR
         self._is_fire_source = False
+        self._burned = False
     
     def make_barrier(self) -> None:
         """Make this spot a barrier/wall"""
@@ -121,13 +123,17 @@ class Spot:
             self._update_color_from_material()
 
     def set_on_fire(self, initial_temp: float = 600.0) -> None:
-        """Set this spot on fire"""
+        """Set this spot on fire
+        Also mark the spot as burned so it cannot be reignited later.
+        """
         self._state = FIRE
         self._color = FIRE_COLOR
         self._temperature = max(self._temperature, initial_temp)
+        self._burned = True
     
     def extinguish_fire(self) -> None:
-        """Extinguish fire and reset to material"""
+        """Extinguish fire and reset to material
+        Burning history is retained; once a spot has been on fire its burned flag remains True to prevent reignition.  """
         if self.is_fire():
             self._state = EMPTY
             self._update_color_from_material()
@@ -161,12 +167,29 @@ class Spot:
         self._temperature = max(AMBIENT_TEMP, min(1200.0, temp))
     
     def consume_fuel(self, amount: float) -> None:
-        """Consume fuel with bounds checking"""
+        """Consume fuel with bounds checking and prevent reignition after depletion and set to AIR if fuel runs out"""
         self._fuel = max(0.0, self._fuel - amount)
-        if self._fuel <= 0 and self._state == FIRE:
-            self.extinguish_fire()
+
+        # if we've run out of fuel drop the material to AIR before clearing the
+        # fire state.  extinguish_fire() updates the color based on the current
+        # material, so setting it first ensures the spot appears as air.
+
+        # if self._fuel <= 0 and self._state == FIRE:
+        #     self.extinguish_fire()
+
+        if self._fuel <= 0:
+            # avoid changing barriers or special start/end cells
+            if not (self.is_barrier() or self.is_start() or self.is_end()):
+                self._material = material_id.AIR
+            if self._state == FIRE:
+                self.extinguish_fire()
     
     # --- Query methods ---
+
+    @property #property decorator allows us for access as an attribute while still controlling it with a private variable
+    def burned(self) -> bool:
+        """True if this spot has ever been on fire"""
+        return self._burned
     def is_barrier(self) -> bool: 
         return self._state == WALL
     
@@ -183,8 +206,12 @@ class Spot:
         return self._state == EMPTY
     
     def is_flammable(self) -> bool:
-        """Check if this spot can catch fire"""
-        return self._material_props()[self._material]["fuel"] > 0
+        """Check if this spot can catch fire
+
+        A spot is considered flammable only if it has fuel and has never burned
+        previously.  This guards against reignition after an initial burn/extinguish.
+        """
+        return (not self._burned) and self._material_props()[self._material]["fuel"] > 0
     
     def is_hot_enough_to_ignite(self) -> bool:
         """Check if temperature is above ignition point"""

@@ -26,11 +26,18 @@ class Grid:
         self.start = None
         self.exits = set()
 
+        # a snapshot of the layout when the grid is first created/edited.
+        # used during simulation reset to restore original materials even if
+        # cells have been converted to air by burning.
+        self.initial_layout = None  
+        # type: Optional[List[List[Dict[str, object]]]]
+
         # Numpy Arrays
         self.temp_np = np.zeros((rows, rows), dtype=np.float32)
         self.smoke_np = np.zeros((rows, rows), dtype=np.float32)
         self.fuel_np = np.zeros((rows, rows), dtype=np.float32)
         self.fire_np = np.zeros((rows, rows), dtype=np.bool_)
+        self.burned_np = np.zeros((rows, rows), dtype=np.bool_) # track spots that have ever burned to block re‑ignition
 
         # Material caches (rebuild on edit/reset)
         self.material_cache_dirty = True
@@ -102,6 +109,7 @@ class Grid:
                 self.smoke_np[r, c] = spot.smoke
                 self.fuel_np[r, c] = spot.fuel
                 self.fire_np[r, c] = spot.is_fire()
+                self.burned_np[r, c] = spot.burned
                 
     def get_spot(self, r: int, c: int) -> Optional["Spot"]:
         if self.in_bounds(r, c):
@@ -115,7 +123,17 @@ class Grid:
         spot = self.get_spot(r, c)
         if spot:
             spot.set_material(material_id)
+            spot._burned = False # painting a new material clears any previous burn history
             self.mark_material_cache_dirty()
+
+    def backup_layout(self) -> None:
+        """Take a deep snapshot of the current spot attributes used for
+        rebuilding the grid during simulation resets.
+        """
+        self.initial_layout = [
+            [spot.to_dict() for spot in row]
+            for row in self.grid
+        ]
 
     def mark_material_cache_dirty(self) -> None:
         self.material_cache_dirty = True

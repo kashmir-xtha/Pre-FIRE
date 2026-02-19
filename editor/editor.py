@@ -122,6 +122,8 @@ class Editor:
                 self.grid_obj.start = start
             if bool(exits):
                 self.grid_obj.exits = exits
+            # remember the file so simulations can reload it on reset
+            self.grid_obj.layout_filename = self.filename
             self.grid_obj.mark_material_cache_dirty()
         except FileNotFoundError:
             pass  # Start with empty grid
@@ -276,6 +278,9 @@ class Editor:
         if save_filename:
             save_layout(self.grid_obj.grid, filename=save_filename)
             self.current_filename = save_filename
+            # if the user explicitly saved the layout, update the grid's
+            # remembered filename so resets will use the new file
+            self.grid_obj.layout_filename = save_filename
     
     def _load_layout_dialog(self) -> None:
         """Open load dialog and load layout"""
@@ -286,6 +291,9 @@ class Editor:
     
     def _load_from_file(self, filename: str) -> None:
         """Load layout from a specific file"""
+        # remember the source so resets can go back to it
+        self.grid_obj.layout_filename = filename
+
         # Clear old state
         self.grid_obj.start = None
         self.grid_obj.exits.clear()

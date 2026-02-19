@@ -6,7 +6,7 @@ import pygame
 import pygame_gui
 from environment.fire import randomfirespot, update_fire_with_materials, update_temperature_with_materials, do_temperature_update
 from environment.smoke import spread_smoke, draw_smoke
-from utils.utilities import Color, Dimensions, state_value, SimulationState, rTemp
+from utils.utilities import Color, Dimensions, state_value, SimulationState, rTemp, load_layout
 from ui.slider import create_control_panel
 from utils.time_manager import TimeManager
 
@@ -49,6 +49,12 @@ class Simulation:
         self.tools_width = 200  # Fixed panel width
         self.width = self.win.get_size()[0] - self.tools_width  # Initial grid width (window width - panel width)
         self.bg_image = bg_image
+
+        # snapshot layout right away so RESET has something to restore from;
+        # do this before any updates or fire is set
+        self.grid.backup_layout()
+        # remember layout_filename so later resets can reload from the CSV file
+        self.layout_file = getattr(self.grid, "layout_filename", None)
 
         self.time_manager = TimeManager(fps=120, step_size=1)  # Keep your 120 FPS
 
@@ -185,22 +191,37 @@ class Simulation:
         # Reset the time manager timer
         self.time_manager.reset_timer()
         
-        # Reset all spots using proper methods
-        for row in self.grid.grid:
-            for spot in row:
-                disc = spot.to_dict()
-                spot.reset()
-                if disc.get('state') == WALL:
-                    spot.make_barrier()
-                elif disc.get('state') == START:
-                    spot.make_start()
-                elif disc.get('state') == END:
-                    spot.make_end()
-                elif disc.get('is_fire_source'):
-                    spot.set_as_fire_source(disc.get('temperature') if disc.get('temperature') else 1200.0)
-                else:
-                    spot.set_material(disc.get('material'))
+        # Prefer reloading the CSV that we remembered when the simulation was created 
+        if getattr(self, "layout_file", None):
+            start, exits = load_layout(self.grid.grid, self.layout_file)
+            self.grid.start = start
+            if exits:
+                self.grid.exits = exits
+            # refresh our backup to match the file (so subsequent resets use it)
+            self.grid.backup_layout()
+        else:
+            layout = self.grid.initial_layout
+            for r, row in enumerate(self.grid.grid):
+                for c, spot in enumerate(row):
+                    if layout is not None:
+                        disc = layout[r][c]
+                    else:
+                        disc = spot.to_dict()
 
+                    spot.reset()
+                    if disc.get('state') == WALL:
+                        spot.make_barrier()
+                    elif disc.get('state') == START:
+                        spot.make_start()
+                    elif disc.get('state') == END:
+                        spot.make_end()
+                    elif disc.get('is_fire_source'):
+                        spot.set_as_fire_source(disc.get('temperature') if disc.get('temperature') else 1200.0)
+                    else:
+                        spot.set_material(disc.get('material'))
+
+        # after restoring layout we need to clear any burned flags (spot.reset
+        # already did this) and rebuild the material cache
         self.grid.mark_material_cache_dirty()
         self.grid.ensure_material_cache()
         # Sync numpy arrays so smoke/temp don't carry over into the next update
