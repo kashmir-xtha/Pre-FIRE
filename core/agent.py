@@ -1,8 +1,9 @@
 import logging
 import math
-from typing import Dict, List, Optional, Sequence, Set, Tuple, TYPE_CHECKING
 import heapq
+import numpy as np
 import pygame
+from typing import List, Optional, Tuple, Sequence, TYPE_CHECKING
 
 from utils.utilities import Color, rTemp, resource_path
 
@@ -10,339 +11,242 @@ if TYPE_CHECKING:
     from core.grid import Grid
     from core.spot import Spot
 
-
-NEIGHBOR_OFFSETS = (
-        (-1, -1), (-1, 0), (-1, 1),
-        (0, -1),           (0, 1),
-        (1, -1),  (1, 0),  (1, 1)
-)
 logger = logging.getLogger(__name__)
-temp = rTemp()
+temp_config = rTemp()
 BLUE = Color.BLUE.value
+
+# Directions for A* (8-way movement)
+NEIGHBOR_OFFSETS = (
+    (-1, -1), (-1, 0), (-1, 1),
+    (0, -1),           (0, 1),
+    (1, -1),  (1, 0),  (1, 1)
+)
+
 class Agent:
     def __init__(self, grid: "Grid", start_spot: "Spot") -> None:
         self.grid = grid
         self.spot = start_spot
-        self.health = 100  # Example health value
-        self.alive = (self.health > 0)
-        self.speed = 1    # Cells per move
-        self.path: List["Spot"] = []   # Path to follow
+        self.rows = grid.rows
+        self.health = 100
+        self.alive = True
+        self.path: List["Spot"] = []
         self.path_show = True
-
+        
+        # Memory Systems
+        self.known_smoke = np.full((self.rows, self.rows), 0.0) # -1 = unknown, 0 = clear, >0 = smoke density
+        self.known_fire = np.zeros((self.rows, self.rows), dtype=bool)
+        self.known_temp = np.full((self.rows, self.rows), 39) # Assume starting room temp
+        
         self.move_timer = 0
         self.update_timer = 0
-        self.MOVE_INTERVAL = temp.AGENT_MOVE_TIMER  # seconds
-        self.UPDATE_INTERVAL = 0.5  # seconds
-        self.last_health = self.health
+        self.MOVE_INTERVAL = temp_config.AGENT_MOVE_TIMER
+        self.UPDATE_INTERVAL = 0.3
+        self.current_angle = 0
 
-        # Load agent image
         try:
             agent_img_pth = resource_path("data/agent.png")
             self.agent_image = pygame.image.load(agent_img_pth)
             self.original_image = self.agent_image.copy()
-        except:
-            logger.warning("agent.png not found, using fallback circle")
+        except Exception as e:
+            logger.error(f"Could not load agent image: {e}")
             self.agent_image = None
             self.original_image = None
-        
-        # Movement direction tracking (0=right, 45=down-right, 90=down, etc.)
-        self.current_angle = 0
 
     def reset(self) -> None:
         self.health = 100
         self.alive = True
         self.path = []
+        self.known_smoke.fill(-1.0)
+        self.known_fire.fill(False)
+        self.known_temp.fill(20.0)
         if self.grid.start:
             self.spot = self.grid.start
         self.current_angle = 0
-    
+
     def move_along_path(self) -> None:
-        self.MOVE_INTERVAL = temp.AGENT_MOVE_TIMER # To have dynamic 
+        # self.MOVE_INTERVAL = temp_config.AGENT_MOVE_TIMER # To have dynamic 
         if not self.path or len(self.path) <= 1:
             return
 
         next_spot = self.path[1]
 
-        # Check world state using Spot methods
+        # # Check world state using Spot methods
         if next_spot.is_fire() or next_spot.is_barrier():
             return
 
-        # Move agent
-        self.spot = next_spot
-        self.path.pop(0)
+        if self.move_timer >= self.get_move_interval():
+            next_node = self.path[1]
+            dx, dy = next_node.x - self.spot.x, next_node.y - self.spot.y
+            if dx != 0 or dy != 0:
+                self.current_angle = math.degrees(math.atan2(-dy, dx)) - 90
+            
+            self.spot = next_node
+            self.path.pop(0)
+            self.move_timer = 0
+        return True
+
+    def compute_visibility_radius(self) -> float:
+        """Linear visibility reduction based on current cell smoke."""
+        cell_size = getattr(self.grid, 'cell_size', 20)
+        base_radius = 12 * cell_size
+        #reduction = 1 - (self.spot.smoke * 0.7)
+        reduction = math.exp(-2.5 * self.spot.smoke)
+        return max(cell_size * 1.5, base_radius * reduction)
+
+    def update_memory(self) -> None:
+        """Update internal agent knowledge based on current visibility radius."""
+        radius_cells = int(self.compute_visibility_radius() / getattr(self.grid, 'cell_size', 20))
+        for dr in range(-radius_cells, radius_cells + 1):
+            for dc in range(-radius_cells, radius_cells + 1):
+                nr, nc = self.spot.row + dr, self.spot.col + dc
+                if 0 <= nr < self.rows and 0 <= nc < self.rows:
+                    real_spot = self.grid.grid[nr][nc]
+                    self.known_smoke[nr, nc] = real_spot.smoke
+                    self.known_fire[nr, nc] = real_spot.is_fire()
+                    self.known_temp[nr, nc] = real_spot.temperature
+
+    def get_move_interval(self) -> float:
+        """Slow down the agent as smoke increases."""
+        penalty = 1.0 + (self.spot.smoke * 1.5)
+        #print(temp_config.AGENT_MOVE_TIMER, penalty)
+        return temp_config.AGENT_MOVE_TIMER * penalty
 
     def best_path(self) -> List["Spot"]:
-        """Return the best path to the exit considering safety"""
+        """Evaluate all exits and pick the best path; fallback to Desperation Mode if stuck."""
         paths = []
         for exit_spot in self.grid.exits:
-            path = a_star(self.grid, self.spot, exit_spot, self.grid.rows)
-            if path:
-                paths.append(path)
-
-        best_path = min(paths, key=len) if paths else None
-        return best_path if best_path else [] 
-    
-    def update(self, dt: float) -> bool:
-        """Time-based update with delta time"""
-        if not self.alive:
-            return False
+            p = a_star(self.grid, self.spot, exit_spot, self)
+            if p: paths.append(p)
         
-        # Timers
+        if not paths:
+            logger.warning("Agent trapped! Switching to Desperation Mode...")
+            for exit_spot in self.grid.exits:
+                p = a_star(self.grid, self.spot, exit_spot, self, desperate=True)
+                if p: paths.append(p)
+        
+        return min(paths, key=len) if paths else []
+
+    def update(self, dt: float) -> bool:
+        if not self.alive: return False
+        
+        self.update_memory()
         self.move_timer += dt
         self.update_timer += dt
-        #print(self.move_timer)
-        if self.spot.is_end():
-            return True
-        
-        # 1. Fire damage (instant death in fire)
-        if self.spot.is_fire():
-            self.health = 0
-            self.alive = False
-            return False
-        
-        # 2. Smoke damage
-        smoke = self.spot.smoke
-        if smoke > 0:
-            # More smoke = more damage
-            self.health -= smoke * 8 * dt
-        
-        # 3. Temperature damage
-        temp = self.spot.temperature
-        if temp > 50:  # Dangerous temperature threshold
-            # Damage increases exponentially with temperature
-            temp_damage = (temp - 50) * 0.2 * dt
-            self.health -= temp_damage
 
-        # Health check
+        if self.spot.is_end(): return True
+
+        # Damage Logic
+        if self.spot.is_fire(): self.health = 0
+        self.health -= (self.spot.smoke * 10 + max(0, self.spot.temperature - 50) * 0.3) * dt
+
         if self.health <= 0:
             self.health = 0
             self.alive = False
             return False
-        
-        # Periodic path safety check
+
+        # Replanning
         if self.update_timer >= self.UPDATE_INTERVAL:
-            if not self.path or not path_still_safe(self.path, self.grid.grid):
-                logger.info("Path not safe, replanning boss")
+            if not self.path or not path_still_safe(self.path, self.grid.grid, self):
                 self.path = self.best_path()
-                self.move_timer = 0
-                
             self.update_timer = 0
-        
-        # Movement
-        if self.move_timer >= self.MOVE_INTERVAL and self.path:
+
+        # Movement & Rotation
+        if self.move_timer >= self.get_move_interval():
             self.move_along_path()
             self.move_timer = 0
-            
         return True
 
     def draw(self, win: pygame.Surface) -> None:
-        # Ensure we have a valid cell size
-        if not hasattr(self.spot, 'cell_size') or self.spot.cell_size <= 0:
-            # Use grid's cell_size as fallback
-            cell_size = self.grid.cell_size if hasattr(self.grid, 'cell_size') else 20
-            self.spot.width = cell_size
+        cell_size = getattr(self.grid, 'cell_size', 20)
+        cx, cy = self.spot.x + cell_size // 2, self.spot.y + cell_size // 2
+        
+        # 1. Vision Cone (Polygonal Beam)
+        vis_radius = self.compute_visibility_radius()
+        cone_points = [(cx, cy)]
+        start_angle = math.radians(-self.current_angle - 135) 
+        end_angle = math.radians(-self.current_angle - 45)
+        
+        segments = 12
+        for i in range(segments + 1):
+            angle = start_angle + (end_angle - start_angle) * (i / segments)
+            px = cx + math.cos(angle) * vis_radius
+            py = cy + math.sin(angle) * vis_radius
+            cone_points.append((px, py))
+            
+        vision_surf = pygame.Surface(win.get_size(), pygame.SRCALPHA)
+        pygame.draw.polygon(vision_surf, (200, 230, 255, 110), cone_points)
+        win.blit(vision_surf, (0, 0))
+
+        # 2. Agent Sprite
+        if self.agent_image:
+            draw_size = int(cell_size * 2.2) 
+            img = pygame.transform.scale(self.original_image, (draw_size, draw_size))
+            if self.health < 40:
+                img.fill((255, 50, 50, 100), special_flags=pygame.BLEND_MULT)
+            rotated = pygame.transform.rotate(img, self.current_angle)
+            win.blit(rotated, rotated.get_rect(center=(cx, cy)).topleft)
         else:
-            cell_size = self.spot.width
-        
-        # Calculate center position within the cell
-        center_x = self.spot.x + cell_size // 2
-        center_y = self.spot.y + cell_size // 2
-        radius = max(1, cell_size // 2)  
-        
-        # Determine rotation based on path direction (8 directions)
-        if self.path and len(self.path) > 1:
-            next_spot = self.path[1]
-            # Ensure next spot has correct cell size
-            if not hasattr(next_spot, 'cell_size'):
-                next_spot.cell_size = cell_size
-            
-            dx = next_spot.x - self.spot.x
-            dy = next_spot.y - self.spot.y
-            
-            # Calculate angle using atan2 for 8 directions
-            if dx != 0 or dy != 0:
-                angle_radians = math.atan2(dy, dx)
-                angle_degrees = math.degrees(angle_radians)
-                
-                # Round to nearest 45 degrees for 8-directional movement
-                # Directions: 0°(E), 45°(SE), 90°(S), 135°(SW), 180°(W), 225°(NW), 270°(N), 315°(NE)
-                self.current_angle = round(angle_degrees / 45) * 45 - 90
-        
-        if self.agent_image is not None:
-            # Scale image to fit the cell
-            image_size = int(cell_size * 3.25)  # 120% of cell size
-            scaled_image = pygame.transform.scale(self.original_image, (image_size, image_size))
-            
-            # Apply health-based tint
-            health_ratio = self.health / 100
-            if health_ratio <= 0.3:
-                # Red tint for low health
-                tinted_image = scaled_image.copy()
-                tinted_image.fill((255, 100, 100, 128), special_flags=pygame.BLEND_MULT)
-                scaled_image = tinted_image
-            elif health_ratio <= 0.7:
-                # Slight yellow tint for medium health
-                tinted_image = scaled_image.copy()
-                tinted_image.fill((255, 200, 150, 200), special_flags=pygame.BLEND_MULT)
-                scaled_image = tinted_image
-            
-            # Rotate the image based on current angle (8 directions)
-            rotated_image = pygame.transform.rotate(scaled_image, -self.current_angle)
-            
-            # Get the rect of the rotated image and center it
-            rotated_rect = rotated_image.get_rect(center=(center_x, center_y))
-            
-            # Draw the rotated agent image
-            win.blit(rotated_image, rotated_rect.topleft)
-        else:
-            # Fallback to circle if image not loaded
-            # Health-based color
-            health_ratio = self.health / 100
-            if health_ratio > 0.7:
-                color = BLUE
-            elif health_ratio > 0.3:
-                color = (0, 128, 255)  # Light blue
-            else:
-                color = (255, 100, 100)  # Reddish
-            
-            # Draw agent body
-            pygame.draw.circle(win, color, (center_x, center_y), radius)
+            pygame.draw.circle(win, BLUE, (cx, cy), cell_size // 2)
 
-# HEURISTIC FUNCTION
-# def heuristic(a, b):
-#     return abs(a[0] - b[0]) + abs(a[1] - b[1])
+# --- Pathfinding Helper Functions ---
 
-def heuristic(a: Tuple[int, int], b: Tuple[int, int]) -> float:
-    """Octile distance (better for 8-directional with diagonal cost √2)"""
-    import math
-    dx = abs(a[0] - b[0])
-    dy = abs(a[1] - b[1])
-    return max(dx, dy) + (1.4142 - 0.1 - 1) * min(dx, dy)
-
-# PATH RECONSTRUCTION
-def reconstruct_path(came_from: Dict["Spot", "Spot"], current: "Spot") -> List["Spot"]:
-    path: List["Spot"] = []
-    while current in came_from:
-        path.append(current)
-        current = came_from[current]
-    path.reverse()
-    return path
-
-# Danger heuristic
-def danger_heuristic(spot: "Spot", danger_weight: float = 2.0) -> float:
-    """Calculate danger cost for a cell using Spot properties"""
-    # Base danger from fire
-    fire_danger = 100 if spot.is_fire() else 0
-    
-    # Danger from smoke (0-50)
-    smoke_danger = spot.smoke * 50
-    
-    # Danger from temperature (>50°C is dangerous)
-    temp_danger = max(0, spot.temperature - 50)
-    
-    return fire_danger + smoke_danger + temp_danger * danger_weight
-
-# ------------------ A* ALGORITHM ------------------
-def a_star(grid_obj: "Grid", start: "Spot", end: "Spot", rows: int) -> Optional[List["Spot"]]:
-    grid = grid_obj.grid
+def a_star(grid_obj, start, end, agent: Agent, desperate: bool = False):
+    rows = agent.rows
     count = 0
-    open_heap = [(0.0, count, start)]  # (f_score, tie_breaker, spot)
-    open_set: Set["Spot"] = {start}
-    closed_set: Set["Spot"] = set()
-    
-    came_from: Dict["Spot", "Spot"] = {}
-    g_score: Dict["Spot", float] = {spot: float("inf") for row in grid for spot in row}
-    f_score: Dict["Spot", float] = {spot: float("inf") for row in grid for spot in row}
-    
+    # Queue stores: (f_score, tie_breaker, current_node, last_direction)
+    open_heap = [(0.0, count, start, (0, 0))]
+    came_from = {}
+    g_score = {spot: float("inf") for row in grid_obj.grid for spot in row}
     g_score[start] = 0
-    f_score[start] = heuristic((start.row, start.col), (end.row, end.col))
-    
-    open_set_hash = {start}
     
     while open_heap:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                return None
-        
-        _, _, current = heapq.heappop(open_heap)
-        open_set.remove(current)
-        if current in closed_set:
-            continue
-        closed_set.add(current)
-        
+        _, _, current, last_dir = heapq.heappop(open_heap)
         if current == end:
-            path = reconstruct_path(came_from, end)
-            return path
-        
-        # 8-connected grid
+            path = []
+            while current in came_from:
+                path.append(current)
+                current = came_from[current]
+            return path[::-1]
+
         for dr, dc in NEIGHBOR_OFFSETS:
             nr, nc = current.row + dr, current.col + dc
-            if not (0 <= nr < rows and 0 <= nc < rows):
-                continue
-            neighbor = grid[nr][nc]
-            if neighbor.is_barrier() or neighbor.is_fire():
-                continue
-            
-            # Calculate cost with danger
-            danger_cost = danger_heuristic(neighbor, danger_weight=2.0)
-            is_diagonal = (dr != 0) and (dc != 0)
-            
-            base_cost = 1
-            if is_diagonal:
-                if danger_cost > 30:
-                    base_cost = 1
-                else:
-                    base_cost = 1.5
-            
-            total_cost = base_cost + danger_cost
-
-            temp_g = g_score[current] + total_cost
-            
-            if temp_g < g_score[neighbor]:
-                came_from[neighbor] = current
-                g_score[neighbor] = temp_g
-                f_score[neighbor] = temp_g + heuristic(
-                    (neighbor.row, neighbor.col), (end.row, end.col)
-                )
+            if 0 <= nr < rows and 0 <= nc < rows:
+                neighbor = grid_obj.grid[nr][nc]
+                if neighbor.is_barrier() or agent.known_fire[nr, nc]: continue
                 
-                if neighbor not in open_set:
+                # 1. Smoke Cost
+                mem_smoke = max(0, agent.known_smoke[nr, nc])
+                smoke_cost = (mem_smoke * 35) if not desperate else (mem_smoke * 1)
+                
+                # 2. Thermal Buffer (Steer clear of heat)
+                mem_temp = agent.known_temp[nr, nc]
+                heat_penalty = max(0, (mem_temp - 50) * 0.8) if not desperate else 0
+
+                # 3. Movement & Directional Stubbornness
+                is_diagonal = (dr != 0 and dc != 0)
+                dist_cost = 1.414 if is_diagonal else 1.0
+                
+                # Turn penalty prevents zig-zagging
+                if last_dir != (0, 0) and (dr, dc) != last_dir:
+                    dist_cost += 0.8
+
+                temp_g = g_score[current] + dist_cost + smoke_cost + heat_penalty
+
+                if temp_g < g_score[neighbor]:
+                    came_from[neighbor] = current
+                    g_score[neighbor] = temp_g
+                    # Manhattan heuristic
+                    f = temp_g + abs(nr - end.row) + abs(nc - end.col)
                     count += 1
-                    heapq.heappush(open_heap, (f_score[neighbor], count, neighbor))
-                    open_set.add(neighbor)
+                    heapq.heappush(open_heap, (f, count, neighbor, (dr, dc)))
     return None
 
-
-# PATH SAFETY CHECK
-def path_still_safe(
-    path: Sequence["Spot"],
-    grid: Sequence[Sequence["Spot"]],
-    lookahead: int = 20,
-    smoke_threshold: float = 0.7,
-) -> bool:
-    """
-    Check if the planned path is still safe to follow.
-    
-    A path is considered unsafe if:
-    1. Any cell ahead contains fire, OR
-    2. Smoke density exceeds the safety threshold (agent can't see/navigate)
-    
-    Args:
-        path: List of Spot objects representing the path
-        grid: Grid object containing state and smoke data
-        lookahead: How many steps ahead to check
-        smoke_threshold: Smoke density level (0-1) above which path is unsafe
-    """
-    if not path:
-        return False
-
-    for spot in path[:lookahead]:
-        # Check if cell is on fire
-        if grid[spot.row][spot.col].is_fire():
+def path_still_safe(path: Sequence["Spot"], grid, agent: Agent) -> bool:
+    """Checks the upcoming path based on the agent's current visibility/memory."""
+    radius_cells = int(agent.compute_visibility_radius() / getattr(agent.grid, 'cell_size', 20))
+    for spot in path[:radius_cells]:
+        m_temp = agent.known_temp[spot.row, spot.col]
+        # Recalculate if fire is present, smoke is blinding, or it's dangerously hot
+        if grid[spot.row][spot.col].is_fire() or grid[spot.row][spot.col].smoke > 0.8 or m_temp > 60:
             return False
-        
-        # Check if smoke density is too high for safe navigation
-        if grid[spot.row][spot.col].smoke > smoke_threshold:
-            return False
-    
     return True
