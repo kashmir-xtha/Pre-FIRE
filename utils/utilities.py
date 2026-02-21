@@ -38,7 +38,7 @@ class state_value(Enum):
     END = 9
 
 class smoke_constants(Enum):
-    SMOKE_DIFFUSION = 0.06    # how much smoke spreads
+    SMOKE_DIFFUSION = 0.03    # how much smoke spreads
     SMOKE_DECAY = 0.01       # smoke loss per step
     MAX_SMOKE = 1.0
     SMOKE_PRODUCTION = 0.25  # units per second

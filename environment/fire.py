@@ -69,13 +69,15 @@ def do_temperature_update(grid: "Grid", dt: float = 1.0) -> None:
 
 def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
     """
-        Collects neighbor data and updates fire state for each cell, then consumes fuel for burning cells.
+    Collects neighbor data and updates fire state for each cell, then consumes fuel for burning cells.
+    Optimized version with combined fuel consumption/extinguishment loop.
     """
     rows = grid.rows
     grid_grid = grid.grid
     new_fires = []
     temp_constants = rTemp()
 
+    # Cache current state into arrays
     temp = np.empty((rows, rows), dtype=np.float32)
     fuel = np.empty((rows, rows), dtype=np.float32)
     is_fire = np.zeros((rows, rows), dtype=np.bool_)
@@ -96,6 +98,7 @@ def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
             is_fire[r, c] = spot.is_fire()
             burned[r, c] = spot.burned
 
+    # Candidate cells that can ignite
     candidate = (
         (~is_fire) &
         (~is_barrier) &
@@ -105,6 +108,7 @@ def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
         (~burned)
     )
 
+    # Neighbor fire detection (8‑neighbor)
     fire_pad = np.pad(is_fire.astype(np.int8), 1, mode="constant")
     neighbor_fire = (
         fire_pad[0:rows, 0:rows] +
@@ -117,50 +121,59 @@ def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
         fire_pad[2:rows + 2, 2:rows + 2]
     ) > 0
 
+    # Auto‑ignition (temperature + random chance)
     auto_ignite = candidate & (temp >= ignition_temp)
     auto_rand = np.random.random((rows, rows)) < (0.3 * dt)
     auto_ignite &= auto_rand
 
+    # Spread from burning neighbors
     spread_prob = temp_constants.FIRE_SPREAD_PROBABILITY * dt
     spread_rand = np.random.random((rows, rows)) < spread_prob
     spread = candidate & neighbor_fire & spread_rand
 
-    new_fire = auto_ignite | spread
+    new_fire_mask = auto_ignite | spread
 
-    if np.any(new_fire):
-        for r, c in np.argwhere(new_fire):
+    # Apply new fires (must loop to call set_on_fire)
+    if np.any(new_fire_mask):
+        for r, c in np.argwhere(new_fire_mask):
             spot = grid_grid[r][c]
             spot.set_on_fire()
             new_fires.append(spot)
 
-    is_fire = is_fire | new_fire
+    # Update is_fire array
+    is_fire = is_fire | new_fire_mask
 
+    # Burn rate
     burn_rate = 0.1 * dt
-    fuel_after = fuel.copy()
-    fuel_after[is_fire] = np.maximum(fuel_after[is_fire] - burn_rate, 0.0)
-    extinguish = is_fire & (fuel_after <= 0.0)
 
-    if np.any(is_fire):
-        for r, c in np.argwhere(is_fire):
-            spot = grid_grid[r][c]
-            new_fuel = float(fuel_after[r, c])
-            if new_fuel < spot.fuel:
-                spot.consume_fuel(spot.fuel - new_fuel)
+    # --- Combined fuel consumption and extinguishment loop ---
+    fuel_after = fuel.copy()   # will be modified in place
+    dirty = False               # track if material cache needs rebuild
 
-    if np.any(extinguish):
-        # If any materials are replaced we need to rebuild the grid-wide
-        # material cache once after the loop (set_material alone does not
-        # inform the Grid object).
-        dirty = False
-        for r, c in np.argwhere(extinguish):
-            
-            grid_grid[r][c].extinguish_fire()
-            grid_grid[r][c].set_material(material_id.AIR)
+    # Get indices of all currently burning cells
+    fire_indices = np.argwhere(is_fire)
+    for r, c in fire_indices:
+        # Reduce fuel
+        new_fuel = max(fuel_after[r, c] - burn_rate, 0.0)
+        fuel_after[r, c] = new_fuel
+
+        spot = grid_grid[r][c]
+        # Only call consume_fuel if fuel actually decreased
+        if new_fuel < spot.fuel:
+            spot.consume_fuel(spot.fuel - new_fuel)
+
+        # Check for extinguishment
+        if new_fuel <= 0.0:
+            spot.extinguish_fire()
+            spot.set_material(material_id.AIR)
             dirty = True
-        if dirty:
-            grid.mark_material_cache_dirty()
-        is_fire[extinguish] = False
+            # Mark this cell as not fire in the array (for grid.fire_np later)
+            is_fire[r, c] = False
 
+    if dirty:
+        grid.mark_material_cache_dirty()
+
+    # Update grid‑level arrays
     grid.fuel_np = fuel_after
     grid.fire_np = is_fire
 
