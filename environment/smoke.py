@@ -4,7 +4,7 @@ from typing import Dict, Sequence, Union, TYPE_CHECKING
 import numpy as np
 import pygame
 
-from utils.utilities import smoke_constants
+from utils.utilities import smoke_constants, rTemp
 
 if TYPE_CHECKING:
     from core.grid import Grid
@@ -27,12 +27,12 @@ def spread_smoke(
         rows = grid_data.rows
         cols = grid_data.rows
         smoke = grid_data.smoke_np
-
-        temp_constants = smoke_constants
-        diffusion = temp_constants.SMOKE_DIFFUSION.value
-        decay = temp_constants.SMOKE_DECAY.value
-        max_smoke = temp_constants.MAX_SMOKE.value
-        production = temp_constants.SMOKE_PRODUCTION.value
+        
+        temp_constants = rTemp()
+        diffusion = temp_constants.SMOKE_DIFFUSION
+        decay = temp_constants.SMOKE_DECAY
+        max_smoke = temp_constants.MAX_SMOKE
+        production = temp_constants.SMOKE_PRODUCTION
 
         # Vectorized extraction of is_barrier and is_fire using state lookups
         is_barrier = grid_data.is_barrier_np

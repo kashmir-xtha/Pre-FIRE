@@ -5,11 +5,12 @@ import pygame
 from editor.editor import run_editor
 from core.agent import Agent
 from core.simulation import Simulation
-from utils.utilities import Dimensions, SimulationState, loadImage, load_window_state, save_window_state, resource_path
+from utils.utilities import Dimensions, SimulationState, loadImage, load_window_state, save_window_state, resource_path, set_dpi_awareness, get_dpi_scale
 
 logger = logging.getLogger(__name__)
-
+set_dpi_awareness() #before pygame initialization to ensure proper DPI scaling on Windows
 pygame.init()
+
 WIN = pygame.display.set_mode(
     (Dimensions.WIDTH.value + Dimensions.TOOLS_WIDTH.value, Dimensions.WIDTH.value),
     pygame.RESIZABLE # Set window size and make it resizable according to monitor resolution
@@ -21,6 +22,7 @@ if load_window_state():
 
 image_directory = resource_path("data/layout_images")
 csv_directory = resource_path("data/layout_csv")
+SCALE = get_dpi_scale(hwnd)
 
 def configure_logging() -> None:
     root_logger = logging.getLogger()
@@ -43,7 +45,7 @@ def main() -> None:
                 sys.exit()
             agent = Agent(grid, grid.start)
             agent.path = agent.best_path()
-            sim = Simulation(WIN, grid, agent, Dimensions.ROWS.value, Dimensions.WIDTH.value, BG_IMAGE)
+            sim = Simulation(WIN, grid, agent, Dimensions.ROWS.value,int(Dimensions.WIDTH.value * SCALE), BG_IMAGE,)
             mode = sim.run()
             if mode == SimulationState.SIM_EDITOR.value:
                 logger.info("Switching to Editor Mode")

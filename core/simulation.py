@@ -6,7 +6,7 @@ import pygame
 import pygame_gui
 from environment.fire import randomfirespot, update_fire_with_materials, update_temperature_with_materials, do_temperature_update
 from environment.smoke import spread_smoke, draw_smoke
-from utils.utilities import Color, Dimensions, state_value, SimulationState, rTemp, load_layout
+from utils.utilities import Color, Dimensions, state_value, SimulationState, rTemp, load_layout, get_dpi_scale
 from ui.slider import create_control_panel
 from utils.time_manager import TimeManager
 
@@ -46,8 +46,12 @@ class Simulation:
         self.agent = agent
         self.rows = rows
         self.orignal_width = width
-        self.tools_width = 200  # Fixed panel width
-        self.width = self.win.get_size()[0] - self.tools_width  # Initial grid width (window width - panel width)
+        # when the display scale changes we keep track of a factor used to convert our hard‑coded dimensions into physically‑sized pixels
+        from utils.utilities import get_dpi_scale
+        self.scale = get_dpi_scale(pygame.display.get_wm_info()['window'])
+
+        self.tools_width = int(200 * self.scale)  # scaled panel width
+        self.width = self.win.get_size()[0] - self.tools_width  # initial grid width
         self.bg_image = bg_image
 
         # snapshot layout right away so RESET has something to restore from;
@@ -63,7 +67,8 @@ class Simulation:
         self.fire_set = False  
         self.restart_timer = False
 
-        self.font = pygame.font.Font(None, 24)
+        # choose a font size that scales with DPI so text remains readable
+        self.font = pygame.font.Font(None, int(24 * self.scale))
         self.history = {
             "time": [],
             "fire_cells": [],
@@ -86,32 +91,44 @@ class Simulation:
         self.create_sliders()
 
     def create_sliders(self) -> None:
-        start_y = self.win.get_size()[1] - 250
+        # place slider panel just above the agent health bar... to hold a dropdown + slider + labels plus a small gap
+        win_width, win_height = self.win.get_size()
+        health_top = win_height - int(60 * self.scale)
+        # estimated height of the control panel contents (dropdown + slider, including padding)
+        
+        panel_h = int(120 * self.scale) +50 #to displace the slider from health bars
+        margin = int(10 * self.scale)
+        start_y = health_top - panel_h - margin
+        # ensure sliders never float over the metrics area
+        if start_y < 60:
+            start_y = 60
 
         self.slider_group = create_control_panel(
             manager=self.manager,
-            x=self.width + 10,
+            x=self.width + int(10 * self.scale),
             y=start_y,
-            temp_obj=self.temp
+            temp_obj=self.temp,
+            scale=self.scale,
         )
 
     def _handle_window_resize(self, event: pygame.event.Event) -> bool:
         """Handle window resize events"""
         if event.type == pygame.VIDEORESIZE:
             win_width, win_height = event.size
-            # Update window width for grid area
-            # Grid area takes all space except 200px for panel
-            self.width = win_width - self.tools_width if win_width > 200 else win_width
+
+            # recompute scale: DPI may have changed when moving between monitors or when the user alters the display scaling
+            self.scale = get_dpi_scale(pygame.display.get_wm_info()['window'])
+
+            # Update window width for grid area (panel width also needs recalculation with the new scale factor).
+            self.tools_width = int(200 * self.scale)
+            self.width = win_width - self.tools_width if win_width > self.tools_width else win_width
 
             # Update GUI manager resolution (don't recreate it!)
             self.manager.set_window_resolution(event.size)
             
-            # Recreate sliders at new positions
-            # First, kill existing sliders
+            # Recreate sliders at new positions (clearing first)
             if hasattr(self, "slider_group"):
                 self.slider_group.clear()
-            
-            # Recreate them
             self.create_sliders()
             return True
         return False
@@ -408,10 +425,9 @@ class Simulation:
         self.history["path_length"].append(self.metrics["path_length"])
     
     def draw_sim_panel(self) -> None:
-        # Draw panel background
-        clamped_height = max(self.win.get_size()[1], self.width)
-        clamped_height = min(clamped_height, Dimensions.WIDTH.value+20)  # Max height for panel
-        panel_rect = pygame.Rect(self.width, 0, self.tools_width, clamped_height)
+        # Draw panel background at full window height.  
+        win_width, win_height = self.win.get_size()
+        panel_rect = pygame.Rect(self.width, 0, self.tools_width, win_height)
         pygame.draw.rect(self.win, (40, 40, 50), panel_rect)
         pygame.draw.rect(self.win, (60, 60, 70), panel_rect, width=2)
         
@@ -464,24 +480,27 @@ class Simulation:
             y_offset += 25
 
         
-        # Draw agent status
+        # Draw agent status pinned to the bottom of the panel
         if self.agent:
-            status_y = clamped_height - 50
+            # leave a small margin above the bottom of the window
+            status_y = win_height - int(60 * self.scale)
             status = "ALIVE" if self.agent.alive else "DEAD"
             status_color = (0, 255, 0) if self.agent.alive else (255, 0, 0)
             status_surface = self.font.render(f"Agent: {status}", True, status_color)
-            self.win.blit(status_surface, (self.width + 15, clamped_height - 80))
+            self.win.blit(status_surface, (self.width + int(15 * self.scale), status_y - int(30 * self.scale)))
             
-            # Draw health bar
-            health_width = int(180 * (self.agent.health / 100))
+            # Draw health bar immediately below the status text
+            bar_width = int(180 * self.scale)
+            health_width = int(bar_width * (self.agent.health / 100))
             pygame.draw.rect(self.win, (50, 50, 50), 
-                           (self.width + 10, status_y + 25, 180, 20))
+                           (self.width + int(10 * self.scale), status_y + int(25 * self.scale), bar_width, int(20 * self.scale)))
             pygame.draw.rect(self.win, status_color, 
-                           (self.width + 10, status_y, health_width, 20))
+                           (self.width + int(10 * self.scale), status_y, health_width, int(20 * self.scale)))
             
             # Draw health text
             health_text = self.font.render(f"{self.agent.health:.0f}%", True, (255, 255, 255))
-            self.win.blit(health_text, (self.width + 100 - health_text.get_width() // 2, status_y + 2))
+            text_x = self.width + bar_width // 2 - health_text.get_width() // 2
+            self.win.blit(health_text, (text_x, status_y + int(2 * self.scale)))
 
 def draw_temperature(grid: "Grid", win: pygame.Surface, rows: int) -> None:
     """Draw temperature as color overlay"""

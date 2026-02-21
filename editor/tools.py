@@ -20,14 +20,16 @@ class ToolButton:
         name: str,
         color: Tuple[int, int, int],
         tool_type: ToolType,
+        scale: float = 1.0,
     ) -> None:
+        # coordinates passed in are already scaled by the caller... we scale for fonts and any internal offsets
         self.rect = pygame.Rect(x, y, width, height)
         self.tool_type = tool_type
         self.material_id = material_id
         self.name = name
         self.color = color
         self.selected = False
-        self.font = pygame.font.SysFont(None, 18)
+        self.font = pygame.font.SysFont(None, int(18 * scale))
     
     def draw(self, surface: pygame.Surface) -> None:
         # Draw button background
@@ -55,18 +57,20 @@ class ToolButton:
         return self.rect.collidepoint(pos)
 
 class ToolsPanel:
-    def __init__(self, x: int, y: int, width: int, height: int) -> None:
+    def __init__(self, x: int, y: int, width: int, height: int, scale: float = 1.0) -> None:
+        self.scale = scale
+        # incoming geometry should include DPI scaling
         self.rect = pygame.Rect(x, y, width, height)
         self.buttons = []
         self.current_material = MaterialID.AIR
-        self.font_large = pygame.font.SysFont(None, 24)
-        self.font_small = pygame.font.SysFont(None, 18)
+        self.font_large = pygame.font.SysFont(None, int(24 * scale))
+        self.font_small = pygame.font.SysFont(None, int(18 * scale))
         self._init_buttons()
     
     def _init_buttons(self) -> None:
-        button_width = 80
-        button_height = 80
-        padding = 10
+        button_width = int(80 * self.scale)
+        button_height = int(80 * self.scale)
+        padding = int(10 * self.scale)
         
         tools = []
         for value in MaterialID:
@@ -85,9 +89,9 @@ class ToolsPanel:
             row = i // 2
 
             x = self.rect.x + padding + col * (button_width + padding)
-            y = self.rect.y + 50 + row * (button_height + padding)
+            y = self.rect.y + int(50 * self.scale) + row * (button_height + padding)
 
-            button = ToolButton(x, y, button_width, button_height, material_id, name, color, tool_type)
+            button = ToolButton(x, y, button_width, button_height, material_id, name, color, tool_type, scale=self.scale)
 
             if tool_type == ToolType.MATERIAL and material_id == self.current_material:
                 button.selected = True
