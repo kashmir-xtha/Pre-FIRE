@@ -56,12 +56,15 @@ class Editor:
         self.drag_action = None  # 'place' or 'erase'
         self.last_cell = None
         
+        # Ruler overlay state
+        self.show_ruler = False
+        
         # Initialize GUI
         self.manager = pygame_gui.UIManager((win_width, win_height))
         self._setup_ui_buttons()
     
     def _setup_ui_buttons(self) -> None:
-        """Initialize UI buttons (Save/Load)"""
+        """Initialize UI buttons (Save/Load/Ruler)"""
         # scale button dimensions as well
         button_y = self.win.get_size()[1] - int(40 * self.scale)  # Bottom of the window
         button_width = int(80 * self.scale)
@@ -69,9 +72,16 @@ class Editor:
         button_gap = int(16 * self.scale)
         offset = int(200 * self.scale)
 
-        # Calculate X positions
+        # Calculate X positions for three buttons
+        ruler_button_x = self.win.get_size()[0] - int(200 * self.scale) - (3 * button_width) - (3 * button_gap) + offset
         load_button_x = self.win.get_size()[0] - int(200 * self.scale) - (2 * button_width) - (2 * button_gap) + offset
         save_button_x = self.win.get_size()[0] - int(200 * self.scale) - button_width - button_gap + offset
+        
+        self.ruler_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((ruler_button_x, button_y), (button_width, button_height)),
+            text="Ruler: Off",
+            manager=self.manager
+        )
         
         self.save_button = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect((save_button_x, button_y), (button_width, button_height)),
@@ -144,6 +154,8 @@ class Editor:
                 self._save_layout_dialog()
             elif event.ui_element == self.load_button:
                 self._load_layout_dialog()
+            elif event.ui_element == self.ruler_button:
+                self._toggle_ruler()
     
     def _handle_tools_panel_events(self, event: pygame.event.Event) -> None:
         """Handle tools panel selection events"""
@@ -281,6 +293,61 @@ class Editor:
             if self.bg_image:
                 self.bg_image.set_alpha(0)
     
+    def _toggle_ruler(self) -> None:
+        """Toggle ruler overlay visibility"""
+        self.show_ruler = not self.show_ruler
+        self.ruler_button.set_text("Ruler: On" if self.show_ruler else "Ruler: Off")
+        logger.info("Ruler overlay %s", "enabled" if self.show_ruler else "disabled")
+    
+    def _draw_ruler_overlay(self) -> None:
+        """Draw scale ruler overlay showing physical distances in meters"""
+        from utils.utilities import rTemp
+        
+        temp_constants = rTemp()
+        cell_size_m = temp_constants.CELL_SIZE_M
+        cell_size_px = self.grid_obj.cell_size
+        
+        # Font for labels
+        font = pygame.font.SysFont(None, int(20 * self.scale))
+        
+        # Draw tick marks every 5 cells on vertical and horizontal edges
+        tick_interval = 5  # cells
+        tick_length = int(15 * self.scale)
+        
+        # Vertical ruler (left side)
+        for i in range(0, self.rows + 1, tick_interval):
+            y = i * cell_size_px
+            distance_m = i * cell_size_m
+            
+            # Draw tick
+            pygame.draw.line(self.win, (0, 0, 200), (0, y), (tick_length, y), 2)
+            
+            # Draw label
+            label = font.render(f"{distance_m:.1f}m", True, (255, 200, 0))
+            self.win.blit(label, (tick_length + 5, y - 10))
+        
+        # Horizontal ruler (top)
+        for i in range(0, self.rows + 1, tick_interval):
+            x = i * cell_size_px
+            distance_m = i * cell_size_m
+            
+            # Draw tick
+            pygame.draw.line(self.win, (0, 0, 200), (x, 0), (x, tick_length), 2)
+            
+            # Draw label
+            label = font.render(f"{distance_m:.1f}m", True, (255, 200, 0))
+            self.win.blit(label, (x - 20, tick_length + 5))
+        
+        # Draw grid info in top-right corner
+        total_size_m = self.rows * cell_size_m
+        info_text = f"Grid: {self.rows}×{self.rows} cells = {total_size_m:.1f}m × {total_size_m:.1f}m ({cell_size_m}m/cell)"
+        info_surface = font.render(info_text, True, (255, 255, 255))
+        info_bg = pygame.Surface((info_surface.get_width() + 20, info_surface.get_height() + 10))
+        info_bg.set_alpha(200)
+        info_bg.fill((50, 50, 50))
+        self.win.blit(info_bg, (10, 10))
+        self.win.blit(info_surface, (20, 15))
+    
     def _save_layout_dialog(self) -> None:
         """Open save dialog and save layout"""
         save_filename = pick_save_csv_file()
@@ -343,7 +410,7 @@ class Editor:
             save_layout(self.grid_obj.grid, save_filename)
             logger.info("Layout exported")
     
-    def run(self) -> Optional["Grid"]:
+    def run(self) -> Optional["Grid"] | None:
         """Main editor loop"""
         clock = pygame.time.Clock()
         while True:
@@ -352,6 +419,10 @@ class Editor:
             
             # Draw everything
             self.grid_obj.draw(self.win, self.tools_panel, self.bg_image)
+            
+            # Draw ruler overlay if enabled
+            if self.show_ruler:
+                self._draw_ruler_overlay()
             
             # Draw white separator bar between grid and tools
             win_width, win_height = self.win.get_size() #pygame method to get current window size

@@ -154,7 +154,13 @@ class Grid:
 
                 self.heat_transfer_np[r, c] = props.get("heat_transfer", 0.5)
                 self.cooling_rate_np[r, c] = props.get("cooling_rate", 0.01)
-                self.heat_capacity_np[r, c] = props.get("heat_capacity", 1.0)
+                if "heat_capacity" in props:
+                    heat_capacity = props.get("heat_capacity", 1.0)
+                else:
+                    density = props.get("density", 1.0)
+                    specific_heat = props.get("specific_heat", 1.0)
+                    heat_capacity = density * specific_heat
+                self.heat_capacity_np[r, c] = heat_capacity
                 self.ignition_temp_np[r, c] = props.get("ignition_temp", float("inf"))
                 self.is_barrier_np[r, c] = spot.is_barrier()
                 self.is_start_np[r, c] = spot.is_start()

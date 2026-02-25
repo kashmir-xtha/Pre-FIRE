@@ -67,7 +67,7 @@ class Color(Enum):
     RED = (255, 0, 0)
     ORANGE = (255, 165, 0)
     TURQUOISE = (64, 224, 208)
-    PURPLE = (128, 0, 128)
+    PURPLE = (150, 150, 255)
     BLUE = (0, 0, 255)
     FIRE_COLOR = (255, 80, 0)
 
@@ -120,6 +120,8 @@ class TempConstants:
         self.MAX_SMOKE = smoke_constants.MAX_SMOKE.value
         self.SMOKE_PRODUCTION = smoke_constants.SMOKE_PRODUCTION.value
         self.AGENT_MOVE_TIMER = 0.1
+        # Physical size of one grid cell (meters)
+        self.CELL_SIZE_M = 0.5
         self.PARAMS = {
             "FIRE_SPREAD_PROBABILITY": {
                 "label": "Fire Spread Probability",
@@ -144,6 +146,11 @@ class TempConstants:
             "AGENT_MOVE_TIMER": {
                 "label": "Speed",
                 "min": 0.1,
+                "max": 2.0
+            },
+            "CELL_SIZE_M": {
+                "label": "Cell Size (m)",
+                "min": 0.05,
                 "max": 2.0
             }
         }

@@ -3,8 +3,6 @@ import random
 from typing import List, Tuple, TYPE_CHECKING
 
 import numpy as np
-
-from core import grid
 from environment.materials import MATERIALS, material_id
 from utils.utilities import rTemp
 
@@ -19,10 +17,15 @@ def do_temperature_update(grid: "Grid", dt: float = 1.0) -> None:
     temp = grid.temp_np
 
     grid.ensure_material_cache()
+    # Treat heat_transfer as thermal conductivity k for Fourier's law
     heat_transfer = np.where(grid.is_barrier_np, 0.0, grid.heat_transfer_np)
     cooling_rate = grid.cooling_rate_np
     heat_capacity = grid.heat_capacity_np
     is_barrier = grid.is_barrier_np
+
+    temp_constants = rTemp()
+    # Spatial step per cell (meters)
+    dx = max(temp_constants.CELL_SIZE_M, 1e-6)
 
     temp_pad = np.pad(temp, 1, mode="edge")
     ht_pad = np.pad(heat_transfer, 1, mode="edge")
@@ -37,20 +40,25 @@ def do_temperature_update(grid: "Grid", dt: float = 1.0) -> None:
     west_ht  = ht_pad[1:rows + 1, 0:rows]
     east_ht  = ht_pad[1:rows + 1, 2:rows + 2]
 
-    coeff_n = np.minimum(heat_transfer, north_ht)
-    coeff_s = np.minimum(heat_transfer, south_ht)
-    coeff_w = np.minimum(heat_transfer, west_ht)
-    coeff_e = np.minimum(heat_transfer, east_ht)
+    # Harmonic mean for edge conductivity (avoids overestimating flux)
+    def harmonic_mean(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        denom = a + b
+        return np.where(denom > 0.0, 2.0 * a * b / denom, 0.0)
 
+    k_n = harmonic_mean(heat_transfer, north_ht)
+    k_s = harmonic_mean(heat_transfer, south_ht)
+    k_w = harmonic_mean(heat_transfer, west_ht)
+    k_e = harmonic_mean(heat_transfer, east_ht)
+
+    # Fourier's law discretization: div(k grad T)
     conduction_flux = (
-        (north - temp) * coeff_n +
-        (south - temp) * coeff_s +
-        (west  - temp) * coeff_w +
-        (east  - temp) * coeff_e
-    )
+        (north - temp) * k_n +
+        (south - temp) * k_s +
+        (west - temp) * k_w +
+        (east - temp) * k_e
+    ) / (dx * dx)
 
     # Cooling sink term (Newton cooling)
-    temp_constants = rTemp()
     ambient = temp_constants.AMBIENT_TEMP
     cooling_flux = -cooling_rate * (temp - ambient)
 

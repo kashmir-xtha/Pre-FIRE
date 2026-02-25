@@ -47,6 +47,7 @@ class Simulation:
         self.rows = rows
         self.orignal_width = width
         # when the display scale changes we keep track of a factor used to convert our hard‑coded dimensions into physically‑sized pixels
+        from utils.utilities import get_dpi_scale
         self.scale = get_dpi_scale(pygame.display.get_wm_info()['window'])
 
         self.tools_width = int(200 * self.scale)  # scaled panel width
@@ -329,7 +330,7 @@ class Simulation:
                     rect = pygame.Rect(p.x, p.y, p.width, p.width)
                     pygame.draw.rect(
                         grid_surface,
-                        PURPLE,
+                        PURPLE, 
                         rect
                     )
         

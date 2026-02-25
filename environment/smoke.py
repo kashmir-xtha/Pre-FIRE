@@ -1,6 +1,5 @@
 import logging
 from typing import Dict, Sequence, Union, TYPE_CHECKING
-
 import numpy as np
 import pygame
 
