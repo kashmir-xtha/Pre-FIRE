@@ -43,9 +43,15 @@ def main() -> None:
             grid = run_editor(WIN, Dimensions.ROWS.value, BG_IMAGE, csv_filename)
             if grid is None:
                 sys.exit()
-            agent = Agent(grid, grid.start)
-            agent.path = agent.best_path()
-            sim = Simulation(WIN, grid, agent, Dimensions.ROWS.value,int(Dimensions.WIDTH.value * SCALE), BG_IMAGE,)
+            agents = []
+            if grid.start:
+                num_agents = min(3, len(grid.start))
+                for i in range(num_agents):
+                    # Assign each agent to a unique start spot from the list
+                    new_agent = Agent(grid, grid.start[i]) 
+                    new_agent.path = new_agent.best_path()
+                    agents.append(new_agent)
+            sim = Simulation(WIN, grid, agents, Dimensions.ROWS.value,int(Dimensions.WIDTH.value * SCALE), BG_IMAGE,)
             mode = sim.run()
             if mode == SimulationState.SIM_EDITOR.value:
                 logger.info("Switching to Editor Mode")

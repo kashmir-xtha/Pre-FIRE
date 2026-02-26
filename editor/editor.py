@@ -232,13 +232,18 @@ class Editor:
     
     def _place_on_grid(self, row: int, col: int, spot: "Spot") -> None:
         """Place items on the grid based on current tool"""
+        if self.current_tool != "START" and spot.is_start():
+            if spot in self.grid_obj.start:
+                self.grid_obj.start.remove(spot)
+        
+        if self.current_tool != "END" and spot.is_end():
+            self.grid_obj.remove_exit(spot)
+
         if self.current_tool == "START":
-            if self.grid_obj.start:
-                self.grid_obj.start.reset()
-                logger.info("Previous start position removed")
-            self.grid_obj.start = spot
-            spot.make_start()
-            self.grid_obj.mark_material_cache_dirty()
+            if spot not in self.grid_obj.start:
+                spot.make_start()
+                self.grid_obj.start.append(spot)
+                self.grid_obj.mark_material_cache_dirty()
         
         elif self.current_tool == "END":
             self.grid_obj.add_exit(spot)
@@ -256,11 +261,14 @@ class Editor:
 
     def _erase_from_grid(self, spot: "Spot") -> None:
         """Erase items from the grid"""
-        spot.reset()
-        if spot == self.grid_obj.start:
-            self.grid_obj.start = None
+        if spot.is_start():
+            if spot in self.grid_obj.start:
+                self.grid_obj.start.remove(spot)
+
         if self.grid_obj.is_exit(spot):
             self.grid_obj.remove_exit(spot)
+        
+        spot.reset()
         self.grid_obj.mark_material_cache_dirty()
     
     def _handle_mouse_drag(self, event: pygame.event.Event) -> None:

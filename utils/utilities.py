@@ -67,7 +67,7 @@ class Color(Enum):
     RED = (255, 0, 0)
     ORANGE = (255, 165, 0)
     TURQUOISE = (64, 224, 208)
-    PURPLE = (150, 150, 255)
+    CYAN = (150, 150, 255)
     BLUE = (0, 0, 255)
     FIRE_COLOR = (255, 80, 0)
 
@@ -214,7 +214,7 @@ def save_layout(grid, filename: str = "layout_csv\\layout_1.csv") -> None:
             writer.writerow([spot_to_cell_value(s) for s in row])
 
 def load_layout(grid, filename: str = "layout_csv\\layout_1.csv") -> Tuple[Optional[Any], Set[Any]]:
-    start = None
+    start = []
     end = set()
     try:
         with open(filename, "r") as f:
@@ -238,7 +238,7 @@ def load_layout(grid, filename: str = "layout_csv\\layout_1.csv") -> Tuple[Optio
                         spot.make_barrier()
                     elif cell_state == state_value.START.value:
                         spot.make_start()
-                        start = spot
+                        start.append(spot)
                     elif cell_state == state_value.END.value:
                         spot.make_end()
                         end.add(spot)
@@ -282,13 +282,11 @@ def user_data_path(filename: str) -> str:#Used for storing user-generated, writa
     os.makedirs(base_dir, exist_ok=True)
     return os.path.join(base_dir, filename)
 
-
 def save_window_state(is_maximized: bool) -> None: 
     state = {"maximized": is_maximized}
     path = user_data_path("window_state.json")
     with open(path, "w") as f:
         json.dump(state, f)
-
 
 def load_window_state() -> bool:
     path = user_data_path("window_state.json")

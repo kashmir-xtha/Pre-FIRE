@@ -3,7 +3,7 @@ import math
 import heapq
 import numpy as np
 import pygame
-import gc
+from collections import deque
 from typing import List, Optional, Tuple, Sequence, TYPE_CHECKING
 
 from utils.utilities import Color, rTemp, resource_path
@@ -48,10 +48,17 @@ class Agent:
         self.reaction_timer = 0.0
         self.smoke_detected = False   # NEW (replaces np.any scan)
 
-        # Optimization: Pre-allocate the vision surface to prevent memory leaks
-        self.vision_surf = pygame.Surface((grid.rows * grid.cell_size, grid.rows * grid.cell_size), pygame.SRCALPHA)
+        # --- Trail (NEW) ---
+        # deque of Spot objects; maxlen caps memory automatically
+        self.trail: deque = deque(maxlen=15)
+        self._last_trail_spot: Optional["Spot"] = None
 
-         # Load sprite once and scale once
+        # Pre-allocate surfaces to prevent memory leaks
+        grid_px = grid.rows * grid.cell_size
+        self.vision_surf = pygame.Surface((grid_px, grid_px), pygame.SRCALPHA)
+        self.trail_surf  = pygame.Surface((grid_px, grid_px), pygame.SRCALPHA)
+        
+        # Load sprite once and scale once
         try:
             agent_img_pth = resource_path("data/agent.png")
             img = pygame.image.load(agent_img_pth).convert_alpha()
@@ -79,11 +86,16 @@ class Agent:
                             count += 1
                 adj[r, c] = count
         return adj
+    
     def reset(self) -> None:
         """Deep reset to prevent FPS degradation on subsequent runs."""
         self.health = 100
         self.alive = True
         self.path = []
+
+        self.trail.clear()
+        self._last_trail_spot = None
+
         self.known_smoke.fill(-1.0)
         self.known_fire.fill(False)
         self.known_temp.fill(20.0)
@@ -99,7 +111,7 @@ class Agent:
         # Reset pre‑movement state
         self.state = "IDLE"
         self.reaction_timer = 0.0
-        self.smoke_detected =False
+        self.smoke_detected = False
 
     def compute_visibility_radius(self) -> float:
         cell_size = getattr(self.grid, 'cell_size', 20)
@@ -197,10 +209,23 @@ class Agent:
                 if not next_node.is_barrier() and not next_node.is_fire():
                     self.spot = next_node
                     self.path.pop(0)
+
+                    if self.spot is not self._last_trail_spot:
+                        self.trail.append(self.spot)
+                        self._last_trail_spot = self.spot
             self.move_timer = 0
         return True
 
     def best_path(self) -> List["Spot"]:
+        if isinstance(self.spot, list):
+            if len(self.spot) > 0:
+                self.spot = self.spot[0]
+            else:
+                return []
+
+        if not self.spot or not self.grid.exits:
+            return []
+        
         # Standard exit check
         paths = []
         for exit_spot in self.grid.exits:
@@ -221,7 +246,31 @@ class Agent:
         cell_size = self.grid.cell_size
         cx, cy = int(self.spot.x + cell_size // 2), int(self.spot.y + cell_size // 2)
         
-        # 1. Vision Cone (Optimized Surface)
+        #1. Trail 
+        trail_list = list(self.trail)
+        n = len(trail_list)
+        if n > 0:
+            # Recreate surface if cell size changed since construction
+            expected_px = self.grid.rows * cell_size
+            if self.trail_surf.get_width() != expected_px:
+                self.trail_surf = pygame.Surface((expected_px, expected_px), pygame.SRCALPHA)
+
+            self.trail_surf.fill((0, 0, 0, 0))
+            dot_radius = max(2, cell_size // 5)
+            for i, ts in enumerate(trail_list):
+                # alpha ramps from near-invisible (oldest) → bright (newest)
+                alpha = 0 if self.spot.is_end() else int(180 * (i + 1) / n)
+                tx = int(ts.x + cell_size // 2)
+                ty = int(ts.y + cell_size // 2)
+                pygame.draw.circle(
+                    self.trail_surf,
+                    (60, 179, 113, alpha),  # soft green
+                    (tx, ty),
+                    dot_radius,
+                )
+            win.blit(self.trail_surf, (0, 0))
+
+        #2. Vision Cone (Optimized Surface)
         vis_radius = self.compute_visibility_radius()
         cone_points = [(cx, cy)]
         start_angle = math.radians(-self.current_angle - 135) 
@@ -241,84 +290,148 @@ class Agent:
                 img.fill((255, 220, 220, 255),
                          special_flags=pygame.BLEND_MULT)
 
-            rotated = pygame.transform.rotate(img, self.current_angle)
+            rotated = pygame.transform.rotate(img, self.current_angle + 180)
             win.blit(rotated,
                      rotated.get_rect(center=(cx, cy)).topleft)
 
-
-# --- Pathfinding Helpers ---
-
-def a_star(grid_obj, start, end, agent: Agent, desperate: bool = False):
+def a_star(
+    grid_obj: "Grid", 
+    start: "Spot", 
+    end: "Spot", 
+    agent: Agent,
+    desperate: bool = False,
+    max_iterations: int = 3000
+) -> Optional[List]:
+    """
+    High-performance A* pathfinding using numpy arrays instead of dictionaries.
+    Args:
+        grid_obj: Grid object containing cells
+        start: Starting Spot object
+        end: Goal Spot object
+        agent: Agent object with known_smoke, known_temp, known_fire, barrier_adjacent
+        desperate: If True, ignore smoke/temp (flee mode)
+        max_iterations: Maximum nodes to explore before giving up (default 3000)
+    Returns:
+        List of Spot objects from start to end, or empty list if no path found
+    """
     rows = agent.rows
-    cell_size = getattr(grid_obj, 'cell_size', 20)  # or agent.grid.cell_size
-    vis_cells = agent.compute_visibility_radius() / cell_size   # visibility in cells
-    count = 0
-    open_heap = [(0.0, count, start, (0, 0))]
-    came_from = {}
-    g_score = {start: 0}
+    cell_size = getattr(grid_obj, 'cell_size', 20)
+    vis_cells = agent.compute_visibility_radius() / cell_size
     
-    while open_heap:
-        _, _, current, last_dir = heapq.heappop(open_heap)
-        if current == end:
-            path = []
-            while current in came_from:
-                path.append(current)
-                current = came_from[current]
-            return path[::-1]
+    # ----- Initialize arrays -----
+    # g_score: cost from start to each cell (numpy array, not dict)
+    g_score = np.full((rows, rows), np.inf, dtype=np.float32)
+    g_score[start.row, start.col] = 0.0
+    
+    # visited: track explored cells to avoid re-exploration
+    visited = np.zeros((rows, rows), dtype=bool)
+    
+    # parent: track path for reconstruction as (row, col) tuples
+    parent = np.empty((rows, rows), dtype=object)
+    for i in range(rows):
+        for j in range(rows):
+            parent[i, j] = None
+    
+    # Open set: heap of (f_score, counter, row, col, last_direction)
+    count = 0
+    open_heap = [(0.0, count, start.row, start.col, (0, 0))]
+    iterations = 0
+    
+    # ----- Main A* loop -----
+    while open_heap and iterations < max_iterations:
+        _, _, r, c, last_dir = heapq.heappop(open_heap)
+        iterations += 1
         
-        # Determine if current cell is wall‑adjacent (exactly one cardinal barrier)
-        current_wall_adj = (agent.barrier_adjacent[current.row, current.col] == 1)
-
+        # Skip if already visited
+        if visited[r, c]:
+            continue
+        visited[r, c] = True
+        
+        # Goal check (early termination)
+        if r == end.row and c == end.col:
+            return _reconstruct_path(parent, end.row, end.col, grid_obj, rows)
+        
+        current_g = g_score[r, c]
+        
+        # ----- Explore neighbors -----
         for dr, dc in NEIGHBOR_OFFSETS:
-            nr, nc = current.row + dr, current.col + dc
+            nr, nc = r + dr, c + dc
+            
+            # Bounds check
             if not (0 <= nr < rows and 0 <= nc < rows):
                 continue
-
+            
+            # Skip if already visited
+            if visited[nr, nc]:
+                continue
+            
             neighbor = grid_obj.grid[nr][nc]
+            
+            # Obstacle check (barrier or fire)
             if neighbor.is_barrier() or agent.known_fire[nr, nc]:
                 continue
-
-            # ----- 1. Movement cost -----
+            
+            # ----- Cost calculation (INLINED for speed) -----
+            
+            # 1. Movement cost (diagonal vs cardinal)
             dist_cost = 1.414 if (dr != 0 and dc != 0) else 1.0
-
-             # ----- 2. Turning penalty (reduced) -----
+            
+            # 2. Turning penalty (prefer straight paths)
+            turn_cost = 0.0
             if last_dir != (0, 0) and (dr, dc) != last_dir:
-                dist_cost += 0.2          # was 0.8 – now much smaller
-
-            # ----- 3. Smoke cost – unknown cells are expensive -----
+                turn_cost = 0.2
+            
+            # 3. Danger cost (smoke + temperature)
+            # INLINED compute_danger_cost logic
             raw_smoke = agent.known_smoke[nr, nc]
             smoke_val = 0.8 if raw_smoke < 0 else raw_smoke
-            smoke_cost = (smoke_val * 12) if not desperate else (smoke_val * 2)
-
-            # ----- 4. Temperature penalty -----
-            temp_penalty = max(0, (agent.known_temp[nr, nc] - 60) * 0.8) if not desperate else 0
-
-             # ----- 5. Wall‑following – only when visibility is very low -----
-            wall_bonus = 0.0
+            danger_cost = (smoke_val * 12) if not desperate else (smoke_val * 2)
+            if not desperate:
+                danger_cost += max(0, (agent.known_temp[nr, nc] - 60) * 0.8)
+            
+            # 4. Wall proximity cost
+            # INLINED compute_wall_proximity_cost logic
+            wall_cost = 0.0
             if vis_cells <= 3.0 and not desperate:
-                # Check if neighbour is wall‑adjacent
-                neighbor_wall_adj = (agent.barrier_adjacent[nr, nc] == 1)
-                if neighbor_wall_adj:
-                    # Base bonus for being next to a wall
-                    wall_bonus = -0.15
-                    # Extra continuity bonus if also moving from a wall‑adjacent cell
-                    if current_wall_adj:
-                        wall_bonus += -0.5   # encourage staying on the wall
-
-            temp_g = (g_score[current] + dist_cost + smoke_cost +
-                      temp_penalty + wall_bonus)
-
-            if neighbor not in g_score or temp_g < g_score[neighbor]:
-                came_from[neighbor] = current
-                g_score[neighbor] = temp_g
+                barrier_count = agent.barrier_adjacent[nr, nc]
+                if barrier_count == 0:
+                    wall_cost = 0.5
+                elif barrier_count == 1:
+                    wall_cost = -0.15
+                else:
+                    wall_cost = -0.3
+            
+            # Total tentative g-score
+            temp_g = current_g + dist_cost + turn_cost + danger_cost + wall_cost
+            
+            # Only add to open set if this is a better path
+            if temp_g < g_score[nr, nc]:
+                g_score[nr, nc] = temp_g
+                parent[nr, nc] = (r, c)
+                
+                # f-score = g + h (with Manhattan heuristic)
                 h = abs(nr - end.row) + abs(nc - end.col)
+                f_score = temp_g + h
+                
                 count += 1
-                heapq.heappush(
-                    open_heap,
-                    (temp_g + h, count, neighbor, (dr, dc))
-                )
-    return None
+                heapq.heappush(open_heap, (f_score, count, nr, nc, (dr, dc)))
+    
+    # No path found
+    return []
 
+
+def _reconstruct_path(parent: np.ndarray, end_r: int, end_c: int, grid_obj, rows: int) -> List:
+    path = []
+    r, c = end_r, end_c
+    
+    while parent[r, c] is not None:
+        path.append(grid_obj.grid[r][c])
+        r, c = parent[r, c]
+    
+    # Add start node
+    path.append(grid_obj.grid[r][c])
+    
+    return path[::-1]  # Reverse to get start -> end
 
 def path_still_safe(path: Sequence["Spot"], grid, agent: Agent) -> bool:
     # How many cells ahead can the agent currently see?

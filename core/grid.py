@@ -23,7 +23,7 @@ class Grid:
         self.neighbor_map = self._precompute_neighbors()
         
         self.fire_sources = set()
-        self.start = None
+        self.start = []
         self.exits = set()
 
         # a snapshot of the layout when the grid is first created/edited.
@@ -175,6 +175,9 @@ class Grid:
                     spot.extinguish_fire()
                     spot.remove_fire_source()
         self.fire_sources.clear()
+
+        self.start = [spot for row in self.grid for spot in row if spot.is_start()]
+
     
     def draw_grid(self, win: pygame.Surface) -> None:
         gap = self.cell_size

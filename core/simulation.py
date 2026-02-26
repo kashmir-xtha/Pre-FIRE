@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Global constants for colors - accessed once at import time
 WHITE = Color.WHITE.value
-PURPLE = Color.PURPLE.value
+CYAN = Color.CYAN.value
 
 SIM_QUIT = SimulationState.SIM_QUIT.value
 SIM_EDITOR = SimulationState.SIM_EDITOR.value
@@ -29,21 +29,19 @@ EMPTY = state_value.EMPTY.value
 START = state_value.START.value
 END = state_value.END.value
 
-
-
 class Simulation:
     def __init__(
         self,
         win: pygame.Surface,
         grid: "Grid",
-        agent: Optional["Agent"],
+        agents: Optional["Agent"],
         rows: int,
         width: int,
         bg_image: Optional[pygame.Surface] = None,
     ) -> None:
         self.win = win
         self.grid = grid
-        self.agent = agent
+        self.agents = agents
         self.rows = rows
         self.orignal_width = width
         # when the display scale changes we keep track of a factor used to convert our hard‑coded dimensions into physically‑sized pixels
@@ -79,7 +77,7 @@ class Simulation:
         }
         self.metrics = {
             'elapsed_time': 0,
-            'agent_health': self.agent.health if self.agent else 0,
+            'agent_health': self.agents[0].health if self.agents else 0,
             'fire_cells': 0,
             'avg_smoke': 0,
             'avg_temp': 20,
@@ -202,6 +200,7 @@ class Simulation:
         return SIM_CONTINUE
 
     def reset(self) -> None:
+        print(self.grid.start[0].to_dict(), self.grid.start[1].to_dict(), self.grid.start[2].to_dict())
         self.grid.clear_simulation_visuals()
         self.fire_set = False
         
@@ -244,11 +243,17 @@ class Simulation:
         # Sync numpy arrays so smoke/temp don't carry over into the next update
         self.grid.update_np_arrays()
 
-        if self.agent:
-            self.agent.reset()
+        # 2. Reset every agent in the list
+        for i, agent in enumerate(self.agents):
+            agent.reset()
+            if i < len(self.grid.start):
+                agent.spot = self.grid.start[i] 
+            else:
+                # Fallback if there are more agents than start spots
+                agent.spot = self.grid.start[0] if self.grid.start else None
 
-        if self.grid.start and bool(self.grid.exits):
-            self.agent.path = self.agent.best_path()
+            if agent.spot and bool(self.grid.exits):
+                agent.path = agent.best_path()
 
     def update(self, dt: float) -> None:
         """Time-based update with delta time"""
@@ -280,9 +285,9 @@ class Simulation:
             # Update numpy arrays for rendering after all state changes
             self.grid.update_np_arrays()  
 
-            # Update agent with delta time
-            if self.agent:
-                self.agent.update(update_dt)
+            # Update all agent with delta time
+            for agent in self.agents:
+                agent.update(update_dt)
             
             # Update metrics
             self.update_metrics()
@@ -320,19 +325,12 @@ class Simulation:
         self.grid.update_geometry(cell_size)
 
         # Update agent position if it exists
-        if self.agent and self.agent.spot:
-            self.agent.spot.width = cell_size
-    
-        # Drawing path
-        if self.agent.path and self.agent.path_show:
-            for p in self.agent.path:
-                if p != self.agent.spot and not p.is_start() and not p.is_end():
-                    rect = pygame.Rect(p.x, p.y, p.width, p.width)
-                    pygame.draw.rect(
-                        grid_surface,
-                        PURPLE, 
-                        rect
-                    )
+        for agent in self.agents:
+            if agent.path and agent.path_show:
+                for p in agent.path:
+                    if p != agent.spot and not p.is_start() and not p.is_end():
+                        rect = pygame.Rect(p.x, p.y, p.width, p.width)
+                        pygame.draw.rect(grid_surface, CYAN, rect)
         
         # Draw Grid Lines + spots
         self.grid.draw(grid_surface, bg_image=self.bg_image)
@@ -341,8 +339,12 @@ class Simulation:
         draw_smoke(self.grid, grid_surface)
         
         # Agent LAST (top layer)
-        if self.agent:
-            self.agent.draw(grid_surface)
+        for agent in self.agents:
+            if agent.alive: # Only draw if they haven't perished
+                # Ensure the agent's current spot width is updated for scaling
+                if agent.spot:
+                    agent.spot.width = cell_size
+                agent.draw(grid_surface)
         
         # Blit the grid surface onto the main window at centered position
         self.win.blit(grid_surface, (grid_x, grid_y))
@@ -391,9 +393,10 @@ class Simulation:
         self.metrics['elapsed_time'] = self.time_manager.get_total_time()
         
         # Agent
-        if self.agent:
-            self.metrics['agent_health'] = self.agent.health
-            self.metrics['path_length'] = len(self.agent.path) if self.agent.path else 0
+        if self.agents:
+        # Track the average health or just the first agent's health
+            self.metrics['agent_health'] = sum(a.health for a in self.agents) / len(self.agents)
+            self.metrics['path_length'] = len(self.agents[0].path) if self.agents[0].path else 0
         
         # Count fire cells and average temperature
         if hasattr(self.grid, "temp_np") and hasattr(self.grid, "smoke_np") and hasattr(self.grid, "fire_np"):
@@ -481,24 +484,25 @@ class Simulation:
 
         
         # Draw agent status pinned to the bottom of the panel
-        if self.agent:
+        if self.agents:
             # leave a small margin above the bottom of the window
+            main_agent = self.agents[0]
             status_y = win_height - int(60 * self.scale)
-            status = "ALIVE" if self.agent.alive else "DEAD"
-            status_color = (0, 255, 0) if self.agent.alive else (255, 0, 0)
+            status = "ALIVE" if main_agent.alive else "DEAD"
+            status_color = (0, 255, 0) if main_agent.alive else (255, 0, 0)
             status_surface = self.font.render(f"Agent: {status}", True, status_color)
             self.win.blit(status_surface, (self.width + int(15 * self.scale), status_y - int(30 * self.scale)))
             
             # Draw health bar immediately below the status text
             bar_width = int(180 * self.scale)
-            health_width = int(bar_width * (self.agent.health / 100))
+            health_width = int(bar_width * (main_agent.health / 100))
             pygame.draw.rect(self.win, (50, 50, 50), 
                            (self.width + int(10 * self.scale), status_y + int(25 * self.scale), bar_width, int(20 * self.scale)))
             pygame.draw.rect(self.win, status_color, 
                            (self.width + int(10 * self.scale), status_y, health_width, int(20 * self.scale)))
             
             # Draw health text
-            health_text = self.font.render(f"{self.agent.health:.0f}%", True, (255, 255, 255))
+            health_text = self.font.render(f"{main_agent.health:.0f}%", True, (255, 255, 255))
             text_x = self.width + bar_width // 2 - health_text.get_width() // 2
             self.win.blit(health_text, (text_x, status_y + int(2 * self.scale)))
 
