@@ -45,7 +45,6 @@ class Simulation:
         self.rows = rows
         self.orignal_width = width
         # when the display scale changes we keep track of a factor used to convert our hard‑coded dimensions into physically‑sized pixels
-        from utils.utilities import get_dpi_scale
         self.scale = get_dpi_scale(pygame.display.get_wm_info()['window'])
 
         self.tools_width = int(200 * self.scale)  # scaled panel width
@@ -200,42 +199,30 @@ class Simulation:
         return SIM_CONTINUE
 
     def reset(self) -> None:
-        print(self.grid.start[0].to_dict(), self.grid.start[1].to_dict(), self.grid.start[2].to_dict())
-        self.grid.clear_simulation_visuals()
         self.fire_set = False
-        
         # Reset the time manager timer
         self.time_manager.reset_timer()
-        
-        # Prefer reloading the CSV that we remembered when the simulation was created 
-        if getattr(self, "layout_file", None):
-            start, exits = load_layout(self.grid.grid, self.layout_file)
-            self.grid.start = start
-            if exits:
-                self.grid.exits = exits
-            # refresh our backup to match the file (so subsequent resets use it)
-            self.grid.backup_layout()
-        else:
-            layout = self.grid.initial_layout
-            for r, row in enumerate(self.grid.grid):
-                for c, spot in enumerate(row):
-                    if layout is not None:
-                        disc = layout[r][c]
-                    else:
-                        disc = spot.to_dict()
 
-                    spot.reset()
-                    if disc.get('state') == WALL:
-                        spot.make_barrier()
-                    elif disc.get('state') == START:
-                        spot.make_start()
-                    elif disc.get('state') == END:
-                        spot.make_end()
-                    elif disc.get('is_fire_source'):
-                        spot.set_as_fire_source(disc.get('temperature') if disc.get('temperature') else 1200.0)
-                    else:
-                        spot.set_material(disc.get('material'))
+        layout = self.grid.initial_layout
+        for r, row in enumerate(self.grid.grid):
+            for c, spot in enumerate(row):
+                if layout is not None:
+                    disc = layout[r][c]
+                else:
+                    disc = spot.to_dict()
 
+                spot.reset()
+                if disc.get('state') == WALL:
+                    spot.make_barrier()
+                elif disc.get('state') == START:
+                    spot.make_start()
+                elif disc.get('state') == END:
+                    spot.make_end()
+                elif disc.get('is_fire_source'):
+                    spot.set_as_fire_source(disc.get('temperature') if disc.get('temperature') else 1200.0)
+                else:
+                    spot.set_material(disc.get('material'))
+        self.grid.backup_layout()
         # after restoring layout we need to clear any burned flags (spot.reset
         # already did this) and rebuild the material cache
         self.grid.mark_material_cache_dirty()
@@ -249,11 +236,11 @@ class Simulation:
             if i < len(self.grid.start):
                 agent.spot = self.grid.start[i] 
             else:
-                # Fallback if there are more agents than start spots
                 agent.spot = self.grid.start[0] if self.grid.start else None
 
             if agent.spot and bool(self.grid.exits):
                 agent.path = agent.best_path()
+        self.grid.clear_simulation_visuals()
 
     def update(self, dt: float) -> None:
         """Time-based update with delta time"""

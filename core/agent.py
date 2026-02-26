@@ -145,9 +145,31 @@ class Agent:
                         self.smoke_detected = True   # constant-time flag
 
     def get_move_interval(self) -> float:
-        # Returns time in seconds between moves; increases with smoke density
-        penalty = 1.0 + (self.spot.smoke * 0.5)
-        return temp_config.AGENT_MOVE_TIMER * penalty
+        smoke = self.spot.smoke
+        # Map smoke density to a visibility condition key.
+        # The paper uses extinction coefficients (0.13 and 0.26); we map those
+        # linearly onto the 0–1 smoke range stored in each Spot:
+        #   0–0.13 → clear, 0.13–0.5 → slight, 0.5+ → heavy
+        if smoke < 0.13:
+            condition = "clear"
+        elif smoke < 0.5:
+            condition = "slight_smoke"
+        else:
+            condition = "heavy_smoke"
+
+        if condition == "clear":
+            floor_speed = 3.67
+        elif condition == "slight_smoke":
+            floor_speed = 0.96
+        else:
+            floor_speed = 0.64
+
+        # Apply the user-adjustable multiplier (default 1.0 = paper values)
+        speed_m_s = max(0.01, floor_speed*temp_config.BASE_SPEED_M_S)  # prevent zero or negative speeds
+
+        # time (s) to cross one cell = distance (m) / speed (m/s)
+        cell_size_m = max(temp_config.CELL_SIZE_M, 0.5)
+        return cell_size_m / speed_m_s
 
     def update(self, dt: float) -> bool:
         if not self.alive:

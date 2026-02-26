@@ -119,14 +119,21 @@ class TempConstants:
         self.SMOKE_DECAY = smoke_constants.SMOKE_DECAY.value
         self.MAX_SMOKE = smoke_constants.MAX_SMOKE.value
         self.SMOKE_PRODUCTION = smoke_constants.SMOKE_PRODUCTION.value
-        self.AGENT_MOVE_TIMER = 0.1
         # Physical size of one grid cell (meters)
         self.CELL_SIZE_M = 0.5
+        # Agent base walking speed multiplier (1.0 = research-paper speeds)
+        self.BASE_SPEED_M_S = 1.0
+
         self.PARAMS = {
             "CELL_SIZE_M": {
                 "label": "Cell Size (m)",
                 "min": 0.05,
                 "max": 2.0
+            },
+            "BASE_SPEED_M_S": {
+                "label": "Agent Speed Multiplier",
+                "min": 0.1,
+                "max": 3.0
             },
             "FIRE_SPREAD_PROBABILITY": {
                 "label": "Fire Spread Probability",
@@ -148,11 +155,6 @@ class TempConstants:
                 "min": 0.0,
                 "max": 1.0
             },
-            "AGENT_MOVE_TIMER": {
-                "label": "Speed",
-                "min": 0.1,
-                "max": 2.0
-            }
         }
 
 temp = TempConstants()
