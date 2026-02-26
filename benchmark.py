@@ -8,6 +8,7 @@ from io import StringIO
 from core.simulation import Simulation, SIM_QUIT
 
 THRESHOLD = 1000 #minimum no of function calls so that it is printed
+THRESHOLD_TIME = 0.01 #minimum cumulative time in seconds so that it is printed
 RESULTS_FILE = "benchmark_results.txt"
 BENCH_DURATION_SECONDS = 10
 
@@ -58,7 +59,7 @@ for func, data in stats.stats.items():
     cumulative_times[key] += cumulative_time
 
 for name in sorted(call_counts, key=lambda x: call_counts[x], reverse=True):
-    if call_counts[name] > THRESHOLD:
+    if call_counts[name] > THRESHOLD and cumulative_times[name] > THRESHOLD_TIME:
         print(f"{name:40s} {call_counts[name]:10d}  {cumulative_times[name]:10.5f}")
 
 print("No of function calls:", sum(call_counts.values()), f" in {end_time-start_time:.5f}")

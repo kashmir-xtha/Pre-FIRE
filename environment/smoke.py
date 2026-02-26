@@ -33,11 +33,21 @@ def spread_smoke(
         max_smoke = temp_constants.MAX_SMOKE
         production = temp_constants.SMOKE_PRODUCTION
 
+        # Physical cell size in metres
+        # Larger cells mean weaker spatial gradients, so diffusion flux and volumetric production are both scaled by 1/dx² (Fick's 2nd law)
+        dx = max(temp_constants.CELL_SIZE_M, 1e-6)
+        spatial_scale = 1.0 / (dx * dx)
+
+        # Rescale the dimensionless slider values to physical units
+        diffusion_scaled  = diffusion  * spatial_scale
+        # production_scaled = production * spatial_scale
+        production_scaled = production
+
         # Vectorized extraction of is_barrier and is_fire using state lookups
         is_barrier = grid_data.is_barrier_np
         is_fire = grid_data.fire_np
 
-        coeff = np.full((rows, cols), diffusion, dtype=np.float32)
+        coeff = np.full((rows, cols), diffusion_scaled, dtype=np.float32)
         coeff[is_barrier] = 0.0
 
         smoke_pad = np.pad(smoke, 1, mode="edge")
@@ -89,9 +99,10 @@ def spread_smoke(
         new_smoke = center + diffusion_sum
 
         decay_factor = 1.0 - (decay * dt)
+        # decay_factor = np.exp(-decay * dt)
         new_smoke *= decay_factor
 
-        new_smoke[is_fire] = np.minimum(max_smoke, center[is_fire] + (3 * production * dt))
+        new_smoke[is_fire] = np.minimum(max_smoke, center[is_fire] + (3 * production_scaled * dt))
         new_smoke[is_barrier] = 0.0
         new_smoke = np.clip(new_smoke, 0.0, max_smoke)
 

@@ -123,6 +123,11 @@ class TempConstants:
         # Physical size of one grid cell (meters)
         self.CELL_SIZE_M = 0.5
         self.PARAMS = {
+            "CELL_SIZE_M": {
+                "label": "Cell Size (m)",
+                "min": 0.05,
+                "max": 2.0
+            },
             "FIRE_SPREAD_PROBABILITY": {
                 "label": "Fire Spread Probability",
                 "min": 0.0,
@@ -146,11 +151,6 @@ class TempConstants:
             "AGENT_MOVE_TIMER": {
                 "label": "Speed",
                 "min": 0.1,
-                "max": 2.0
-            },
-            "CELL_SIZE_M": {
-                "label": "Cell Size (m)",
-                "min": 0.05,
                 "max": 2.0
             }
         }

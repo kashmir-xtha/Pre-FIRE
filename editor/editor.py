@@ -7,7 +7,8 @@ import pygame_gui
 from PIL import Image
 
 from editor.tools import ToolsPanel
-from utils.utilities import Color, ToolType, load_layout, pick_csv_file, pick_save_csv_file, save_layout, get_dpi_scale
+from utils.utilities import Color, ToolType, load_layout, pick_csv_file, pick_save_csv_file, save_layout, get_dpi_scale, rTemp
+from ui.slider import create_control_panel
 
 if TYPE_CHECKING:
     from core.grid import Grid
@@ -62,35 +63,64 @@ class Editor:
         # Initialize GUI
         self.manager = pygame_gui.UIManager((win_width, win_height))
         self._setup_ui_buttons()
-    
-    def _setup_ui_buttons(self) -> None:
-        """Initialize UI buttons (Save/Load/Ruler)"""
-        # scale button dimensions as well
-        button_y = self.win.get_size()[1] - int(40 * self.scale)  # Bottom of the window
-        button_width = int(80 * self.scale)
-        button_height = int(30 * self.scale)
-        button_gap = int(16 * self.scale)
-        offset = int(200 * self.scale)
 
-        # Calculate X positions for three buttons
-        ruler_button_x = self.win.get_size()[0] - int(200 * self.scale) - (3 * button_width) - (3 * button_gap) + offset
-        load_button_x = self.win.get_size()[0] - int(200 * self.scale) - (2 * button_width) - (2 * button_gap) + offset
-        save_button_x = self.win.get_size()[0] - int(200 * self.scale) - button_width - button_gap + offset
-        
+        # Simulation parameter sliders
+        self.temp = rTemp()
+        self._create_sliders()
+    
+    def _create_sliders(self) -> None:
+        """Slider between material buttons and bottom instructions text."""
+        # 6 tools = 3 rows of 2; each row is (80+10)*scale tall, starting at panel.y+50
+        button_height  = int(80 * self.scale)
+        padding        = int(10 * self.scale)
+        num_rows       = 3
+        buttons_bottom = self.tools_panel.rect.y + int(50 * self.scale) + num_rows * (button_height + padding)
+
+        # Bottom instructions sit at rect.bottom - 130*scale
+        instructions_top = self.tools_panel.rect.bottom - int(130 * self.scale)
+
+        slider_w = int(170 * self.scale)
+        slider_x = self.panel_x + (int(200 * self.scale) - slider_w) // 2
+        slider_y = buttons_bottom + int(10 * self.scale)
+
+        if (instructions_top - slider_y) < int(110 * self.scale):
+            slider_y = buttons_bottom + int(4 * self.scale)
+
+        self.slider_group = create_control_panel(
+            manager=self.manager,
+            x=slider_x,
+            y=slider_y,
+            temp_obj=self.temp,
+            scale=self.scale,
+        )
+
+    def _setup_ui_buttons(self) -> None:
+        """Ruler | Save | Load — three equal buttons at the bottom of the panel."""
+        win_width, win_height = self.win.get_size()
+        panel_x       = win_width - int(200 * self.scale)
+        button_y      = win_height - int(40 * self.scale)
+        button_height = int(30 * self.scale)
+        button_gap    = int(6 * self.scale)
+        button_width  = int((200 * self.scale - 4 * button_gap) / 3)
+
+        ruler_x = panel_x + button_gap
+        save_x  = ruler_x + button_width + button_gap
+        load_x  = save_x  + button_width + button_gap
+
         self.ruler_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((ruler_button_x, button_y), (button_width, button_height)),
+            relative_rect=pygame.Rect((ruler_x, button_y), (button_width, button_height)),
             text="Ruler: Off",
             manager=self.manager
         )
-        
+
         self.save_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((save_button_x, button_y), (button_width, button_height)),
+            relative_rect=pygame.Rect((save_x, button_y), (button_width, button_height)),
             text="Save",
             manager=self.manager
         )
-        
+
         self.load_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((load_button_x, button_y), (button_width, button_height)),
+            relative_rect=pygame.Rect((load_x, button_y), (button_width, button_height)),
             text="Load",
             manager=self.manager
         )
@@ -131,6 +161,7 @@ class Editor:
         # Recreate UI manager for new size
         self.manager = pygame_gui.UIManager((win_width, win_height))
         self._setup_ui_buttons()
+        self._create_sliders()
         return True
 
     def _load_initial_layout(self) -> None:
@@ -444,6 +475,14 @@ class Editor:
                 # Handle different event types
                 if event.type == pygame_gui.UI_BUTTON_PRESSED:
                     self._handle_ui_events(event)
+
+                elif event.type == pygame_gui.UI_HORIZONTAL_SLIDER_MOVED:
+                    if hasattr(self, 'slider_group'):
+                        self.slider_group.handle_event(event)
+
+                elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
+                    if hasattr(self, 'slider_group'):
+                        self.slider_group.handle_event(event)
                 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if event.pos[0] >= self.width:

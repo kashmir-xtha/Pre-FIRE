@@ -12,6 +12,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Harmonic mean for edge conductivity (avoids overestimating flux)
+def harmonic_mean(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    denom = a + b
+    return np.where(denom > 0.0, 2.0 * a * b / denom, 0.0)
+
 def do_temperature_update(grid: "Grid", dt: float = 1.0) -> None:
     rows = grid.rows
     temp = grid.temp_np
@@ -39,11 +44,6 @@ def do_temperature_update(grid: "Grid", dt: float = 1.0) -> None:
     south_ht = ht_pad[2:rows + 2, 1:rows + 1]
     west_ht  = ht_pad[1:rows + 1, 0:rows]
     east_ht  = ht_pad[1:rows + 1, 2:rows + 2]
-
-    # Harmonic mean for edge conductivity (avoids overestimating flux)
-    def harmonic_mean(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-        denom = a + b
-        return np.where(denom > 0.0, 2.0 * a * b / denom, 0.0)
 
     k_n = harmonic_mean(heat_transfer, north_ht)
     k_s = harmonic_mean(heat_transfer, south_ht)
@@ -106,6 +106,13 @@ def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
             is_fire[r, c] = spot.is_fire()
             burned[r, c] = spot.burned
 
+    # Cell-size scaling: sliders were tuned at REFERENCE_CELL_SIZE_M.
+    # Larger cells represent more physical material between grid centres, so fire takes longer to cross each cell — both spread probability and burn
+    # rate scale linearly with (reference / dx) i.e Time for fire to cross cell ∝ distance
+    REFERENCE_CELL_SIZE_M = 0.5
+    dx = max(temp_constants.CELL_SIZE_M, 1e-6)
+    cell_scale = REFERENCE_CELL_SIZE_M / dx   # <1 for large cells, >1 for small
+
     # Candidate cells that can ignite
     candidate = (
         (~is_fire) &
@@ -130,12 +137,13 @@ def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
     ) > 0
 
     # Auto‑ignition (temperature + random chance)
+    # Also scaled: a larger cell takes proportionally longer to auto-ignite
     auto_ignite = candidate & (temp >= ignition_temp)
-    auto_rand = np.random.random((rows, rows)) < (0.3 * dt)
+    auto_rand = np.random.random((rows, rows)) < (0.3 * cell_scale * dt)
     auto_ignite &= auto_rand
 
-    # Spread from burning neighbors
-    spread_prob = temp_constants.FIRE_SPREAD_PROBABILITY * dt
+    # Spread from burning neighbors — scaled so fire crosses large cells slower
+    spread_prob = temp_constants.FIRE_SPREAD_PROBABILITY * cell_scale * dt
     spread_rand = np.random.random((rows, rows)) < spread_prob
     spread = candidate & neighbor_fire & spread_rand
 
@@ -151,8 +159,9 @@ def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
     # Update is_fire array
     is_fire = is_fire | new_fire_mask
 
-    # Burn rate
-    burn_rate = 0.1 * dt
+    # Burn rate also scales with cell size: a larger cell holds proportionally
+    # more fuel so it burns for longer before extinguishing.
+    burn_rate = 0.1 * cell_scale * dt
 
     # --- Combined fuel consumption and extinguishment loop ---
     fuel_after = fuel.copy()   # will be modified in place
