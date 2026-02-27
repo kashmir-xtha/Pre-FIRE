@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Sequence, Union, TYPE_CHECKING
 import numpy as np
 import pygame
-
+from utils.utilities import get_neighbors
 from utils.utilities import smoke_constants, rTemp
 
 if TYPE_CHECKING:
@@ -19,7 +19,7 @@ def spread_smoke(
     Optimized smoke spread using numpy diffusion on the Grid's smoke array.
     Barriers block diffusion; fire cells only produce smoke.
     """
-
+    #stabilized, one-directional diffusion operator inspired by Fick’s law Cnew​=Cold​+D⋅(neighbor differences)⋅dt
     # Handle both Grid object and list inputs for compatibility
     if hasattr(grid_data, 'neighbor_map'):
         grid = grid_data.grid
@@ -36,7 +36,7 @@ def spread_smoke(
         # Physical cell size in metres
         # Larger cells mean weaker spatial gradients, so diffusion flux and volumetric production are both scaled by 1/dx² (Fick's 2nd law)
         dx = max(temp_constants.CELL_SIZE_M, 1e-6)
-        spatial_scale = 1.0 / (dx * dx)
+        spatial_scale = 1.0 / (dx * dx) # Cnew​=C+dt⋅D(neighbors−k⋅c)​/dx2 i.e the discrete form of ficks  second law
 
         # Rescale the dimensionless slider values to physical units
         diffusion_scaled  = diffusion  * spatial_scale
@@ -83,17 +83,17 @@ def spread_smoke(
         coeff_se = np.minimum(coeff, se_c)
 
         def positive_diff(neighbor, current, edge_coeff):
-            return np.maximum(neighbor - current, 0.0) * edge_coeff
-
+            return np.maximum(neighbor - current, 0.0) * edge_coeff # flux∝(Cneighbor​−Ccenter​)
+        diag_factor = 1/np.sqrt(2) #sqrt2/2 to reduce diagonal diffusion to prevent excessive smoothing
         diffusion_sum = (
             positive_diff(n, center, coeff_n) +
             positive_diff(s, center, coeff_s) +
             positive_diff(w, center, coeff_w) +
             positive_diff(e, center, coeff_e) +
-            positive_diff(nw, center, coeff_nw) +
-            positive_diff(ne, center, coeff_ne) +
-            positive_diff(sw, center, coeff_sw) +
-            positive_diff(se, center, coeff_se)
+            diag_factor*positive_diff(nw, center, coeff_nw) +
+            diag_factor*positive_diff(ne, center, coeff_ne) +
+            diag_factor*positive_diff(sw, center, coeff_sw) +
+            diag_factor*positive_diff(se, center, coeff_se)
         )
 
         new_smoke = center + diffusion_sum
@@ -116,7 +116,6 @@ def spread_smoke(
                 row_spots[c]._smoke = float(row_smoke[c])
     else:
         # Legacy slow path - fallback
-        from utils.utilities import get_neighbors
         grid = grid_data
         rows = len(grid)
         cols = len(grid[0])
