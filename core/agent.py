@@ -211,7 +211,7 @@ class Agent:
         logger.info("IM here")
 
         if floors_with_exits:
-            # Go to lower floor provided floor with exits exits
+            # Go to lower floor provided floor with exits exists
             dest_floor = floors_with_exits[0]
             logger.info(f"if Agent on floor {self.current_floor} taking stairwell {stairwell.stair_id} to floor {dest_floor} (exit detected)")
         else:
@@ -342,7 +342,8 @@ class Agent:
                 p = a_star(self.grid, self.spot, exit_spot, self)
                 if p:
                     paths.append(p)
-            return min(paths, key=len) if paths else []
+            if bool(paths):
+                return min(paths, key=len) if paths else []
         
         # 2. No exits on current floor? then try to find a stairwell and take it to another floor (if building has multiple floors)
         if self.building and self.building.num_floors > 1:
@@ -353,7 +354,8 @@ class Agent:
                 p = a_star(self.grid, self.spot, stair, self)
                 if p:
                     paths.append(p)
-            return min(paths, key=len) if paths else []
+            if bool(paths):
+                return min(paths, key=len) if paths else []
         
         # 3. Desperation mode if no safe path exists
         if not paths and bool(self.grid.exits):

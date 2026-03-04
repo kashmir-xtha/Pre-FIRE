@@ -269,11 +269,7 @@ class Simulation:
                     randomfirespot(self.grid, self.rows)
                         
             # Udate fire and smoke spread
-            for floor in self.building.floors:
-                do_temperature_update(floor, update_dt)
-                update_fire_with_materials(floor, update_dt)
-                spread_smoke(floor, update_dt)
-                floor.update_np_arrays() 
+            self.building.update_all_floor(update_dt)
             
             # Update all agent with delta time
             for agent in self.agents:

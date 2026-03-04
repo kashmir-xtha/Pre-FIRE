@@ -18,6 +18,7 @@ class Color(Enum):
     CYAN = (150, 150, 255)
     BLUE = (0, 0, 255)
     FIRE_COLOR = (255, 80, 0)
+    PINK = (255, 51, 255)
 
 
 class state_value(Enum):

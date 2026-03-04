@@ -8,6 +8,7 @@ from utils.utilities import Color, ToolType, material_id as MaterialID
 GREEN = Color.GREEN.value
 FIRE_COLOR = Color.FIRE_COLOR.value
 RED = Color.RED.value
+PINK = Color.PINK.value
 
 class ToolButton:
     def __init__(
@@ -83,7 +84,7 @@ class ToolsPanel:
         tools.append((ToolType.FIRE_SOURCE, None, "Fire", FIRE_COLOR))
         tools.append((ToolType.START, None, "Start", GREEN))
         tools.append((ToolType.END, None, "End", RED))
-        tools.append((ToolType.STAIR, None, "Stair", (150, 75, 0)))
+        tools.append((ToolType.STAIR, None, "Stair", PINK))
         
         self.buttons.clear()
         for i, (tool_type, material_id, name, color) in enumerate(tools):

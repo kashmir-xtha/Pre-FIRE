@@ -84,10 +84,10 @@ class Editor:
 
         slider_w = int(170 * self.scale)
         slider_x = self.panel_x + (int(200 * self.scale) - slider_w) // 2
-        slider_y = buttons_bottom + int(10 * self.scale)
+        slider_y = buttons_bottom + int(20 * self.scale) + button_height 
 
-        if (instructions_top - slider_y) < int(110 * self.scale):
-            slider_y = buttons_bottom + int(4 * self.scale)
+        if (instructions_top - slider_y) < int(100 * self.scale):
+            slider_y = buttons_bottom + int(10 * self.scale) + button_height
 
         self.slider_group = create_control_panel(
             manager=self.manager,
@@ -593,6 +593,8 @@ def run_editor(win: pygame.surface.Surface, rows: int, num_of_floors: int,bg_ima
     for f in range(num_of_floors):
         editor = Editor(win, rows, bg_image, filename, floor=f)
         result = editor.run()
+        if result is None:
+            return None
         results.append(result)
     print(StairwellIDGenerator.stairs)
     return results

@@ -8,6 +8,7 @@ BLACK = Color.BLACK.value
 GREEN = Color.GREEN.value
 RED = Color.RED.value
 FIRE_COLOR = Color.FIRE_COLOR.value
+PINK = Color.PINK.value
 
 EMPTY = state_value.EMPTY.value
 WALL = state_value.WALL.value
@@ -112,7 +113,7 @@ class Spot:
     
     def make_stairwell(self, stair_id: int) -> None:
         """Make this spot a stairwell"""
-        self._color = (255, 51, 255)  # Brown color for stairs
+        self._color = PINK  # PINK color for stairs
         self._state = EMPTY  # Stairwells are technically empty space
         self._material = material_id.CONCRETE  # Use concrete properties for stairs
         self.is_stairwell = True

@@ -31,7 +31,7 @@ def configure_logging() -> None:
         return
     logging.basicConfig(
         level=logging.INFO,
-        format="%(levelname)s:%(name)s:%(message)s",
+        format="%(levelname)s:%(name)s:%(funcName)s:%(message)s",
     )
 
 def main() -> None:

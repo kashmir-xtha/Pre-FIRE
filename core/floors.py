@@ -25,9 +25,6 @@ class Building:
         else:
             raise ValueError("Invalid floor number")
         
-    def find_stairwell(self, floor_num: int) -> Optional[tuple]:
-        pass
-
     def move_agent_between_floors(self, agent: 'Agent', from_floor: int, to_floor: int, stair_id: int) -> bool:
         if not (0 <= from_floor < self.num_floors and 0 <= to_floor < self.num_floors):
             return False
@@ -48,8 +45,3 @@ class Building:
             update_fire_with_materials(floor, update_dt)
             spread_smoke(floor, update_dt)
             floor.update_np_arrays() 
-            floor.update()
-    
-    def reset_all_floors(self) -> None:
-        for floor in self.floors:
-            floor.reset()
