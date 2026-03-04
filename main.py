@@ -41,7 +41,7 @@ def main() -> None:
     # This loop allows switching between editor and simulation modes
     try:
         while(True):
-            num_of_floors = 2
+            num_of_floors = 3
             StairwellIDGenerator.reset()
             
             grids = run_editor(WIN, Dimensions.ROWS.value, num_of_floors, BG_IMAGE, csv_filename)

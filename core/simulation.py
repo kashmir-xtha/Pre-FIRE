@@ -5,8 +5,8 @@ import numpy as np
 import pygame
 import pygame_gui
 from core.floors import Building
-from environment.fire import randomfirespot, update_fire_with_materials, update_temperature_with_materials, do_temperature_update
-from environment.smoke import spread_smoke, draw_smoke
+from environment.fire import randomfirespot
+from environment.smoke import draw_smoke
 from utils.utilities import Color, Dimensions, state_value, SimulationState, rTemp, load_layout, get_dpi_scale
 from ui.slider import create_control_panel
 from utils.time_manager import TimeManager
@@ -70,19 +70,14 @@ class Simulation:
         self.font = pygame.font.Font(None, int(24 * self.scale))
         self.history = {
             "time": [],
-            "fire_cells": [],
-            "avg_temp": [],
-            "avg_smoke": [],
+            "fire_cells": [],              # building-wide total
+            "fire_cells_per_floor": [],    # [floor_0, floor_1, ...]
+            "avg_temp": [],                # building-wide average
+            "avg_temp_per_floor": [],      # [floor_0, floor_1, ...]
+            "avg_smoke": [],               # building-wide average
+            "avg_smoke_per_floor": [],     # [floor_0, floor_1, ...]
             "agent_health": [],
             "path_length": []
-        }
-        self.metrics = {
-            'elapsed_time': 0,
-            'agent_health': self.agents[0].health if self.agents else 0,
-            'fire_cells': 0,
-            'avg_smoke': 0,
-            'avg_temp': 20,
-            'path_length': 0
         }
 
         self.manager = pygame_gui.UIManager(self.win.get_size())
@@ -376,43 +371,23 @@ class Simulation:
         return SIM_QUIT
 
     def update_metrics(self) -> None:
-        # Use time_manager for elapsed time
-        self.metrics['elapsed_time'] = self.time_manager.get_total_time()
+        # Update elapsed time in metrics
+        self.building.metrics['elapsed_time'] = self.time_manager.get_total_time()
         
-        # Agent
-        if self.agents:
-        # Track the average health or just the first agent's health
-            self.metrics['agent_health'] = sum(a.health for a in self.agents) / len(self.agents)
-            self.metrics['path_length'] = len(self.agents[0].path) if self.agents[0].path else 0
+        # Compute aggregated metrics across all floors and agents
+        self.building.compute_metrics(self.agents)
         
-        # Count fire cells and average temperature
-        if hasattr(self.grid, "temp_np") and hasattr(self.grid, "smoke_np") and hasattr(self.grid, "fire_np"):
-            self.metrics['fire_cells'] = int(np.count_nonzero(self.grid.fire_np))
-            self.metrics['avg_temp'] = float(np.mean(self.grid.temp_np))
-            self.metrics['avg_smoke'] = float(np.mean(self.grid.smoke_np))
-        else:
-            fire_count = 0
-            total_temp = 0
-            total_smoke = 0
-            cells = self.rows * self.rows
-
-            for r in range(self.rows):
-                for c in range(self.rows):
-                    if self.grid.grid[r][c].is_fire():
-                        fire_count += 1
-                    total_temp += self.grid.grid[r][c].temperature
-                    total_smoke += self.grid.grid[r][c].smoke
-
-            self.metrics['avg_smoke'] = total_smoke / cells
-            self.metrics['fire_cells'] = fire_count
-            self.metrics['avg_temp'] = total_temp / cells
-
-        self.history["time"].append(self.metrics["elapsed_time"])
-        self.history["fire_cells"].append(self.metrics["fire_cells"])
-        self.history["avg_temp"].append(self.metrics["avg_temp"])
-        self.history["avg_smoke"].append(self.metrics["avg_smoke"] * 500)
-        self.history["agent_health"].append(self.metrics["agent_health"])
-        self.history["path_length"].append(self.metrics["path_length"])
+        # Record history (both building-wide and per-floor)
+        metrics = self.building.metrics
+        self.history["time"].append(metrics["elapsed_time"])
+        self.history["fire_cells"].append(metrics["fire_cells"])
+        self.history["fire_cells_per_floor"].append(metrics["fire_cells_per_floor"].copy())
+        self.history["avg_temp"].append(metrics["avg_temp"])
+        self.history["avg_temp_per_floor"].append(metrics["avg_temp_per_floor"].copy())
+        self.history["avg_smoke"].append(metrics["avg_smoke"] * 500)
+        self.history["avg_smoke_per_floor"].append([s * 500 for s in metrics["avg_smoke_per_floor"]])
+        self.history["agent_health"].append(metrics["agent_health"])
+        self.history["path_length"].append(metrics["path_length"])
     
     def draw_sim_panel(self) -> None:
         # Draw panel background at full window height.  
@@ -429,15 +404,14 @@ class Simulation:
         # Draw metrics
         y_offset = 60
         metrics = [
-            f"Time: {self.metrics['elapsed_time']:.1f}s",
+            f"Time: {self.building.metrics['elapsed_time']:.1f}s",
             f"Step: {self.time_manager.get_simulation_step()}",
             f"FPS: {self.time_manager.get_fps():.1f}",
             f"Speed: {self.time_manager.get_step_size()}x",
-            f"Health: {self.metrics['agent_health']:.0f}",
-            f"Fire Cells: {self.metrics['fire_cells']}",
-            f"Avg Smoke: {self.metrics['avg_smoke']:.3f}",
-            f"Avg Temp: {self.metrics['avg_temp']:.1f}°C",
-            f"Path Length: {self.metrics['path_length']}",
+            f"Fire Cells: {self.building.metrics['fire_cells']}",
+            f"Avg Smoke: {self.building.metrics['avg_smoke']:.3f}",
+            f"Avg Temp: {self.building.metrics['avg_temp']:.1f}°C",
+            f"Path Length: {self.building.metrics['path_length']}",
             f"Current Floor: {self.building.current_floor + 1}",
             "Controls:",
             "P: Pause/Resume",
@@ -475,23 +449,25 @@ class Simulation:
         # Draw agent status pinned to the bottom of the panel
         if self.agents:
             # leave a small margin above the bottom of the window
+            health = self.building.metrics['agent_health'] / 100
+            alive = health > 0
             main_agent = self.agents[0]
             status_y = win_height - int(60 * self.scale)
-            status = "ALIVE" if main_agent.alive else "DEAD"
-            status_color = (0, 255, 0) if main_agent.alive else (255, 0, 0)
+            status = "ALIVE" if alive else "DEAD"
+            status_color = (0, 255, 0) if alive else (255, 0, 0)
             status_surface = self.font.render(f"Agent: {status}", True, status_color)
             self.win.blit(status_surface, (self.width + int(15 * self.scale), status_y - int(30 * self.scale)))
             
             # Draw health bar immediately below the status text
             bar_width = int(180 * self.scale)
-            health_width = int(bar_width * (main_agent.health / 100))
+            health_width = health * bar_width
             pygame.draw.rect(self.win, (50, 50, 50), 
                            (self.width + int(10 * self.scale), status_y + int(25 * self.scale), bar_width, int(20 * self.scale)))
             pygame.draw.rect(self.win, status_color, 
                            (self.width + int(10 * self.scale), status_y, health_width, int(20 * self.scale)))
             
             # Draw health text
-            health_text = self.font.render(f"{main_agent.health:.0f}%", True, (255, 255, 255))
+            health_text = self.font.render(f"{health * 100:.0f}%", True, (255, 255, 255))
             text_x = self.width + bar_width // 2 - health_text.get_width() // 2
             self.win.blit(health_text, (text_x, status_y + int(2 * self.scale)))
 

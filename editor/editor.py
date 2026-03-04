@@ -96,7 +96,7 @@ class Editor:
             temp_obj=self.temp,
             scale=self.scale,
         )
-
+        
     def _setup_ui_buttons(self) -> None:
         """Ruler | Save | Load — three equal buttons at the bottom of the panel."""
         win_width, win_height = self.win.get_size()
