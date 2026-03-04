@@ -12,11 +12,12 @@ if TYPE_CHECKING:
 GRID_COLOR = Color.GREY.value
 
 class Grid:
-    def __init__(self, rows: int, width: int) -> None:
+    def __init__(self, rows: int, width: int, floor: int) -> None:
         self.rows = rows
         self.width = width
         self.cell_size = width // rows
 
+        self.floor = floor
         self.grid = self._make_grid()
         
         # OPTIMIZATION: Precompute neighbor references

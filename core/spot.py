@@ -37,6 +37,7 @@ class Spot:
         self.x = col * width
         self.y = row * width
         self.width = width
+        self.is_stairwell = False
         
         # Private attributes with controlled access
         self._color = WHITE

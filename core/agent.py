@@ -22,7 +22,7 @@ NEIGHBOR_OFFSETS = (
 )
 
 class Agent:
-    def __init__(self, grid: "Grid", start_spot: "Spot") -> None:
+    def __init__(self, grid: "Grid", start_spot: "Spot", floor: int = 0) -> None:
         self.grid = grid
         self.spot = start_spot
         self.rows = grid.rows
@@ -30,6 +30,7 @@ class Agent:
         self.alive = True
         self.path: List["Spot"] = []
         self.path_show = True
+        self.current_floor = floor
         
         # Memory Systems
         self.known_smoke = np.full((self.rows, self.rows), -1.0)

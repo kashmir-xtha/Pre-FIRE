@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, TYPE_CHECKING
 import numpy as np
 import pygame
 import pygame_gui
+from core.floors import Building
 from environment.fire import randomfirespot, update_fire_with_materials, update_temperature_with_materials, do_temperature_update
 from environment.smoke import spread_smoke, draw_smoke
 from utils.utilities import Color, Dimensions, state_value, SimulationState, rTemp, load_layout, get_dpi_scale
@@ -33,14 +34,15 @@ class Simulation:
     def __init__(
         self,
         win: pygame.Surface,
-        grid: "Grid",
+        building: "Building",
         agents: Optional["Agent"],
         rows: int,
         width: int,
         bg_image: Optional[pygame.Surface] = None,
     ) -> None:
         self.win = win
-        self.grid = grid
+        self.building = building
+        self.grid = building.get_floor(0)
         self.agents = agents
         self.rows = rows
         self.orignal_width = width
@@ -193,54 +195,58 @@ class Simulation:
                 elif event.key == pygame.K_r:
                     self.reset()
 
+                elif event.key == pygame.K_m:
+                    self.building.current_floor = (self.building.current_floor + 1) % self.building.num_floors
+
                 elif event.key == pygame.K_e:
                     return SIM_EDITOR
 
         return SIM_CONTINUE
 
     def reset(self) -> None:
-        self.fire_set = False
-        # Reset the time manager timer
-        self.time_manager.reset_timer()
+        for floor in self.building.floors:
+            floor.clear_simulation_visuals()
+            self.fire_set = False
+            # Reset the time manager timer
+            self.time_manager.reset_timer()
 
-        layout = self.grid.initial_layout
-        for r, row in enumerate(self.grid.grid):
-            for c, spot in enumerate(row):
-                if layout is not None:
-                    disc = layout[r][c]
+            layout = floor.initial_layout
+            for r, row in enumerate(floor.grid):
+                for c, spot in enumerate(row):
+                    if layout is not None:
+                        disc = layout[r][c]
+                    else:
+                        disc = spot.to_dict()
+
+                    spot.reset()
+                    if disc.get('state') == WALL:
+                        spot.make_barrier()
+                    elif disc.get('state') == START:
+                        spot.make_start()
+                    elif disc.get('state') == END:
+                        spot.make_end()
+                    elif disc.get('is_fire_source'):
+                        spot.set_as_fire_source(disc.get('temperature') if disc.get('temperature') else 1200.0)
+                    else:
+                        spot.set_material(disc.get('material'))
+            floor.backup_layout()
+            # after restoring layout we need to clear any burned flags (spot.reset
+            # already did this) and rebuild the material cache
+            floor.mark_material_cache_dirty()
+            floor.ensure_material_cache()
+            # Sync numpy arrays so smoke/temp don't carry over into the next update
+            floor.update_np_arrays()
+
+            # 2. Reset every agent in the list
+            for i, agent in enumerate(self.agents):
+                agent.reset()
+                if i < len(floor.start):
+                    agent.spot = floor.start[i]
                 else:
-                    disc = spot.to_dict()
+                    agent.spot = floor.start[0] if floor.start else None
 
-                spot.reset()
-                if disc.get('state') == WALL:
-                    spot.make_barrier()
-                elif disc.get('state') == START:
-                    spot.make_start()
-                elif disc.get('state') == END:
-                    spot.make_end()
-                elif disc.get('is_fire_source'):
-                    spot.set_as_fire_source(disc.get('temperature') if disc.get('temperature') else 1200.0)
-                else:
-                    spot.set_material(disc.get('material'))
-        self.grid.backup_layout()
-        # after restoring layout we need to clear any burned flags (spot.reset
-        # already did this) and rebuild the material cache
-        self.grid.mark_material_cache_dirty()
-        self.grid.ensure_material_cache()
-        # Sync numpy arrays so smoke/temp don't carry over into the next update
-        self.grid.update_np_arrays()
-
-        # 2. Reset every agent in the list
-        for i, agent in enumerate(self.agents):
-            agent.reset()
-            if i < len(self.grid.start):
-                agent.spot = self.grid.start[i] 
-            else:
-                agent.spot = self.grid.start[0] if self.grid.start else None
-
-            if agent.spot and bool(self.grid.exits):
-                agent.path = agent.best_path()
-        self.grid.clear_simulation_visuals()
+                if agent.spot and bool(floor.exits):
+                    agent.path = agent.best_path()
 
     def update(self, dt: float) -> None:
         """Time-based update with delta time"""
@@ -252,10 +258,6 @@ class Simulation:
                 self.time_manager.total_time += update_dt
             # Pass scaled dt for physics consistency
             #update_dt = scaled_dt
-		
-            #update_temperature_with_materials(self.grid, update_dt)
-            do_temperature_update(self.grid, update_dt)
-            update_fire_with_materials(self.grid, update_dt)
             
             # Generate fire once
             if not self.fire_set:
@@ -266,12 +268,13 @@ class Simulation:
                 else:
                     randomfirespot(self.grid, self.rows)
                         
-            # Smoke spread
-            spread_smoke(self.grid, update_dt)
+            # Udate fire and smoke spread
+            for floor in self.building.floors:
+                do_temperature_update(floor, update_dt)
+                update_fire_with_materials(floor, update_dt)
+                spread_smoke(floor, update_dt)
+                floor.update_np_arrays() 
             
-            # Update numpy arrays for rendering after all state changes
-            self.grid.update_np_arrays()  
-
             # Update all agent with delta time
             for agent in self.agents:
                 agent.update(update_dt)
@@ -280,11 +283,12 @@ class Simulation:
             self.update_metrics()
 
     # DRAW FUNCTION
-    def draw(self) -> None:
+    def draw(self, floor_num: int) -> None:
         # Clear only the grid area
         # grid_area = pygame.Rect(0, 0, self.width, self.width)
         # pygame.draw.rect(self.win, Color.WHITE.value, grid_area)
         
+        to_draw_floor = self.building.get_floor(floor_num)
         # Get current window size
         win_width, win_height = self.win.get_size()
         
@@ -306,28 +310,28 @@ class Simulation:
         grid_surface.fill(WHITE)
         
         # IMPORTANT: Update grid cell size for proper drawing
-        self.grid.cell_size = cell_size
+        to_draw_floor.cell_size = cell_size
         
         # Update spot positions in the grid
-        self.grid.update_geometry(cell_size)
+        to_draw_floor.update_geometry(cell_size)
 
         # Update agent position if it exists
         for agent in self.agents:
-            if agent.path and agent.path_show:
+            if agent.path and agent.path_show and to_draw_floor.floor == agent.current_floor:
                 for p in agent.path:
                     if p != agent.spot and not p.is_start() and not p.is_end():
                         rect = pygame.Rect(p.x, p.y, p.width, p.width)
                         pygame.draw.rect(grid_surface, CYAN, rect)
         
         # Draw Grid Lines + spots
-        self.grid.draw(grid_surface, bg_image=self.bg_image)
+        to_draw_floor.draw(grid_surface, bg_image=self.bg_image)
         
         # Smoke FIRST (background effect)
-        draw_smoke(self.grid, grid_surface)
+        draw_smoke(to_draw_floor, grid_surface)
         
         # Agent LAST (top layer)
         for agent in self.agents:
-            if agent.alive: # Only draw if they haven't perished
+            if agent.alive and to_draw_floor.floor == agent.current_floor: # Only draw if they haven't perished and are on the current floor
                 # Ensure the agent's current spot width is updated for scaling
                 if agent.spot:
                     agent.spot.width = cell_size
@@ -371,7 +375,7 @@ class Simulation:
             if should_update:
                 self.update(self.time_manager.get_delta_time())
 
-            self.draw()
+            self.draw(self.building.current_floor)
 
         return SIM_QUIT
 
@@ -438,6 +442,7 @@ class Simulation:
             f"Avg Smoke: {self.metrics['avg_smoke']:.3f}",
             f"Avg Temp: {self.metrics['avg_temp']:.1f}°C",
             f"Path Length: {self.metrics['path_length']}",
+            f"Current Floor: {self.building.current_floor + 1}",
             "Controls:",
             "P: Pause/Resume",
             "S: Step Mode",
@@ -445,6 +450,7 @@ class Simulation:
             "+/-: Speed",
             "R: Reset",
             "E: Editor Mode",
+            "M: Change Floor",
             "ESC: Quit"
         ]
         

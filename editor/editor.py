@@ -27,6 +27,7 @@ class Editor:
         rows: int,
         bg_image: Optional[pygame.Surface] = None,
         filename: str = "layout_csv\\layout_1.csv",
+        floor: int = 0
     ) -> None:
         from core.grid import Grid
         
@@ -46,7 +47,7 @@ class Editor:
         self.panel_x = win_width - tools_width
         
         # Grid and state
-        self.grid_obj = Grid(rows, self.width)
+        self.grid_obj = Grid(rows, self.width, floor)
         self.tools_panel = ToolsPanel(self.panel_x, 0, tools_width, win_height, scale=self.scale)
         self.current_tool = "MATERIAL"
         self.current_filename = filename
@@ -557,8 +558,11 @@ def floor_image_to_csv(
         writer.writerows(grid)
 
 # LEGACY FUNCTION (for compatibility)
-def run_editor(win, rows, bg_image=None, filename="layout_csv\\layout_2.csv"):
+def run_editor(win: pygame.surface.Surface, rows: int, num_of_floors: int,bg_image=None, filename="layout_csv\\layout_2.csv"):
     """Legacy function - creates an Editor instance and runs it"""
-    editor = Editor(win, rows, bg_image, filename)
-    result = editor.run()
-    return result
+    results = []
+    for f in range(num_of_floors):
+        editor = Editor(win, rows, bg_image, filename, floor=f)
+        result = editor.run()
+        results.append(result)
+    return results

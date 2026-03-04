@@ -6,6 +6,7 @@ from editor.editor import run_editor
 from core.agent import Agent
 from core.simulation import Simulation
 from utils.utilities import Dimensions, SimulationState, loadImage, load_window_state, save_window_state, resource_path, set_dpi_awareness, get_dpi_scale
+from core.floors import Building
 
 logger = logging.getLogger(__name__)
 set_dpi_awareness() #before pygame initialization to ensure proper DPI scaling on Windows
@@ -40,18 +41,27 @@ def main() -> None:
     # This loop allows switching between editor and simulation modes
     try:
         while(True):
-            grid = run_editor(WIN, Dimensions.ROWS.value, BG_IMAGE, csv_filename)
-            if grid is None:
+            num_of_floors = 2
+            
+            grids = run_editor(WIN, Dimensions.ROWS.value, num_of_floors, BG_IMAGE, csv_filename)
+            if grids is None:
                 sys.exit()
+
+            building = Building(num_of_floors=num_of_floors, rows=Dimensions.ROWS.value, width=int(Dimensions.WIDTH.value * SCALE))
+            building.floors = grids  # Assign the created grids to the floors of the building
+            print(f"Created building with {len(building.floors)} floors.")
             agents = []
-            if grid.start:
-                num_agents = min(3, len(grid.start))
-                for i in range(num_agents):
-                    # Assign each agent to a unique start spot from the list
-                    new_agent = Agent(grid, grid.start[i]) 
-                    new_agent.path = new_agent.best_path()
-                    agents.append(new_agent)
-            sim = Simulation(WIN, grid, agents, Dimensions.ROWS.value,int(Dimensions.WIDTH.value * SCALE), BG_IMAGE,)
+
+            for f in range(num_of_floors):
+                if building.floors[f].start:
+                    num_agents = min(3, len(building.floors[f].start))
+                    for i in range(num_agents):
+                        # Assign each agent to a unique start spot from the list
+                        new_agent = Agent(building.floors[f], building.floors[f].start[i], floor=f)
+                        new_agent.path = new_agent.best_path()
+                        agents.append(new_agent)
+
+            sim = Simulation(WIN, building, agents, Dimensions.ROWS.value,int(Dimensions.WIDTH.value * SCALE), BG_IMAGE,)
             mode = sim.run()
             if mode == SimulationState.SIM_EDITOR.value:
                 logger.info("Switching to Editor Mode")
