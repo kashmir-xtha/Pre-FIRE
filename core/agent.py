@@ -6,7 +6,8 @@ import pygame
 from collections import deque
 from typing import List, Optional, Tuple, Sequence, TYPE_CHECKING
 
-from utils.utilities import Color, rTemp, resource_path
+from core.floors import Building
+from utils.utilities import Color, StairwellIDGenerator, rTemp, resource_path
 
 if TYPE_CHECKING:
     from core.grid import Grid
@@ -22,7 +23,11 @@ NEIGHBOR_OFFSETS = (
 )
 
 class Agent:
-    def __init__(self, grid: "Grid", start_spot: "Spot", floor: int = 0) -> None:
+    def __init__(self, grid: "Grid", 
+                 start_spot: "Spot", 
+                 floor: int = 0,
+                 building: Optional["Building"] = None
+                 ) -> None:
         self.grid = grid
         self.spot = start_spot
         self.rows = grid.rows
@@ -31,7 +36,8 @@ class Agent:
         self.path: List["Spot"] = []
         self.path_show = True
         self.current_floor = floor
-        
+        self.building = building
+
         # Memory Systems
         self.known_smoke = np.full((self.rows, self.rows), -1.0)
         self.known_fire = np.zeros((self.rows, self.rows), dtype=bool)
@@ -172,6 +178,110 @@ class Agent:
         cell_size_m = max(temp_config.CELL_SIZE_M, 0.5)
         return cell_size_m / speed_m_s
 
+    def apply_damage(self, dt: float) -> None:
+        """Calculate damage from fire and smoke"""
+        if self.spot.is_fire():
+            self.health = 0
+        self.health -= (self.spot.smoke * 5 + max(0, self.spot.temperature - 50) * 0.3) * dt
+
+    def _cross_stairwell(self, stairwell: "Spot") -> None:
+        """Handle agent crossing to another floor via stairwell"""
+        if not self.building or stairwell.stair_id is None:
+            logger.info("Error: Stairwell crossing attempted without valid building or stair_id.")
+            return
+
+        # Find all floors that are connected with stairs_id
+        connected_floors = StairwellIDGenerator.get_connected_floors(stairwell.stair_id)
+        logger.info(f"Connected floors for stairwell {stairwell.stair_id}: {connected_floors}")
+        logger.info(f"All stairs: {StairwellIDGenerator.stairs}")
+        if not connected_floors:
+            logger.info(f"Error: Stairwell {stairwell.stair_id} has no connected floors in StairwellIDGenerator.")
+            return
+
+        # Remove current floor from connected floors
+        candidate_floors = [f for f in connected_floors if f != self.current_floor]
+        if not candidate_floors:
+            logger.info(f"No valid stairwell destinations from floor {self.current_floor} for stairwell {stairwell.stair_id}")
+            return
+
+        # Filter floors who have exits in ascending order i.e lower floor to upper floors
+        floors_with_exits = sorted(
+            [f for f in candidate_floors if bool(self.building.get_floor(f).exits)]
+        )
+        logger.info("IM here")
+
+        if floors_with_exits:
+            # Go to lower floor provided floor with exits exits
+            dest_floor = floors_with_exits[0]
+            logger.info(f"if Agent on floor {self.current_floor} taking stairwell {stairwell.stair_id} to floor {dest_floor} (exit detected)")
+        else:
+            # Filter floors below the current floor
+            lower_candidates = sorted([f for f in candidate_floors if f < self.current_floor])
+            dest_floor = lower_candidates[0] if lower_candidates else sorted(candidate_floors)[0]
+            logger.info(f"else: Agent on floor {self.current_floor} taking stairwell {stairwell.stair_id} to floor {dest_floor} (no exit detected)")
+        
+        # upward movement not allowed
+        if dest_floor >= self.current_floor:
+            return
+        
+        moved = self.building.move_agent_between_floors(
+            self,
+            self.current_floor,
+            dest_floor,
+            stairwell.stair_id,
+        )
+
+        if moved:
+            # Calculate new path on new floor (LITTLE AGENT'S NEW BEGINNING) - Best of luck little agent
+            self.path = self.best_path()  
+
+    def _add_trail(self) -> None:
+        """Add current spot to trail"""
+        if self.spot is not self._last_trail_spot:
+            self.trail.append(self.spot)
+            self._last_trail_spot = self.spot
+
+    def _update_path(self, dt: float) -> None:
+        """Re-plan if path becomes unsafe"""
+        self.replan_timer += dt
+        if not self.path:
+            self.path = self.best_path()
+            self.replan_timer = 0
+        elif self.replan_timer > 0.8:
+            if not path_still_safe(self.path, self.grid.grid, self):
+                self.path = self.best_path()
+                self.replan_timer = 0
+
+    def _handle_movement(self, dt: float) -> None:
+        """Handle agent movement including stairwell crossing"""
+        self.move_timer += dt
+        
+        if self.move_timer < self.get_move_interval():
+            return
+        
+        self.move_timer = 0
+        
+        if not self.path or len(self.path) <= 1:
+            return
+        
+        next_node = self.path[1]
+        
+        # Update angle for visualization
+        dx, dy = next_node.x - self.spot.x, next_node.y - self.spot.y
+        if dx != 0 or dy != 0:
+            self.current_angle = math.degrees(math.atan2(-dy, dx)) - 90
+        
+        # Check for stairwell crossing
+        if next_node.is_stairwell and self.building and self.building.num_floors > 1:
+            self._cross_stairwell(next_node)
+            return
+        
+        # Normal movement
+        if not next_node.is_barrier() and not next_node.is_fire():
+            self.spot = next_node
+            self.path.pop(0)
+            self._add_trail()
+
     def update(self, dt: float) -> bool:
         if not self.alive:
             return False
@@ -180,10 +290,8 @@ class Agent:
         self.update_memory(dt)
         
         # Damage calculation
-        if self.spot.is_fire():
-            self.health = 0
-        self.health -= (self.spot.smoke * 5 + max(0, self.spot.temperature - 50) * 0.3) * dt
-        
+        self.apply_damage(dt)
+
         if self.health <= 0:
             self.health = 0
             self.alive = False
@@ -206,37 +314,14 @@ class Agent:
             return False
 
         # ----- MOVING state (normal egress behaviour) -----
-        self.move_timer += dt
-        self.replan_timer += dt
-
         if self.spot.is_end():
             return True
 
-        # Re‑planning logic
-        if not self.path:
-            self.path = self.best_path()
-            self.replan_timer = 0
-        elif self.replan_timer > 0.8:
-            if not path_still_safe(self.path, self.grid.grid, self):
-                self.path = self.best_path()
-                self.replan_timer = 0
-
-        # Movement
-        if self.move_timer >= self.get_move_interval():
-            if self.path and len(self.path) > 1:
-                next_node = self.path[1]
-                dx, dy = next_node.x - self.spot.x, next_node.y - self.spot.y
-                if dx != 0 or dy != 0:
-                    self.current_angle = math.degrees(math.atan2(-dy, dx)) - 90
-                
-                if not next_node.is_barrier() and not next_node.is_fire():
-                    self.spot = next_node
-                    self.path.pop(0)
-
-                    if self.spot is not self._last_trail_spot:
-                        self.trail.append(self.spot)
-                        self._last_trail_spot = self.spot
-            self.move_timer = 0
+        # Re-planning logic
+        self._update_path(dt)
+        
+        # Agent Movement Handle FUnction
+        self._handle_movement(dt)
         return True
 
     def best_path(self) -> List["Spot"]:
@@ -246,18 +331,32 @@ class Agent:
             else:
                 return []
 
-        if not self.spot or not self.grid.exits:
+        if not self.spot:
             return []
         
-        # Standard exit check
         paths = []
-        for exit_spot in self.grid.exits:
-            p = a_star(self.grid, self.spot, exit_spot, self)
-            if p:
-                paths.append(p)
+
+        # 1. if exits exists on floor find path with that exits
+        if bool(self.grid.exits):
+            for exit_spot in self.grid.exits:
+                p = a_star(self.grid, self.spot, exit_spot, self)
+                if p:
+                    paths.append(p)
+            return min(paths, key=len) if paths else []
         
-        # Desperation mode if no safe path exists
-        if not paths:
+        # 2. No exits on current floor? then try to find a stairwell and take it to another floor (if building has multiple floors)
+        if self.building and self.building.num_floors > 1:
+            stairs = find_stairwells_on_floor(self.grid)
+            for stair in stairs:
+                if stair is self.spot:
+                    continue
+                p = a_star(self.grid, self.spot, stair, self)
+                if p:
+                    paths.append(p)
+            return min(paths, key=len) if paths else []
+        
+        # 3. Desperation mode if no safe path exists
+        if not paths and bool(self.grid.exits):
             for exit_spot in self.grid.exits:
                 p = a_star(self.grid, self.spot, exit_spot, self, desperate=True)
                 if p:
@@ -265,57 +364,71 @@ class Agent:
         
         return min(paths, key=len) if paths else []
 
-    def draw(self, win: pygame.Surface) -> None:
-        cell_size = self.grid.cell_size
-        cx, cy = int(self.spot.x + cell_size // 2), int(self.spot.y + cell_size // 2)
-        
-        #1. Trail 
+    def _draw_trail(self, win: pygame.Surface, cell_size: int) -> None:
         trail_list = list(self.trail)
         n = len(trail_list)
-        if n > 0:
-            # Recreate surface if cell size changed since construction
-            expected_px = self.grid.rows * cell_size
-            if self.trail_surf.get_width() != expected_px:
-                self.trail_surf = pygame.Surface((expected_px, expected_px), pygame.SRCALPHA)
+        if n <= 0:
+            return
 
-            self.trail_surf.fill((0, 0, 0, 0))
-            dot_radius = max(2, cell_size // 5)
-            for i, ts in enumerate(trail_list):
-                # alpha ramps from near-invisible (oldest) → bright (newest)
-                alpha = 0 if self.spot.is_end() else int(180 * (i + 1) / n)
-                tx = int(ts.x + cell_size // 2)
-                ty = int(ts.y + cell_size // 2)
-                pygame.draw.circle(
-                    self.trail_surf,
-                    (60, 179, 113, alpha),  # soft green
-                    (tx, ty),
-                    dot_radius,
-                )
-            win.blit(self.trail_surf, (0, 0))
+        expected_px = self.grid.rows * cell_size
+        if self.trail_surf.get_width() != expected_px:
+            self.trail_surf = pygame.Surface((expected_px, expected_px), pygame.SRCALPHA)
 
-        #2. Vision Cone (Optimized Surface)
+        self.trail_surf.fill((0, 0, 0, 0))
+        dot_radius = max(2, cell_size // 5)
+        for i, ts in enumerate(trail_list):
+            alpha = 0 if self.spot.is_end() else int(180 * (i + 1) / n)
+            tx = int(ts.x + cell_size // 2)
+            ty = int(ts.y + cell_size // 2)
+            pygame.draw.circle(
+                self.trail_surf,
+                (60, 179, 113, alpha),
+                (tx, ty),
+                dot_radius,
+            )
+        win.blit(self.trail_surf, (0, 0))
+
+    def _draw_vision_cone(self, win: pygame.Surface, cx: int, cy: int) -> None:
         vis_radius = self.compute_visibility_radius()
         cone_points = [(cx, cy)]
-        start_angle = math.radians(-self.current_angle - 135) 
+        start_angle = math.radians(-self.current_angle - 135)
         end_angle = math.radians(-self.current_angle - 45)
         for i in range(13):
             angle = start_angle + (end_angle - start_angle) * (i / 12)
             cone_points.append((cx + math.cos(angle) * vis_radius, cy + math.sin(angle) * vis_radius))
-            
-        self.vision_surf.fill((0, 0, 0, 0)) # Clear existing surface
+
+        self.vision_surf.fill((0, 0, 0, 0))
         pygame.draw.polygon(self.vision_surf, (180, 210, 255, 160), cone_points)
         win.blit(self.vision_surf, (0, 0))
 
-        # 3. Agent Sprite
-        if self.base_image:
-            img = self.base_image.copy()
-            if self.health < 50:
-                img.fill((255, 220, 220, 255),
-                         special_flags=pygame.BLEND_MULT)
+    def _draw_sprite(self, win: pygame.Surface, cx: int, cy: int) -> None:
+        if not self.base_image:
+            return
 
-            rotated = pygame.transform.rotate(img, self.current_angle + 180)
-            win.blit(rotated,
-                     rotated.get_rect(center=(cx, cy)).topleft)
+        img = self.base_image.copy()
+        if self.health < 50:
+            img.fill((255, 220, 220, 255), special_flags=pygame.BLEND_MULT)
+
+        rotated = pygame.transform.rotate(img, self.current_angle + 180)
+        win.blit(rotated, rotated.get_rect(center=(cx, cy)).topleft)
+
+    def draw(self, win: pygame.Surface) -> None:
+        cell_size = self.grid.cell_size
+        cx = int(self.spot.x + cell_size // 2)
+        cy = int(self.spot.y + cell_size // 2)
+
+        self._draw_trail(win, cell_size)
+        self._draw_vision_cone(win, cx, cy)
+        self._draw_sprite(win, cx, cy)
+
+def find_stairwells_on_floor(grid_obj: "Grid") -> List["Spot"]:
+    """Find all stairwell spots on a floor"""
+    stairs = []
+    for row in grid_obj.grid:
+        for spot in row:
+            if spot.is_stairwell:
+                stairs.append(spot)
+    return stairs
 
 def a_star(
     grid_obj: "Grid", 

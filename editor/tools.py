@@ -65,6 +65,7 @@ class ToolsPanel:
         self.current_material = MaterialID.AIR
         self.font_large = pygame.font.SysFont(None, int(24 * scale))
         self.font_small = pygame.font.SysFont(None, int(18 * scale))
+        self.floor = 0
         self._init_buttons()
     
     def _init_buttons(self) -> None:
@@ -82,6 +83,7 @@ class ToolsPanel:
         tools.append((ToolType.FIRE_SOURCE, None, "Fire", FIRE_COLOR))
         tools.append((ToolType.START, None, "Start", GREEN))
         tools.append((ToolType.END, None, "End", RED))
+        tools.append((ToolType.STAIR, None, "Stair", (150, 75, 0)))
         
         self.buttons.clear()
         for i, (tool_type, material_id, name, color) in enumerate(tools):
@@ -122,6 +124,7 @@ class ToolsPanel:
         
         # Draw instructions
         instructions = [
+            f"Current Floor: {self.floor + 1}",
             "Click material to select",
             "Hold Left-click to place",
             "Hold Right-click to erase"

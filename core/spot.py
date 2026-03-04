@@ -38,7 +38,8 @@ class Spot:
         self.y = row * width
         self.width = width
         self.is_stairwell = False
-        
+        self.stair_id = None # (Spot, floor_num) of the connected stairwell spot on the other floor
+
         # Private attributes with controlled access
         self._color = WHITE
         self._state = EMPTY
@@ -109,6 +110,14 @@ class Spot:
         self._state = END
         self._material = material_id.AIR  # End spot should be air
     
+    def make_stairwell(self, stair_id: int) -> None:
+        """Make this spot a stairwell"""
+        self._color = (255, 51, 255)  # Brown color for stairs
+        self._state = EMPTY  # Stairwells are technically empty space
+        self._material = material_id.CONCRETE  # Use concrete properties for stairs
+        self.is_stairwell = True
+        self.stair_id = stair_id  # Will be set when connecting stairwells between floors
+
     def set_color(self, color: ColorTuple) -> None:
         """Set the color of the spot (used for path visualization)"""
         self._color = color

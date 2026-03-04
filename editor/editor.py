@@ -7,7 +7,7 @@ import pygame_gui
 from PIL import Image
 
 from editor.tools import ToolsPanel
-from utils.utilities import Color, ToolType, load_layout, pick_csv_file, pick_save_csv_file, save_layout, get_dpi_scale, rTemp
+from utils.utilities import Color, StairwellIDGenerator, ToolType, load_layout, pick_csv_file, pick_save_csv_file, save_layout, get_dpi_scale, rTemp
 from ui.slider import create_control_panel
 
 if TYPE_CHECKING:
@@ -35,7 +35,8 @@ class Editor:
         self.rows = rows
         self.bg_image = bg_image
         self.filename = filename
-        
+        self.floor = floor
+
         # compute DPI scaling factor to size UI elements
         self.scale = get_dpi_scale(pygame.display.get_wm_info()['window'])
 
@@ -49,6 +50,7 @@ class Editor:
         # Grid and state
         self.grid_obj = Grid(rows, self.width, floor)
         self.tools_panel = ToolsPanel(self.panel_x, 0, tools_width, win_height, scale=self.scale)
+        self.tools_panel.floor = floor
         self.current_tool = "MATERIAL"
         self.current_filename = filename
         self.bg_image_loaded = False
@@ -211,6 +213,9 @@ class Editor:
         elif tool_type == ToolType.FIRE_SOURCE:
             self.current_tool = "FIRE_SOURCE"
             logger.info("Fire source mode - click on grid to place fire source")
+        elif tool_type == ToolType.STAIR:
+            self.current_tool = "STAIR"
+            logger.info("Stairwell mode - click on grid to place stairwell")
 
     def _handle_grid_click(self, event: pygame.event.Event) -> None:
         """Handle mouse clicks in the grid area"""
@@ -251,6 +256,30 @@ class Editor:
             spot.make_end()
             self.grid_obj.mark_material_cache_dirty()
         
+        elif self.current_tool == "STAIR":
+            # If this exact cell is already a stairwell, keep that id.
+            existing_stair_id = StairwellIDGenerator.find_stair_at_cell(spot.row, spot.col)
+
+            if existing_stair_id is not None:
+                stair_id = existing_stair_id
+            elif self.floor == 0:
+                # Floor 0 always creates a brand-new stairwell id.
+                stair_id = StairwellIDGenerator.new_stair()
+            else:
+                # Higher floors consume unpaired floor-0 stair IDs in order.
+                linked_id = StairwellIDGenerator.next_link_target(target_floor=self.floor, anchor_floor=0)
+                if linked_id is not None:
+                    stair_id = linked_id
+                else:
+                    # If target floor already has as many stairs as floor 0, create a new id.
+                    stair_id = StairwellIDGenerator.new_stair()
+
+            # Add this floor's spot to the stairwell
+            spot.make_stairwell(stair_id=stair_id)
+            StairwellIDGenerator.add(stair_id=stair_id, floor=self.floor, spot=spot)
+
+            self.grid_obj.mark_material_cache_dirty()
+            
         elif self.current_tool == "MATERIAL":
             material_id = self.tools_panel.get_current_material()
             self.grid_obj.set_material(row, col, material_id)
@@ -313,7 +342,7 @@ class Editor:
             logger.info("Loading layout... %s", self.filename)
             self._load_from_file(self.filename)
         
-        elif event.key == pygame.K_SPACE and self.grid_obj.start and bool(self.grid_obj.exits):
+        elif event.key == pygame.K_SPACE and self.grid_obj.start: #and bool(self.grid_obj.exits):
             logger.info("Starting simulation...")
             return True  # Signal to exit editor
         
@@ -565,4 +594,5 @@ def run_editor(win: pygame.surface.Surface, rows: int, num_of_floors: int,bg_ima
         editor = Editor(win, rows, bg_image, filename, floor=f)
         result = editor.run()
         results.append(result)
+    print(StairwellIDGenerator.stairs)
     return results
