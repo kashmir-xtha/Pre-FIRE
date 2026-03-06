@@ -449,7 +449,11 @@ class Simulation:
         # Draw agent status pinned to the bottom of the panel
         if self.agents:
             # leave a small margin above the bottom of the window
-            health = self.building.metrics['agent_health'] / 100
+            health = float(self.building.metrics.get('agent_health', 0)) / 100.0
+            # Clamp health to [0,1] and guard against NaN/inf from bad metrics
+            if not np.isfinite(health):
+                health = 0.0
+            health = max(0.0, min(1.0, health))
             alive = health > 0
             main_agent = self.agents[0]
             status_y = win_height - int(60 * self.scale)
@@ -460,7 +464,7 @@ class Simulation:
             
             # Draw health bar immediately below the status text
             bar_width = int(180 * self.scale)
-            health_width = health * bar_width
+            health_width = int(max(0.0, health) * bar_width)
             pygame.draw.rect(self.win, (50, 50, 50), 
                            (self.width + int(10 * self.scale), status_y + int(25 * self.scale), bar_width, int(20 * self.scale)))
             pygame.draw.rect(self.win, status_color, 

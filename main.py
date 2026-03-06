@@ -25,17 +25,17 @@ image_directory = resource_path("data/layout_images")
 csv_directory = resource_path("data/layout_csv")
 SCALE = get_dpi_scale(hwnd)
 
-def configure_logging() -> None:
+def configure_logging(debug: bool = True) -> None:
     root_logger = logging.getLogger()
     if root_logger.handlers:
         return
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.INFO if debug else logging.CRITICAL,
         format="%(levelname)s:%(name)s:%(funcName)s:%(message)s",
     )
 
 def main() -> None:
-    configure_logging()
+    configure_logging(debug=True)
     BG_IMAGE, csv_filename = loadImage(image_directory, csv_directory, 2)
 
     # This loop allows switching between editor and simulation modes
