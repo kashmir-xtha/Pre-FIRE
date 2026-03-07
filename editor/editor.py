@@ -587,10 +587,19 @@ def floor_image_to_csv(
         writer.writerows(grid)
 
 # LEGACY FUNCTION (for compatibility)
-def run_editor(win: pygame.surface.Surface, rows: int, num_of_floors: int,bg_image=None, filename="layout_csv\\layout_2.csv"):
+def run_editor(win: pygame.surface.Surface, rows: int, num_of_floors = None,bg_image=None, filename="layout_csv\\layout_2.csv"):
     """Legacy function - creates an Editor instance and runs it"""
-    results = []
-    for f in range(num_of_floors):
+
+    editor = Editor(win, rows, bg_image, filename, floor=0)
+    result = editor.run()
+    if result is None:
+        return None
+    
+    # Read NUM_FLOORS only after floor 0 editor closes (slider has been set)
+    chosen_floors = int(rTemp().NUM_FLOORS)
+    results = [result]
+    
+    for f in range(1, chosen_floors):
         editor = Editor(win, rows, bg_image, filename, floor=f)
         result = editor.run()
         if result is None:

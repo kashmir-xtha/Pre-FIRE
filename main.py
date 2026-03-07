@@ -41,13 +41,13 @@ def main() -> None:
     # This loop allows switching between editor and simulation modes
     try:
         while(True):
-            num_of_floors = 3
             StairwellIDGenerator.reset()
             
-            grids = run_editor(WIN, Dimensions.ROWS.value, num_of_floors, BG_IMAGE, csv_filename)
+            grids = run_editor(WIN, Dimensions.ROWS.value, bg_image=BG_IMAGE, filename=csv_filename)
             if grids is None:
                 sys.exit()
 
+            num_of_floors = len(grids)
             building = Building(num_of_floors=num_of_floors, rows=Dimensions.ROWS.value, width=int(Dimensions.WIDTH.value * SCALE))
             building.floors = grids  # Assign the created grids to the floors of the building
             print(f"Created building with {len(building.floors)} floors.")

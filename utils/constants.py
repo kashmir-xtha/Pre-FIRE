@@ -80,8 +80,14 @@ class TempConstants:
         self.CELL_SIZE_M = 0.5
         # Agent base walking speed multiplier (1.0 = research-paper speeds)
         self.BASE_SPEED_M_S = 1.0
+        self.NUM_FLOORS = 1
 
         self.PARAMS = {
+            "NUM_FLOORS": {
+                "label": "Floor Count",
+                "min": 1,
+                "max": 10
+            },
             "CELL_SIZE_M": {
                 "label": "Cell Size (m)",
                 "min": 0.05,
@@ -114,9 +120,7 @@ class TempConstants:
             },
         }
 
-
 temp = TempConstants()
-
 
 def rTemp() -> TempConstants:
     """Get the global TempConstants instance."""

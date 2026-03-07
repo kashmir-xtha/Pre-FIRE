@@ -1,10 +1,9 @@
 """
     python -m statistics.survival_heatmap --csv data/layout_csv/layout_1.csv
-    OR
-    python -m statistics.survival_heatmap --csv data/layout_csv/layout_1.csv \
-        --scenarios 10 --steps 200 --dt 0.1 --workers 0 --output heatmap.png
 """
-#using python -m runs the script as a module, allowing relative imports from the project structure
+# this only uses bfs for evaulation instead of agent A* for computational efficiency
+# BFS is sufficient for comparision of relative safety between cells 
+# scenario time complexity: O(S) linear with no of scenarios, but each scenario is O(steps * ROWS^2)
 import argparse
 import logging
 import os
@@ -26,7 +25,7 @@ pygame.init()
 pygame.display.set_mode((1, 1), pygame.NOFRAME)
 np.seterr(divide="ignore", invalid="ignore")
 
-# Project imports\
+# Project imports
 from core.grid import Grid
 from environment.fire import randomfirespot, update_fire_with_materials, do_temperature_update
 
@@ -449,7 +448,7 @@ def plot_heatmap(survival: np.ndarray, output_path: str, csv_path: str) -> None:
 
 # CLI
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Headless survival heatmap (v3 vectorised)")
+    p = argparse.ArgumentParser(description="Headless survival heatmap")
     p.add_argument("--csv",       required=True)
     p.add_argument("--scenarios", type=int,   default=50) #number of times to run a full simulation with random fire placement - more runs = smoother heatmap but longer runtime
     p.add_argument("--steps",     type=int,   default=200)
@@ -458,13 +457,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output",    default="survival_heatmap.png")
     p.add_argument("--no-mp",     action="store_true")
     return p.parse_args()
+
 def main() -> None:
     args = parse_args()
     if not os.path.exists(args.csv):
         sys.exit(f"ERROR: CSV not found: {args.csv}")
 
     # Extract layout number or base name for output
-    base_name = os.path.splitext(os.path.basename(args.csv))[0]  # e.g., layout_1
+    base_name = os.path.splitext(os.path.basename(args.csv))[0]  # layout_1...
     output_dir = "statistics/heatmap"  # folder to save heatmaps
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"heatmap_{base_name}.png")
@@ -477,7 +477,7 @@ def main() -> None:
     )
     valid = survival[~np.isnan(survival)]
     print(f"\nSurvival across {len(valid)} cells:")
-    print(f"  Mean : {valid.mean():.2%}  Min : {valid.min():.2%}  Max : {valid.max():.2%}")
+    print(f"Mean: {valid.mean():.2%}\tMin: {valid.min():.2%}  Max : {valid.max():.2%}")
     plot_heatmap(survival, output_path, args.csv)
 
 if __name__ == "__main__":
