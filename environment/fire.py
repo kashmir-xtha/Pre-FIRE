@@ -58,12 +58,33 @@ def do_temperature_update(grid: "Grid", dt: float = 1.0) -> None:
         (east - temp) * k_e
     ) / (dx * dx)
 
+    # --- Radiative heat transfer (simplified Stefan-Boltzmann) ---
+    # In real fires, 40-60% of heat transfer is radiative.
+    # q_rad = epsilon * sigma * (T_hot^4 - T_cold^4)
+    # We linearize for stability: approximate as rad_coeff * (T_neighbor - T)
+    # for high-temperature cells only (above 200°C), with coefficient scaling
+    # as T^3 (from derivative of T^4).
+    STEFAN_BOLTZMANN = 5.67e-8  # W/(m²·K⁴)
+    EMISSIVITY = 0.9            # typical for soot/wood char
+    # Effective radiative coefficient: ε·σ·T³ (linearized)
+    # Convert °C to K for radiation calculation
+    temp_K = temp + 273.15
+    rad_coeff = EMISSIVITY * STEFAN_BOLTZMANN * temp_K**3  # W/(m²·K)
+    # Only apply radiation above ~200°C to avoid unnecessary computation on cool cells
+    rad_mask = temp > 200.0
+    rad_coeff = np.where(rad_mask, rad_coeff, 0.0)
+
+    # Radiative flux from 4 cardinal neighbors (same stencil as conduction)
+    radiation_flux = rad_coeff * (
+        (north - temp) + (south - temp) + (west - temp) + (east - temp)
+    ) / (dx * dx)
+
     # Cooling sink term (Newton cooling)
     ambient = temp_constants.AMBIENT_TEMP
     cooling_flux = -cooling_rate * (temp - ambient)
 
     # Net flux normalized by heat capacity
-    net_flux = (conduction_flux + cooling_flux) / heat_capacity
+    net_flux = (conduction_flux + radiation_flux + cooling_flux) / heat_capacity
     net_flux[is_barrier] = 0.0
 
     for r in range(rows):
@@ -123,29 +144,42 @@ def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
         (~burned)
     )
 
-    # Neighbor fire detection (8‑neighbor)
-    fire_pad = np.pad(is_fire.astype(np.int8), 1, mode="constant")
-    neighbor_fire = (
-        fire_pad[0:rows, 0:rows] +
-        fire_pad[0:rows, 1:rows + 1] +
-        fire_pad[0:rows, 2:rows + 2] +
-        fire_pad[1:rows + 1, 0:rows] +
-        fire_pad[1:rows + 1, 2:rows + 2] +
-        fire_pad[2:rows + 2, 0:rows] +
-        fire_pad[2:rows + 2, 1:rows + 1] +
-        fire_pad[2:rows + 2, 2:rows + 2]
-    ) > 0
-
     # Auto‑ignition (temperature + random chance)
     # Also scaled: a larger cell takes proportionally longer to auto-ignite
     auto_ignite = candidate & (temp >= ignition_temp)
     auto_rand = np.random.random((rows, rows)) < (0.3 * cell_scale * dt)
     auto_ignite &= auto_rand
 
-    # Spread from burning neighbors — scaled so fire crosses large cells slower
-    spread_prob = temp_constants.FIRE_SPREAD_PROBABILITY * cell_scale * dt
-    spread_rand = np.random.random((rows, rows)) < spread_prob
-    spread = candidate & neighbor_fire & spread_rand
+    # Spread from burning neighbors
+    # Probability scales with the FIRE CELL's temperature (source intensity).
+    # A hotter fire radiates more energy → higher chance of igniting neighbors.
+    # P = base_prob * clamp(T_fire / 600, 0.2, 1.0)
+    spread_mask = np.zeros_like(candidate, dtype=bool)
+    base_prob = temp_constants.FIRE_SPREAD_PROBABILITY * cell_scale * dt
+    
+    # Get fire cell coordinates
+    fire_cells = np.argwhere(is_fire)
+    for r, c in fire_cells:
+        # Source fire intensity factor
+        fire_intensity = min(max(temp[r, c] / 600.0, 0.2), 1.0)
+        prob = base_prob * fire_intensity
+
+        # Check all 8 neighbors
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                if dr == 0 and dc == 0:
+                    continue  # Skip self
+                
+                nr, nc = r + dr, c + dc
+                
+                # Check bounds
+                if not (0 <= nr < rows and 0 <= nc < rows):
+                    continue
+                
+                if candidate[nr, nc] and np.random.random() < prob:
+                    spread_mask[nr, nc] = True
+    
+    spread = spread_mask
 
     new_fire_mask = auto_ignite | spread
 
@@ -159,19 +193,22 @@ def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
     # Update is_fire array
     is_fire = is_fire | new_fire_mask
 
-    # Burn rate also scales with cell size: a larger cell holds proportionally
+    # Burn rate scales with cell size: a larger cell holds proportionally
     # more fuel so it burns for longer before extinguishing.
-    burn_rate = 0.1 * cell_scale * dt
-
     # --- Combined fuel consumption and extinguishment loop ---
-    fuel_after = fuel.copy()   # will be modified in place
-    dirty = False               # track if material cache needs rebuild
+    fuel_after = fuel.copy()
+    dirty = False
 
-    # Get indices of all currently burning cells
+    # Burn rate now comes from each cell's material properties instead of
+    # a single hardcoded constant.  Fall back to 0.02 for materials that
+    # don't define fuel_burn_rate.
     fire_indices = np.argwhere(is_fire)
     for r, c in fire_indices:
-        # Reduce fuel
-        new_fuel = max(fuel_after[r, c] - burn_rate, 0.0)
+        spot = grid_grid[r][c]
+        props = spot.get_material_properties()
+        mat_burn_rate = props.get("fuel_burn_rate", 0.02) * cell_scale * dt
+
+        new_fuel = max(fuel_after[r, c] - mat_burn_rate, 0.0)
         fuel_after[r, c] = new_fuel
 
         spot = grid_grid[r][c]
@@ -182,7 +219,10 @@ def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
         # Check for extinguishment
         if new_fuel <= 0.0:
             spot.extinguish_fire()
-            spot.set_material(material_id.AIR)
+            # Convert burned-out cell to inert AIR without refueling
+            spot._material = material_id.AIR
+            spot._fuel = 0.0
+            spot.material_props = None  # invalidate cached props
             dirty = True
             # Mark this cell as not fire in the array (for grid.fire_np later)
             is_fire[r, c] = False

@@ -41,7 +41,8 @@ from utils.window_utils import (
 from utils.helpers import (
     get_neighbors,
     visualize_2d,
-    resource_path
+    resource_path,
+    floor_image_to_csv
 )
 
 # Re-export everything for backwards compatibility
@@ -77,5 +78,6 @@ __all__ = [
     # Helpers
     'get_neighbors',
     'visualize_2d',
-    'resource_path'
+    'resource_path',
+    'floor_image_to_csv'
 ]

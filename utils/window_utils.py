@@ -57,6 +57,26 @@ def get_dpi_scale(hwnd: int | None = None) -> float:
     return float(dpi) / 96.0
 
 
+def maximize_window(hwnd: int) -> None:
+    """Maximize the application window. Windows-only; no-op on other platforms."""
+    if sys.platform != "win32":
+        return
+    try:
+        ctypes.windll.user32.ShowWindow(hwnd, 3)  # SW_MAXIMIZE
+    except Exception:
+        pass
+
+
+def is_window_maximized(hwnd: int) -> bool:
+    """Return True if the window is currently maximized. Windows-only."""
+    if sys.platform != "win32":
+        return False
+    try:
+        return bool(ctypes.windll.user32.IsZoomed(hwnd))
+    except Exception:
+        return False
+
+
 def user_data_path(filename: str) -> str:
     """
     Returns a writable path for user-generated files.

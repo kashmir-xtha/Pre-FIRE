@@ -37,7 +37,7 @@ class smoke_constants(Enum):
 
 
 class fire_constants(Enum):
-    AMBIENT_TEMP = 39.0       # °C
+    AMBIENT_TEMP = 25.0       # °C room temperature
     DIFFUSION_RATE = 0.2       # heat spreading
     COOLING_RATE = 0.02        # loss to environment
     IGNITION_TEMP = 200.0

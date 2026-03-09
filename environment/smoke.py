@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Sequence, Union, TYPE_CHECKING
+from typing import Dict, Optional, Sequence, Union, TYPE_CHECKING
 import numpy as np
 import pygame
 from utils.utilities import get_neighbors
@@ -98,11 +98,16 @@ def spread_smoke(
 
         new_smoke = center + diffusion_sum
 
-        decay_factor = 1.0 - (decay * dt)
-        # decay_factor = np.exp(-decay * dt)
+        # Physically correct exponential decay
+        decay_factor = np.exp(-decay * dt)
         new_smoke *= decay_factor
 
-        new_smoke[is_fire] = np.minimum(max_smoke, center[is_fire] + (3 * production_scaled * dt))
+        # Temperature-scaled smoke production for fire cells
+        # Hotter fires produce more smoke; scale by (T / 600) clamped to [0.5, 2.0]
+        fire_temp = grid_data.temp_np[is_fire]
+        temp_scale = np.clip(fire_temp / 600.0, 0.5, 2.0)
+        new_smoke[is_fire] = np.minimum(max_smoke, center[is_fire] + (3 * production_scaled * temp_scale * dt))
+
         new_smoke[is_barrier] = 0.0
         new_smoke = np.clip(new_smoke, 0.0, max_smoke)
 
@@ -127,6 +132,17 @@ def spread_smoke(
                 neighbor_smoke = [grid[nr][nc].smoke for nr, nc in get_neighbors(r, c, rows, cols)]
                 spot.update_smoke_level(neighbor_smoke, dt)
             
+_smoke_surface_cache: Optional[pygame.Surface] = None
+_smoke_surface_size: tuple = (0, 0)
+
+def _get_smoke_surface(w: int, h: int) -> pygame.Surface:
+    """Return a reusable SRCALPHA surface, reallocating only on size change."""
+    global _smoke_surface_cache, _smoke_surface_size
+    if _smoke_surface_cache is None or _smoke_surface_size != (w, h):
+        _smoke_surface_cache = pygame.Surface((w, h), pygame.SRCALPHA)
+        _smoke_surface_size = (w, h)
+    return _smoke_surface_cache
+
 def draw_smoke(
     grid_data: Union["Grid", Sequence[Sequence["Spot"]]],
     surface: pygame.Surface,
@@ -154,7 +170,8 @@ def draw_smoke(
         gray = np.where(mask, gray, 0).astype(np.uint8)
         alpha = np.where(mask, alpha, 0).astype(np.uint8)
 
-        smoke_surface = pygame.Surface((cols, rows), pygame.SRCALPHA)
+        # Reuse cached surface to avoid per-frame allocation
+        smoke_surface = _get_smoke_surface(cols, rows)
         rgb = np.stack([gray.T, gray.T, gray.T], axis=2)
         alpha_t = alpha.T
 

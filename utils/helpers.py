@@ -1,4 +1,6 @@
 """General helper functions."""
+import csv
+from PIL import Image
 import os
 import sys
 from typing import Any, Generator, Tuple
@@ -45,3 +47,39 @@ def resource_path(relative_path: str) -> str:
         base_path = os.path.abspath(".")
     
     return os.path.join(base_path, relative_path)
+
+# CONVERSION FUNCTION
+def floor_image_to_csv(
+    image_path: str,
+    csv_path: str,
+    rows: int = 60,
+    cols: int = 60,
+    wall_color: Tuple[int, int, int] = (0, 0, 0),
+    end_color: Tuple[int, int, int] = (255, 0, 0),
+) -> None:
+    """
+    Converts a floor layout image into a 60x60 CSV grid.
+    """
+    grid = []
+    with Image.open(image_path) as img:
+        img = img.convert("RGB")
+        img = img.resize((cols, rows), Image.NEAREST)
+        pixels = img.load()
+
+        for r in range(rows):
+            row = []
+            for c in range(cols):
+                color = pixels[c, r]
+
+                if color == wall_color:
+                    row.append(1)
+                elif color == end_color:
+                    row.append(3)
+                else:
+                    row.append(0)
+
+            grid.append(row)
+    
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(grid)

@@ -1,0 +1,9 @@
+{
+  "building_name": "Office Building",
+  "num_floors": 3,
+  "floors": [
+    {"floor": 0, "layout": "layout_csv/floor_22.csv"},
+    {"floor": 1, "layout": "layout_csv/floor_33.csv"},
+    {"floor": 2, "layout": "layout_csv/floor_3.csv"}
+  ]
+}

@@ -1,4 +1,3 @@
-import ctypes
 import logging
 import sys
 import pygame
@@ -6,7 +5,8 @@ from editor.editor import run_editor
 from core.agent import Agent
 from core.simulation import Simulation
 from utils.utilities import Dimensions, SimulationState, StairwellIDGenerator, loadImage, load_window_state, save_window_state, resource_path, set_dpi_awareness, get_dpi_scale
-from core.floors import Building
+from utils.window_utils import maximize_window, is_window_maximized
+from core.building import Building
 
 logger = logging.getLogger(__name__)
 set_dpi_awareness() #before pygame initialization to ensure proper DPI scaling on Windows
@@ -19,7 +19,7 @@ WIN = pygame.display.set_mode(
 pygame.display.set_caption("Fire & Smoke Simulation")
 hwnd = pygame.display.get_wm_info()['window'] #HWND - handle to the window
 if load_window_state():
-    ctypes.windll.user32.ShowWindow(hwnd, 3)  # 3 - MAXIMIZE THE WINDOW
+    maximize_window(hwnd)
 
 image_directory = resource_path("data/layout_images")
 csv_directory = resource_path("data/layout_csv")
@@ -36,7 +36,7 @@ def configure_logging(debug: bool = True) -> None:
 
 def main() -> None:
     configure_logging(debug=True)
-    BG_IMAGE, csv_filename = loadImage(image_directory, csv_directory, 2)
+    BG_IMAGE, csv_filename = loadImage(image_directory, csv_directory, 3)
 
     # This loop allows switching between editor and simulation modes
     try:
@@ -71,8 +71,7 @@ def main() -> None:
                 logger.info("Quitting Simulation")
                 sys.exit()
     finally:
-        is_maximized = ctypes.windll.user32.IsZoomed(hwnd)
-        save_window_state(is_maximized)
+        save_window_state(is_window_maximized(hwnd))
         pygame.quit()
             
 if __name__ == "__main__":

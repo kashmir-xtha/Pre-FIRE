@@ -7,11 +7,19 @@ from utils.utilities import Color, get_neighbors
 
 if TYPE_CHECKING:
     from core.spot import Spot
+    from utils.constants import material_id as MaterialIdEnum
 
 # Global constant for grid color - accessed once at import time
 GRID_COLOR = Color.GREY.value
 
 class Grid:
+    """Square grid representing a single building floor.
+
+    Holds the 2-D array of Spot cells together with NumPy arrays
+    (temperature, smoke, fuel, fire, material caches) that the
+    physics solvers operate on each tick.
+    """
+
     def __init__(self, rows: int, width: int, floor: int) -> None:
         self.rows = rows
         self.width = width
@@ -120,7 +128,7 @@ class Grid:
     def in_bounds(self, r: int, c: int) -> bool:
         return 0 <= r < self.rows and 0 <= c < self.rows
     
-    def set_material(self, r: int, c: int, material_id) -> None:
+    def set_material(self, r: int, c: int, material_id: 'MaterialIdEnum') -> None:
         spot = self.get_spot(r, c)
         if spot:
             spot.set_material(material_id)

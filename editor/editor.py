@@ -1,10 +1,8 @@
-import csv
 import logging
 from typing import Optional, Tuple, TYPE_CHECKING
 
 import pygame
 import pygame_gui
-from PIL import Image
 
 from editor.tools import ToolsPanel
 from utils.utilities import Color, StairwellIDGenerator, ToolType, load_layout, pick_csv_file, pick_save_csv_file, save_layout, get_dpi_scale, rTemp
@@ -298,6 +296,15 @@ class Editor:
         if self.grid_obj.is_exit(spot):
             self.grid_obj.remove_exit(spot)
         
+        # Remove stairwell
+        if spot.is_stairwell:
+            stair_id = spot.stair_id
+            if stair_id is not None and stair_id in StairwellIDGenerator.stairs:
+                if self.floor in StairwellIDGenerator.stairs[stair_id]:
+                    del StairwellIDGenerator.stairs[stair_id][self.floor]
+            spot.is_stairwell = False
+            spot.stair_id = None
+        
         spot.reset()
         self.grid_obj.mark_material_cache_dirty()
     
@@ -549,42 +556,6 @@ class Editor:
             self.manager.update(time_delta)
             self.manager.draw_ui(self.win)
             pygame.display.update()
-
-# CONVERSION FUNCTION
-def floor_image_to_csv(
-    image_path: str,
-    csv_path: str,
-    rows: int = 60,
-    cols: int = 60,
-    wall_color: Tuple[int, int, int] = (0, 0, 0),
-    end_color: Tuple[int, int, int] = (255, 0, 0),
-) -> None:
-    """
-    Converts a floor layout image into a 60x60 CSV grid.
-    """
-    grid = []
-    with Image.open(image_path) as img:
-        img = img.convert("RGB")
-        img = img.resize((cols, rows), Image.NEAREST)
-        pixels = img.load()
-
-        for r in range(rows):
-            row = []
-            for c in range(cols):
-                color = pixels[c, r]
-
-                if color == wall_color:
-                    row.append(1)
-                elif color == end_color:
-                    row.append(3)
-                else:
-                    row.append(0)
-
-            grid.append(row)
-    
-    with open(csv_path, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerows(grid)
 
 # LEGACY FUNCTION (for compatibility)
 def run_editor(win: pygame.surface.Surface, rows: int, num_of_floors = None,bg_image=None, filename="layout_csv\\layout_2.csv"):

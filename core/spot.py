@@ -23,6 +23,21 @@ MaterialProps = Dict[str, object]
 
 
 class Spot:
+    """Single cell in the grid.
+
+    Stores per-cell state (material, temperature, smoke, fuel) and
+    provides controlled property access.  Material properties are
+    looked up from the shared MATERIALS dict and cached at the class level.
+    """
+
+    __slots__ = (
+        'row', 'col', 'x', 'y', 'width',
+        'is_stairwell', 'stair_id',
+        '_color', '_state', '_temperature', '_smoke',
+        '_fuel', '_material', '_is_fire_source', '_burned',
+        'is_special', 'material_props',
+    )
+
     _material_props_cache: Optional[Dict[material_id, MaterialProps]] = None
 
     @classmethod
@@ -50,6 +65,8 @@ class Spot:
         self._material = material_id.AIR  # Store as enum, not integer
         self._is_fire_source = False
         self._burned = False  # True once the spot has ever been on fire
+        self.is_special = None  # Lazy-cached by update_temperature_from_flux
+        self.material_props = None  # Lazy-cached by update_temperature_from_flux
         
     # --- Property getters for safe access ---
     @property
@@ -91,6 +108,8 @@ class Spot:
         self._material = material_id.AIR
         self._is_fire_source = False
         self._burned = False
+        self.is_special = None
+        self.material_props = None
     
     def make_barrier(self) -> None:
         """Make this spot a barrier/wall"""
@@ -126,6 +145,7 @@ class Spot:
     def set_material(self, material: material_id) -> None:
         """Set material with proper initialization"""
         self._material = material
+        self.material_props = None  # invalidate cached props
         props = self._material_props()
         self._fuel = props[material]["fuel"]
         self._state = props[material]["default_state"]
@@ -178,22 +198,8 @@ class Spot:
         self._temperature = max(AMBIENT_TEMP, min(1200.0, temp))
     
     def consume_fuel(self, amount: float) -> None:
-        """Consume fuel with bounds checking and prevent reignition after depletion and set to AIR if fuel runs out"""
+        """Consume fuel with bounds checking."""
         self._fuel = max(0.0, self._fuel - amount)
-
-        # if we've run out of fuel drop the material to AIR before clearing the
-        # fire state.  extinguish_fire() updates the color based on the current
-        # material, so setting it first ensures the spot appears as air.
-
-        # if self._fuel <= 0 and self._state == FIRE:
-        #     self.extinguish_fire()
-
-        if self._fuel <= 0:
-            # avoid changing barriers or special start/end cells
-            if not (self.is_barrier() or self.is_start() or self.is_end()):
-                self._material = material_id.AIR
-            if self._state == FIRE:
-                self.extinguish_fire()
     
     # --- Query methods ---
 
@@ -271,7 +277,7 @@ class Spot:
         dt_factor_special = 0.02 * dt
 
         # Cached boolean flag for special cells
-        if getattr(self, 'is_special', None) is None:
+        if self.is_special is None:
             self.is_special = self.is_barrier() or self.is_start() or self.is_end()
 
         if self.is_special:
@@ -286,22 +292,14 @@ class Spot:
         if self.is_fire() and self.fuel > 0:
 
             # Cache material properties per cell
-            if getattr(self, 'material_props', None) is None:
+            if self.material_props is None:
                 self.material_props = self.get_material_properties()
             
             props = self.material_props
             heat_release = props.get("heat_release_rate", 500.0)  # °C/s equivalent
-            fuel_burn_rate = props.get("fuel_burn_rate", 0.01)    # kg/s
 
-            # Apply combustion heat
-            #print(f"Applying combustion heat: {heat_release * dt:.2f}°C for fuel burn: {fuel_burn_rate * dt:.4f}kg")
+            # Apply combustion heat (fuel consumption handled by fire.py)
             self._temperature += heat_release * dt
-
-            # Fuel consumption
-            self._fuel -= fuel_burn_rate * dt
-            if self._fuel <= 0:
-                self._fuel = 0.0
-                self.extinguish_fire()  # only call if fuel depleted
 
         # Clamp temperature to physical bounds
         ambient = tempConstant.AMBIENT_TEMP
