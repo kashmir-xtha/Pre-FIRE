@@ -311,7 +311,7 @@ def randomfirespot(grid: "Grid", ROWS: int, max_dist: int = 30) -> bool:
 
     if u != -1 and grid.grid[u][v].fuel > 0:
         mat_enum = material_id(grid.grid[u][v].material)
-        logger.info(
+        logger.debug(
             "Placing fire on material: %s at (%s, %s)",
             MATERIALS[mat_enum]["name"],
             u,

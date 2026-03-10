@@ -440,7 +440,7 @@ class AgentMovement:
 
         if moved:
             self.agent.path = self.agent.pathplanner.compute_path()
-            logger.info(f"Agent moved to floor {dest_floor}, path length: {len(self.agent.path)}")
+            logger.debug(f"Agent moved to floor {dest_floor}, path length: {len(self.agent.path)}")
 
     # Trail
     def _add_trail(self) -> None:

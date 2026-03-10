@@ -1,11 +1,13 @@
+import json
 import logging
+import os
 from typing import Optional, Tuple, TYPE_CHECKING
 
 import pygame
 import pygame_gui
 
 from editor.tools import ToolsPanel
-from utils.utilities import Color, StairwellIDGenerator, ToolType, load_layout, pick_csv_file, pick_save_csv_file, save_layout, get_dpi_scale, rTemp
+from utils.utilities import Color, StairwellIDGenerator, ToolType, load_layout, pick_csv_file, pick_save_csv_file, save_layout, save_building_json, get_dpi_scale, rTemp
 from ui.slider import create_control_panel
 
 if TYPE_CHECKING:
@@ -17,7 +19,7 @@ logger = logging.getLogger(__name__)
 # Global constant for white color - accessed once at import time
 WHITE = Color.WHITE.value
 
-# ------------------ EDITOR CLASS ------------------
+# Editor class
 class Editor:
     def __init__(
         self,
@@ -58,6 +60,11 @@ class Editor:
         # Mouse dragging state
         self.mouse_dragging = False
         self.drag_action = None  # 'place' or 'erase'
+
+        # JSON multi-floor layout paths (set when a JSON building file is loaded)
+        self.json_floor_layouts = None
+        # Pending JSON save path (set when user saves as .json)
+        self.pending_json_save = None
         self.last_cell = None
         
         # Ruler overlay state
@@ -206,16 +213,16 @@ class Editor:
             self.tools_panel.current_material = selected_material
         elif tool_type == ToolType.START:
             self.current_tool = "START"
-            logger.info("Start position mode - click on grid to place start")
+            logger.debug("Start position mode - click on grid to place start")
         elif tool_type == ToolType.END:
             self.current_tool = "END"
-            logger.info("End position mode - click on grid to place end")
+            logger.debug("End position mode - click on grid to place end")
         elif tool_type == ToolType.FIRE_SOURCE:
             self.current_tool = "FIRE_SOURCE"
-            logger.info("Fire source mode - click on grid to place fire source")
+            logger.debug("Fire source mode - click on grid to place fire source")
         elif tool_type == ToolType.STAIR:
             self.current_tool = "STAIR"
-            logger.info("Stairwell mode - click on grid to place stairwell")
+            logger.debug("Stairwell mode - click on grid to place stairwell")
 
     def _handle_grid_click(self, event: pygame.event.Event) -> None:
         """Handle mouse clicks in the grid area"""
@@ -254,7 +261,7 @@ class Editor:
                 self.grid_obj.start.append(spot)
                 self.grid_obj.mark_material_cache_dirty()
             else:
-                logger.info(f"Maximum number of start positions ({self.max_starts}) reached. Cannot place more.")
+                logger.warning(f"Maximum number of start positions ({self.max_starts}) reached. Cannot place more.")
         
         elif self.current_tool == "END":
             self.grid_obj.add_exit(spot)
@@ -292,7 +299,7 @@ class Editor:
         elif self.current_tool == "FIRE_SOURCE":
             self.grid_obj.fire_sources.add((row, col))
             spot.set_as_fire_source()
-            logger.info("Fire source placed")
+            logger.debug("Fire source placed")
 
     def _erase_from_grid(self, spot: "Spot") -> None:
         """Erase items from the grid"""
@@ -346,14 +353,14 @@ class Editor:
         
         elif event.key == pygame.K_m:  # Back to material mode
             self.current_tool = "MATERIAL"
-            logger.info("Material mode")
+            logger.debug("Material mode")
         
         elif event.key == pygame.K_s:  # Save layout
             save_layout(self.grid_obj.grid, self.current_filename)
-            logger.info("Layout saved")
+            logger.debug("Layout saved")
         
         elif event.key == pygame.K_l:  # Load layout
-            logger.info("Loading layout... %s", self.filename)
+            logger.debug("Loading layout... %s", self.filename)
             self._load_from_file(self.filename)
         
         elif event.key == pygame.K_SPACE and self.grid_obj.start: #and bool(self.grid_obj.exits):
@@ -380,7 +387,7 @@ class Editor:
         """Toggle ruler overlay visibility"""
         self.show_ruler = not self.show_ruler
         self.ruler_button.set_text("Ruler: On" if self.show_ruler else "Ruler: Off")
-        logger.info("Ruler overlay %s", "enabled" if self.show_ruler else "disabled")
+        logger.debug("Ruler overlay %s", "enabled" if self.show_ruler else "disabled")
     
     def _draw_ruler_overlay(self) -> None:
         """Draw scale ruler overlay showing physical distances in meters"""
@@ -432,9 +439,16 @@ class Editor:
         self.win.blit(info_surface, (20, 15))
     
     def _save_layout_dialog(self) -> None:
-        """Open save dialog and save layout"""
+        """Open save dialog and save layout (CSV for single floor, JSON for building)"""
         save_filename = pick_save_csv_file()
-        if save_filename:
+        if not save_filename:
+            return
+
+        if save_filename.lower().endswith('.json'):
+            # Store JSON path — run_editor will finalize after all floors
+            self.pending_json_save = save_filename
+            logger.debug("Building will be saved to %s after all floors are done", save_filename)
+        else:
             save_layout(self.grid_obj.grid, filename=save_filename)
             self.current_filename = save_filename
             # if the user explicitly saved the layout, update the grid's
@@ -442,11 +456,47 @@ class Editor:
             self.grid_obj.layout_filename = save_filename
     
     def _load_layout_dialog(self) -> None:
-        """Open load dialog and load layout"""
+        """Open load dialog and load layout (CSV or JSON building file)"""
         load_filename = pick_csv_file()
-        if load_filename:
+        if not load_filename:
+            return
+
+        if load_filename.lower().endswith('.json'):
+            self._load_json_building(load_filename)
+        else:
             self._load_from_file(load_filename)
             self.current_filename = load_filename
+
+    def _load_json_building(self, json_path: str) -> None:
+        """Load a JSON building file, set floor count, and load this floor's layout."""
+        with open(json_path, 'r') as f:
+            building_data = json.load(f)
+
+        floors = building_data.get('floors', [])
+        if not floors:
+            logger.warning("JSON building file has no floors: %s", json_path)
+            return
+
+        json_dir = os.path.dirname(json_path)
+
+        # Resolve layout paths relative to the JSON file's directory
+        floor_layouts = []
+        for floor_entry in sorted(floors, key=lambda x: x.get('floor', 0)):
+            layout_path = os.path.join(json_dir, floor_entry['layout'])
+            floor_layouts.append(layout_path)
+
+        # Store for run_editor to use on subsequent floors
+        self.json_floor_layouts = floor_layouts
+
+        # Set floor count so run_editor creates the right number of floors
+        rTemp().NUM_FLOORS = len(floor_layouts)
+
+        # Load this floor's layout
+        if self.floor < len(floor_layouts):
+            self._load_from_file(floor_layouts[self.floor])
+            self.current_filename = floor_layouts[self.floor]
+
+        logger.info("Loaded JSON building with %d floors from %s", len(floor_layouts), json_path)
     
     def _load_from_file(self, filename: str) -> None:
         """Load layout from a specific file"""
@@ -477,21 +527,21 @@ class Editor:
         if self.bg_image:
             self.bg_image.set_alpha(0)
         
-        logger.info("Layout loaded from %s", filename)
+        logger.debug("Layout loaded from %s", filename)
     
     def _import_layout(self) -> None:
         """Import layout from CSV file"""
         csv_filename = pick_csv_file()
         if csv_filename:
             self._load_from_file(csv_filename)
-            logger.info("Layout imported")
+            logger.debug("Layout imported")
     
     def _export_layout(self) -> None:
         """Export layout to CSV file"""
         save_filename = pick_save_csv_file()
         if save_filename:
             save_layout(self.grid_obj.grid, save_filename)
-            logger.info("Layout exported")
+            logger.debug("Layout exported")
     
     def run(self) -> Optional["Grid"] | None:
         """Main editor loop"""
@@ -567,21 +617,46 @@ class Editor:
 # LEGACY FUNCTION (for compatibility)
 def run_editor(win: pygame.surface.Surface, rows: int, num_of_floors = None,bg_image=None, filename="layout_csv\\layout_2.csv", max_starts = 3):
     """Legacy function - creates an Editor instance and runs it"""
+    from core.grid import Grid
 
     editor = Editor(win, rows, bg_image, filename, max_starts = max_starts, floor=0)
     result = editor.run()
     if result is None:
         return None
     
+    # Capture JSON floor layouts if a JSON building file was loaded
+    json_floor_layouts = editor.json_floor_layouts
+    grid_width = editor.width  # reuse the same grid width for all floors
+
     # Read NUM_FLOORS only after floor 0 editor closes (slider has been set)
     chosen_floors = int(rTemp().NUM_FLOORS)
     results = [result]
     
     for f in range(1, chosen_floors):
-        editor = Editor(win, rows, bg_image, filename, floor=f)
-        result = editor.run()
-        if result is None:
-            return None
-        results.append(result)
+        if json_floor_layouts and f < len(json_floor_layouts):
+            # Auto-load floor from JSON — no interactive editor needed
+            grid = Grid(rows, grid_width, f)
+            start, exits = load_layout(grid.grid, json_floor_layouts[f])
+            if start:
+                grid.start = start
+            if exits:
+                grid.exits = exits
+            grid.layout_filename = json_floor_layouts[f]
+            grid.mark_material_cache_dirty()
+            results.append(grid)
+        else:
+            editor = Editor(win, rows, bg_image, filename, floor=f)
+            result = editor.run()
+            if result is None:
+                return None
+            results.append(result)
+
+    # If a JSON save was requested, write the building file + all floor CSVs
+    # in each iteration of the editor, the pending_json_save variable 
+    # is reset to None even after saving(click save button), so it will only save
+    # if we click save at the last floor.
+    if editor.pending_json_save:
+        save_building_json(editor.pending_json_save, results)
+
     print(StairwellIDGenerator.stairs)
     return results

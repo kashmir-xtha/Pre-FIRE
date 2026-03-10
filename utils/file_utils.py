@@ -72,23 +72,53 @@ def load_layout(grid, filename: str = "layout_csv\\layout_1.csv") -> Tuple[Optio
 
 
 def pick_csv_file() -> str:
-    """Open file dialog to select a CSV file."""
+    """Open file dialog to select a CSV or JSON file."""
     root = tk.Tk()
     root.withdraw()
     return filedialog.askopenfilename(
-        filetypes=[("CSV files", "*.csv")]
+        filetypes=[("Layout files", "*.csv *.json"), ("CSV files", "*.csv"), ("JSON files", "*.json")]
     )
 
 
 def pick_save_csv_file(default_name: str = "layout.csv") -> str:
-    """Open save dialog for CSV file."""
+    """Open save dialog for CSV or JSON file."""
     root = tk.Tk()
     root.withdraw()  # hide tk window
     filename = filedialog.asksaveasfilename(
-        title="Export layout as CSV",
+        title="Save layout",
         defaultextension=".csv",
         initialfile=default_name,
-        filetypes=[("CSV Files", "*.csv")]
+        filetypes=[("Layout files", "*.csv *.json"), ("CSV Files", "*.csv"), ("JSON Building", "*.json")]
     )
     root.destroy()
     return filename
+
+
+def save_building_json(json_path: str, grids) -> None:
+    """Save a multi-floor building as JSON + individual floor CSVs."""
+    import json
+
+    json_dir = os.path.dirname(json_path)
+    base_name = os.path.splitext(os.path.basename(json_path))[0]
+    csv_dir = os.path.join(json_dir, base_name + "_floors")
+    os.makedirs(csv_dir, exist_ok=True)
+
+    floors = []
+    for i, grid in enumerate(grids):
+        csv_name = f"floor_{i}.csv"
+        csv_path = os.path.join(csv_dir, csv_name)
+        save_layout(grid.grid, csv_path)
+        # Store path relative to the JSON file
+        rel_path = os.path.relpath(csv_path, json_dir).replace("\\", "/")
+        floors.append({"floor": i, "layout": rel_path})
+
+    building = {
+        "building_name": base_name,
+        "num_floors": len(grids),
+        "floors": floors
+    }
+
+    with open(json_path, 'w') as f:
+        json.dump(building, f, indent=2)
+
+    logger.info("Building saved to %s with %d floors", json_path, len(grids))

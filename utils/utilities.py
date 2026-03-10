@@ -26,7 +26,8 @@ from utils.file_utils import (
     save_layout,
     load_layout,
     pick_csv_file,
-    pick_save_csv_file
+    pick_save_csv_file,
+    save_building_json
 )
 
 from utils.window_utils import (
@@ -68,6 +69,7 @@ __all__ = [
     'load_layout',
     'pick_csv_file',
     'pick_save_csv_file',
+    'save_building_json',
     # Window utilities
     'set_dpi_awareness',
     'get_dpi_scale',

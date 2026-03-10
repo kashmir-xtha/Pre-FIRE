@@ -194,7 +194,7 @@ class Simulation:
                 elif event.key == pygame.K_n:
                     # Next step in step mode
                     if self.time_manager.request_next_step():
-                        logger.info("Advancing one step")
+                        logger.debug("Advancing one step")
 
                 elif event.key == pygame.K_PLUS or event.key == pygame.K_EQUALS:
                     # Increase speed

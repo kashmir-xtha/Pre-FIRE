@@ -32,7 +32,7 @@ def configure_logging(debug: bool = True) -> None:
     if root_logger.handlers:
         return
     logging.basicConfig(
-        level=logging.INFO if debug else logging.CRITICAL,
+        level=logging.DEBUG if debug else logging.INFO,
         format="%(levelname)s:%(name)s:%(funcName)s:%(message)s",
     )
 
