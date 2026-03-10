@@ -43,7 +43,7 @@ class fire_constants(Enum):
     IGNITION_TEMP = 200.0
     BURN_TEMP = 600.0
     HEAT_TRANSFER = 0.15
-    FIRE_SPREAD_PROBABILITY = 0.5 #10%
+    FIRE_SPREAD_PROBABILITY = 0.3 #10%
 
 
 class material_id(Enum):

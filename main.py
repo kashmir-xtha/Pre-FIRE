@@ -3,6 +3,7 @@ import sys
 import pygame
 from editor.editor import run_editor
 from core.agent import Agent
+from core.agent.agent_movement import VULNERABILITY_PROFILES
 from core.simulation import Simulation
 from utils.utilities import Dimensions, SimulationState, StairwellIDGenerator, loadImage, load_window_state, save_window_state, resource_path, set_dpi_awareness, get_dpi_scale
 from utils.window_utils import maximize_window, is_window_maximized
@@ -56,9 +57,16 @@ def main() -> None:
             for f in range(num_of_floors):
                 if building.floors[f].start:
                     num_agents = min(3, len(building.floors[f].start))
+                    vulnerability_pool = list(VULNERABILITY_PROFILES.keys())
                     for i in range(num_agents):
-                        # Assign each agent to a unique start spot from the list
-                        new_agent = Agent(building.floors[f], building.floors[f].start[i], floor=f, building=building)
+                        profile = vulnerability_pool[i % len(vulnerability_pool)]
+                        new_agent = Agent(
+                            building.floors[f],
+                            building.floors[f].start[i],
+                            floor=f,
+                            building=building,
+                            vulnerability=profile,
+                        )
                         new_agent.path = new_agent.best_path()
                         agents.append(new_agent)
 

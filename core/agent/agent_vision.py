@@ -213,6 +213,10 @@ class AgentVision:
         # Update smoke detection flag
         if smoke_found:
             self.agent.smoke_detected = True
+
+        # Notify movement system that known_fire may have changed so the
+        # precomputed fire avoidance cost grid is rebuilt before next A* call.
+        self.agent.movement.mark_fire_avoid_dirty()
     
     def get_known_smoke_in_path(self, path) -> float:
         """

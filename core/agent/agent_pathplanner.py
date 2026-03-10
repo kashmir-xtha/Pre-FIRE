@@ -278,10 +278,19 @@ class AgentPathplanner:
                 raw_smoke = self.agent.known_smoke[nr, nc]
                 smoke_val = 0.8 if raw_smoke < 0 else raw_smoke
                 danger_cost = (smoke_val * 12) if not desperate else (smoke_val * 2)
-                
+
                 if not desperate:
                     danger_cost += max(0, (self.agent.known_temp[nr, nc] - 60) * 0.8)
-                
+
+                # Fire proximity avoidance force (new)
+                # Delegates to AgentMovement.fire_avoidance_cost() which evaluates
+                # radiant heat flux from all known fire cells within the avoidance
+                # radius.  Suppressed in desperate mode so a blocked agent can still
+                # find any path out.
+                fire_avoid_cost = 0.0
+                if not desperate:
+                    fire_avoid_cost = self.agent.movement.fire_avoidance_cost(nr, nc)
+
                 # Wall proximity cost (prefer paths near walls in low visibility)
                 wall_cost = 0.0
                 if vis_cells <= 3.0 and not desperate:
@@ -292,9 +301,9 @@ class AgentPathplanner:
                         wall_cost = -0.15
                     else:
                         wall_cost = -0.3
-                
+
                 # Total tentative g-score
-                temp_g = current_g + dist_cost + turn_cost + danger_cost + wall_cost
+                temp_g = current_g + dist_cost + turn_cost + danger_cost + fire_avoid_cost + wall_cost
                 
                 # Update if this is a better path
                 if temp_g < g_score[nr, nc]:
