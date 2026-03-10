@@ -15,7 +15,11 @@ logger = logging.getLogger(__name__)
 
 WHITE = Color.WHITE.value
 CYAN = Color.CYAN.value
-
+AGENT_COLORS = [
+    (0, 191, 255),   # Deep Sky Blue (Agent 1)
+    (0, 255, 0),   # Green (Agent 2)
+    (255, 0, 0)    # Red (Agent 3)
+]
 
 class SimRenderer:
     """
@@ -65,12 +69,13 @@ class SimRenderer:
         draw_smoke(to_draw_floor, grid_surface)
 
         # Agents on top
-        for agent in sim.agents:
-            if agent.alive and to_draw_floor.floor == agent.current_floor:
+        for i, agent in enumerate(sim.agents):
+            if agent.alive and to_draw_floor.floor == agent.current_floor: 
+                indicator_color = AGENT_COLORS[i % len(AGENT_COLORS)]
                 if agent.spot:
                     agent.spot.width = cell_size
-                agent.draw(grid_surface)
-
+                agent.draw(grid_surface, tint_color=indicator_color)
+        
         sim.win.blit(grid_surface, (grid_x, grid_y))
 
         # Separator
@@ -135,8 +140,8 @@ class SimRenderer:
                 if primary and primary.spot and primary.spot.is_end():
                     outcome = "Escaped"
                 elif primary and primary.health <= 0:
-                    outcome = "Deceased"
-                elif primary and primary.health < 100:
+                    outcome = "Dead"
+                elif primary and primary.health < 90:
                     outcome = "Injured"
                 else:
                     outcome = "Alive"
@@ -190,27 +195,52 @@ class SimRenderer:
 
         # Health bar — always visible
         if sim.agents:
-            health = float(sim.building.metrics.get('agent_health', 0)) / 100.0
-            if not np.isfinite(health):
-                health = 0.0
-            health = max(0.0, min(1.0, health))
-            alive = health > 0
-            status_y = win_height - int(60 * sim.scale)
-            status = "ALIVE" if alive else "DEAD"
-            status_color = (0, 255, 0) if alive else (255, 0, 0)
-            status_surface = sim.font.render(f"Agent: {status}", True, status_color)
-            sim.win.blit(status_surface, (sim.width + int(15 * sim.scale), status_y - int(30 * sim.scale)))
+            start_y = win_height - int(200 * sim.scale) 
+                      
+            for i, agent in enumerate(sim.agents):
+                if agent.current_floor != sim.building.current_floor:
+                    continue  
 
-            bar_width = int(180 * sim.scale)
-            health_width = int(max(0.0, health) * bar_width)
-            pygame.draw.rect(sim.win, (50, 50, 50),
-                            (sim.width + int(10 * sim.scale), status_y + int(25 * sim.scale), bar_width, int(20 * sim.scale)))
-            pygame.draw.rect(sim.win, status_color,
-                            (sim.width + int(10 * sim.scale), status_y, health_width, int(20 * sim.scale)))
+                agent_offset = (i % 3) * (int(65 * sim.scale))
+                status_y = start_y + agent_offset
+                
+                status_text = "ALIVE" if agent.alive else "DEAD"
+                
+                # Health Bar Dimensions
+                bar_width = int(180 * sim.scale)
+                bar_height = int(22 * sim.scale)
+                bar_x = sim.width + int(10 * sim.scale)
+                # Position bar slightly below the label
+                bar_y = status_y + int(25 * sim.scale)
+                
+                # Draw Background
+                pygame.draw.rect(sim.win, (30, 30, 30), (bar_x, bar_y, bar_width, bar_height))
+                
+                # Draw Health Fill
+                health_ratio = max(0, min(1, agent.health / 100))
+                fill_width = int(bar_width * health_ratio)
+                
+                fill_color = (100, 100, 100) if not agent.alive else \
+                             (34, 197, 94) if health_ratio > 0.6 else \
+                             (234, 179, 8) if health_ratio > 0.3 else (239, 68, 68)
+                
+                if fill_width > 0:
+                    pygame.draw.rect(sim.win, fill_color, (bar_x, bar_y, fill_width, bar_height))
+                
+                # Draw Percentage centered
+                health_text = sim.font.render(f"{agent.health:.0f}%", True, (255, 255, 255))
+                text_x = bar_x + (bar_width // 2) - (health_text.get_width() // 2)
+                text_y = bar_y + (bar_height // 2) - (health_text.get_height() // 2)
+                sim.win.blit(health_text, (text_x, text_y))
 
-            health_text = sim.font.render(f"{health * 100:.0f}%", True, (255, 255, 255))
-            text_x = sim.width + bar_width // 2 - health_text.get_width() // 2
-            sim.win.blit(health_text, (text_x, status_y + int(2 * sim.scale)))
+                # Differentiate agents based on color
+                indicator_color = AGENT_COLORS[i % len(AGENT_COLORS)]        
+                # Agent Label
+                label_surface = sim.font.render(f"Agent {i+1}: {status_text}", True, indicator_color)
+                sim.win.blit(label_surface, (sim.width + int(15 * sim.scale), status_y))
+
+                # Draw a thin border around the bar for better definition
+                pygame.draw.rect(sim.win, indicator_color, (bar_x, bar_y, bar_width, bar_height), 2)
 
 # --------------- Free functions (temperature overlay, matplotlib plots) ---------------
 

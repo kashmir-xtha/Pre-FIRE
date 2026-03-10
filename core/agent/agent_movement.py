@@ -16,9 +16,7 @@ from utils.utilities import StairwellIDGenerator, rTemp
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
 # Physical constants
-# ---------------------------------------------------------------------------
 # FED toxic: agent is incapacitated when fed_toxic >= 1.0
 # Fractional dose per second at smoke = 1.0 (calibrated so heavy continuous
 # smoke incapacitates in ~3 minutes, matching empirical corridor evacuation data).
@@ -91,13 +89,13 @@ class AgentMovement:
         # Temperature config (global singleton)
         self.temp_config = rTemp()
 
-        # ---- NEW: FED accumulators ----------------------------------------
+        # ---- FED accumulators ----------------------------------------
         # Both in range [0.0, ∞); incapacitation when either >= 1.0.
         self.fed_toxic: float = 0.0       # cumulative toxic dose (smoke / CO proxy)
         self.fed_thermal: float = 0.0     # cumulative thermal dose (convective heat)
         self.incapacitated: bool = False  # latched True once FED >= 1.0
 
-        # ---- NEW: Stress variable -----------------------------------------
+        # ---- Stress variable -----------------------------------------
         # Range [0.0, 1.0].  Updated each damage tick from local hazard levels.
         self.stress: float = 0.0
 
@@ -108,16 +106,13 @@ class AgentMovement:
         self._fire_avoid_grid: np.ndarray = np.zeros((rows, rows), dtype=np.float32)
         self._fire_avoid_dirty: bool = True  # force build on first use
 
-        # ---- NEW: Vulnerability profile -----------------------------------
+        # ---- Vulnerability profile -----------------------------------
         profile = VULNERABILITY_PROFILES.get(vulnerability, VULNERABILITY_PROFILES["adult_average"])
         self.fed_scale: float   = profile[0]   # multiplies FED accumulation rate
         self.speed_scale: float = profile[1]   # multiplies base walking speed
         self.vulnerability_name: str = vulnerability
 
-    # ------------------------------------------------------------------
     # Speed calculation
-    # ------------------------------------------------------------------
-
     def get_move_interval(self) -> float:
         """
         Calculate time required to move one cell.
@@ -186,10 +181,7 @@ class AgentMovement:
         effective_speed = max(0.01, effective_speed)
         return cell_size_m / effective_speed
 
-    # ------------------------------------------------------------------
     # Damage / FED update
-    # ------------------------------------------------------------------
-
     def apply_damage(self, dt: float) -> None:
         """
         Update FED accumulators and derive health from them.
@@ -299,10 +291,7 @@ class AgentMovement:
                         count += 1
         return count
 
-    # ------------------------------------------------------------------
     # Fire avoidance force (for pathfinder cost injection)
-    # ------------------------------------------------------------------
-
     def mark_fire_avoid_dirty(self) -> None:
         """Signal that known_fire has changed and the cost grid needs rebuild."""
         self._fire_avoid_dirty = True
@@ -371,10 +360,7 @@ class AgentMovement:
             self._rebuild_fire_avoid_grid()
         return float(self._fire_avoid_grid[row, col])
 
-    # ------------------------------------------------------------------
     # Movement
-    # ------------------------------------------------------------------
-
     def move_toward_goal(self, dt: float) -> bool:
         """
         Move agent toward next step in path.
@@ -421,10 +407,7 @@ class AgentMovement:
 
         return False
 
-    # ------------------------------------------------------------------
     # Stairwell traversal (unchanged logic, kept here for completeness)
-    # ------------------------------------------------------------------
-
     def _cross_stairwell(self, stairwell: "Spot") -> None:
         if not self.agent.building or stairwell.stair_id is None:
             logger.warning("Stairwell crossing attempted without valid building or stair_id")
@@ -459,19 +442,13 @@ class AgentMovement:
             self.agent.path = self.agent.pathplanner.compute_path()
             logger.info(f"Agent moved to floor {dest_floor}, path length: {len(self.agent.path)}")
 
-    # ------------------------------------------------------------------
     # Trail
-    # ------------------------------------------------------------------
-
     def _add_trail(self) -> None:
         if self.agent.spot is not self._last_trail_spot:
             self.trail.append(self.agent.spot)
             self._last_trail_spot = self.agent.spot
 
-    # ------------------------------------------------------------------
     # Reset
-    # ------------------------------------------------------------------
-
     def reset(self) -> None:
         """Reset movement state for a new simulation run."""
         self.move_timer    = 0.0
@@ -490,10 +467,7 @@ class AgentMovement:
         self._fire_avoid_dirty = True
 
 
-# ---------------------------------------------------------------------------
 # AgentState — unchanged except it now also checks incapacitation
-# ---------------------------------------------------------------------------
-
 class AgentState:
     """
     Manages agent behavioral state machine.
@@ -533,7 +507,7 @@ class AgentState:
 
     def update(self, dt: float) -> str:
         if self.state == "IDLE":
-            if self._should_start_reaction() or bool(self.agent.path):
+            if self._should_start_reaction():
                 self.state = "REACTION"
                 self.reaction_timer = self._effective_reaction_time()
                 logger.debug("Danger detected, entering REACTION (timer=%.2fs)", self.reaction_timer)

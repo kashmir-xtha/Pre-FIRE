@@ -106,10 +106,10 @@ class Simulation:
     def create_sliders(self) -> None:
         # place slider panel just above the agent health bar... to hold a dropdown + slider + labels plus a small gap
         win_width, win_height = self.win.get_size()
-        health_top = win_height - int(60 * self.scale)
+        health_top = win_height - int(220 * self.scale)
         # estimated height of the control panel contents (dropdown + slider, including padding)
         
-        panel_h = int(120 * self.scale) +50 #to displace the slider from health bars
+        panel_h = int(120 * self.scale) #to displace the slider from health bars
         margin = int(10 * self.scale)
         start_y = health_top - panel_h - margin
         # ensure sliders never float over the metrics area

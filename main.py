@@ -25,6 +25,7 @@ if load_window_state():
 image_directory = resource_path("data/layout_images")
 csv_directory = resource_path("data/layout_csv")
 SCALE = get_dpi_scale(hwnd)
+MAX_AGENTS = 3
 
 def configure_logging(debug: bool = True) -> None:
     root_logger = logging.getLogger()
@@ -44,7 +45,7 @@ def main() -> None:
         while(True):
             StairwellIDGenerator.reset()
             
-            grids = run_editor(WIN, Dimensions.ROWS.value, bg_image=BG_IMAGE, filename=csv_filename)
+            grids = run_editor(WIN, Dimensions.ROWS.value, bg_image=BG_IMAGE, filename=csv_filename, max_starts = MAX_AGENTS)
             if grids is None:
                 sys.exit()
 
@@ -56,7 +57,7 @@ def main() -> None:
 
             for f in range(num_of_floors):
                 if building.floors[f].start:
-                    num_agents = min(3, len(building.floors[f].start))
+                    num_agents = min(MAX_AGENTS, len(building.floors[f].start))
                     vulnerability_pool = list(VULNERABILITY_PROFILES.keys())
                     for i in range(num_agents):
                         profile = vulnerability_pool[i % len(vulnerability_pool)]

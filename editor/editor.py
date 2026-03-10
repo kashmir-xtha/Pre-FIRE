@@ -25,6 +25,7 @@ class Editor:
         rows: int,
         bg_image: Optional[pygame.Surface] = None,
         filename: str = "layout_csv\\layout_1.csv",
+        max_starts = 3,
         floor: int = 0
     ) -> None:
         from core.grid import Grid
@@ -33,6 +34,7 @@ class Editor:
         self.rows = rows
         self.bg_image = bg_image
         self.filename = filename
+        self.max_starts = max_starts
         self.floor = floor
 
         # compute DPI scaling factor to size UI elements
@@ -244,10 +246,15 @@ class Editor:
             self.grid_obj.remove_exit(spot)
 
         if self.current_tool == "START":
-            if spot not in self.grid_obj.start:
+            if spot in self.grid_obj.start:
+                return
+            
+            if len(self.grid_obj.start) < self.max_starts:
                 spot.make_start()
                 self.grid_obj.start.append(spot)
                 self.grid_obj.mark_material_cache_dirty()
+            else:
+                logger.info(f"Maximum number of start positions ({self.max_starts}) reached. Cannot place more.")
         
         elif self.current_tool == "END":
             self.grid_obj.add_exit(spot)
@@ -558,10 +565,10 @@ class Editor:
             pygame.display.update()
 
 # LEGACY FUNCTION (for compatibility)
-def run_editor(win: pygame.surface.Surface, rows: int, num_of_floors = None,bg_image=None, filename="layout_csv\\layout_2.csv"):
+def run_editor(win: pygame.surface.Surface, rows: int, num_of_floors = None,bg_image=None, filename="layout_csv\\layout_2.csv", max_starts = 3):
     """Legacy function - creates an Editor instance and runs it"""
 
-    editor = Editor(win, rows, bg_image, filename, floor=0)
+    editor = Editor(win, rows, bg_image, filename, max_starts = max_starts, floor=0)
     result = editor.run()
     if result is None:
         return None

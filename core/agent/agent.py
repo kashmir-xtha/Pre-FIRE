@@ -137,10 +137,7 @@ class Agent:
         # Graphics
         self._initialize_graphics()
 
-    # ------------------------------------------------------------------
     # FED / stress properties (delegate to AgentMovement)
-    # ------------------------------------------------------------------
-
     @property
     def fed_toxic(self) -> float:
         """Cumulative toxic FED in [0, 2]. Incapacitation at >= 1.0."""
@@ -166,10 +163,7 @@ class Agent:
         """Vulnerability profile name."""
         return self._vulnerability
 
-    # ------------------------------------------------------------------
     # Internal helpers
-    # ------------------------------------------------------------------
-
     def _compute_barrier_adjacency(self) -> np.ndarray:
         rows = self.rows
         adj  = np.zeros((rows, rows), dtype=np.uint8)
@@ -210,10 +204,7 @@ class Agent:
             self._trail_surf = pygame.Surface((grid_px, grid_px), pygame.SRCALPHA)
         return self._trail_surf
 
-    # ------------------------------------------------------------------
     # Main update loop
-    # ------------------------------------------------------------------
-
     def update(self, dt: float) -> bool:
         """
         Update agent state each frame.
@@ -223,6 +214,10 @@ class Agent:
         """
         if not self.alive:
             return False
+        
+        if self.spot.is_end():
+            return True
+        
 
         # Perception and damage always run (even pre-movement)
         self.vision.update_memory(dt)
@@ -246,20 +241,14 @@ class Agent:
         self.pathplanner.update_path(dt)
         return self.movement.move_toward_goal(dt)
 
-    # ------------------------------------------------------------------
     # Path planning
-    # ------------------------------------------------------------------
-
     def best_path(self) -> List["Spot"]:
         return self.pathplanner.compute_path()
 
     def compute_visibility_radius(self) -> float:
         return self.vision.compute_visibility_radius()
 
-    # ------------------------------------------------------------------
     # State properties (delegating to state_manager)
-    # ------------------------------------------------------------------
-
     @property
     def state(self) -> str:
         return self.state_manager.state
@@ -296,10 +285,7 @@ class Agent:
     def current_angle(self, value: float) -> None:
         self.movement.current_angle = value
 
-    # ------------------------------------------------------------------
     # Reset
-    # ------------------------------------------------------------------
-
     def reset(self) -> None:
         """Reset agent to initial state (called by Simulation.reset)."""
         self.health = 100.0
@@ -320,18 +306,15 @@ class Agent:
         self.movement.reset()      # also resets FED, stress, incapacitated
         self.state_manager.reset()
 
-    # ------------------------------------------------------------------
     # Rendering
-    # ------------------------------------------------------------------
-
-    def draw(self, win: pygame.Surface) -> None:
+    def draw(self, win: pygame.Surface, tint_color = None) -> None:
         cell_size = self.grid.cell_size
         cx = int(self.spot.x + cell_size // 2)
         cy = int(self.spot.y + cell_size // 2)
 
         self._draw_trail(win, cell_size)
         self._draw_vision_cone(win, cx, cy)
-        self._draw_sprite(win, cx, cy)
+        self._draw_sprite(win, cx, cy, tint_color)
 
     def _draw_trail(self, win: pygame.Surface, cell_size: int) -> None:
         trail_list = list(self.movement.trail)
@@ -376,7 +359,7 @@ class Agent:
         pygame.draw.polygon(self.vision_surf, (180, 210, 255, 160), cone_points)
         win.blit(self.vision_surf, (0, 0))
 
-    def _draw_sprite(self, win: pygame.Surface, cx: int, cy: int) -> None:
+    def _draw_sprite(self, win: pygame.Surface, cx: int, cy: int, tint_color=None) -> None:
         """
         Draw agent sprite with FED-based colour feedback.
 
@@ -390,6 +373,9 @@ class Agent:
             return
 
         img    = self.base_image.copy()
+        if tint_color:
+                img.fill(tint_color, special_flags=pygame.BLEND_RGBA_MULT)
+
         max_fed = max(self.movement.fed_toxic, self.movement.fed_thermal)
 
         if self.movement.incapacitated:

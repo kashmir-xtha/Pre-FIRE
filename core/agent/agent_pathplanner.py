@@ -282,7 +282,7 @@ class AgentPathplanner:
                 if not desperate:
                     danger_cost += max(0, (self.agent.known_temp[nr, nc] - 60) * 0.8)
 
-                # Fire proximity avoidance force (new)
+                # Fire proximity avoidance force
                 # Delegates to AgentMovement.fire_avoidance_cost() which evaluates
                 # radiant heat flux from all known fire cells within the avoidance
                 # radius.  Suppressed in desperate mode so a blocked agent can still
