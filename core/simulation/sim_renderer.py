@@ -196,13 +196,14 @@ class SimRenderer:
         # Health bar — always visible
         if sim.agents:
             start_y = win_height - int(200 * sim.scale) 
-                      
+            floor_index = 0
             for i, agent in enumerate(sim.agents):
                 if agent.current_floor != sim.building.current_floor:
                     continue  
-
-                agent_offset = (i % 3) * (int(65 * sim.scale))
+                
+                agent_offset = floor_index * (int(65 * sim.scale))
                 status_y = start_y + agent_offset
+                floor_index += 1
                 
                 status_text = "ALIVE" if agent.alive else "DEAD"
                 

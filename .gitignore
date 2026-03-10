@@ -7,3 +7,4 @@ build
 benchmark_results.txt
 statistics/heatmap/
 data/simulation_history/
+.pytest_cache/

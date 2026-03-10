@@ -238,7 +238,7 @@ class AgentMovement:
         if self.incapacitated:
             self.agent.health = 0
 
-        # ---- Stress update -----------------------------------------------
+        # Stress update (some kind of damage hence inside apply_damage, but not directly tied to health)
         self._update_stress(dt, smoke, temp_c)
 
     def _update_stress(self, dt: float, smoke: float, temp_c: float) -> None:
