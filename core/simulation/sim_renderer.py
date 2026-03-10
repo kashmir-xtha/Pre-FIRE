@@ -91,95 +91,104 @@ class SimRenderer:
         pygame.draw.rect(sim.win, (40, 40, 50), panel_rect)
         pygame.draw.rect(sim.win, (60, 60, 70), panel_rect, width=2)
 
-        # Title
+        # Title — always visible
         title_font = pygame.font.SysFont(None, 24)
         title = title_font.render("SIMULATION", True, (255, 255, 255))
         sim.win.blit(title, (sim.width + 100 - title.get_width() // 2, 20))
 
-        # Compute outcome metrics
         y_offset = 60
-        escaped = sum(1 for a in sim.agents if a.spot and a.spot.is_end())
-        deceased = sum(1 for a in sim.agents if a.health <= 0)
-        injured = sum(1 for a in sim.agents if 0 < a.health < 100 and not (a.spot and a.spot.is_end()))
-        avg_evac = float(np.mean(list(sim.agent_exit_times.values()))) if sim.agent_exit_times else 0.0
-        max_fire = max(sim.history["fire_cells"]) if sim.history["fire_cells"] else 0
-        max_smoke = max(sim.history["avg_smoke"]) if sim.history["avg_smoke"] else 0.0
 
-        is_single_agent = len(sim.agents) == 1
-
-        if is_single_agent:
-            primary = sim.agents[0] if sim.agents else None
-            if primary and primary.spot and primary.spot.is_end():
-                outcome = "Escaped"
-            elif primary and primary.health <= 0:
-                outcome = "Deceased"
-            elif primary and primary.health < 100:
-                outcome = "Injured"
-            else:
-                outcome = "Alive"
-
-            outcome_metrics = [
-                f"Agent Outcome: {outcome}",
-                f"Health: {sim.building.metrics['agent_health']:.1f}",
-                f"Evac Time: {avg_evac:.1f}s",
+        if sim.show_controls:
+            # Controls view
+            controls = [
+                "Controls:",
+                "P: Pause/Resume",
+                "S: Step Mode",
+                "N: Next Step",
+                "+/-: Speed",
+                "R: Reset",
+                "E: Editor Mode",
+                "M: Change Floor",
+                "H: Show Metrics",
+                "F5: Save Snapshot",
+                "F6: Export CSV",
+                "F7: Load Last Snapshot",
+                "ESC: Quit",
             ]
-        else:
-            outcome_metrics = [
-                f"Escaped: {escaped}",
-                f"Injured: {injured}",
-                f"Deceased: {deceased}",
-                f"Avg Evac Time: {avg_evac:.1f}s",
-            ]
-
-        metrics = [
-            f"Time: {sim.building.metrics['elapsed_time']:.1f}s",
-            f"Step: {sim.time_manager.get_simulation_step()}",
-            f"FPS: {sim.time_manager.get_fps():.1f}",
-            f"Speed: {sim.time_manager.get_step_size()}x",
-            f"Fire Cells: {sim.building.metrics['fire_cells']}",
-            f"Avg Smoke: {sim.building.metrics['avg_smoke']:.3f}",
-            f"Avg Temp: {sim.building.metrics['avg_temp']:.1f}°C",
-            f"Path Length: {sim.building.metrics['path_length']}",
-            *outcome_metrics,
-            f"Peak Fire Cells: {max_fire}",
-            f"Peak Smoke: {max_smoke:.3f}",
-            f"Current Floor: {sim.building.current_floor + 1}",
-            "Controls:",
-            "P: Pause/Resume",
-            "S: Step Mode",
-            "N: Next Step",
-            "+/-: Speed",
-            "R: Reset",
-            "E: Editor Mode",
-            "M: Change Floor",
-            "F5: Save Snapshot",
-            "F6: Export CSV",
-            "F7: Load Last Snapshot",
-            "ESC: Quit"
-        ]
-
-        # Status indicator
-        if sim.time_manager.is_paused():
-            status = "PAUSED"
-            status_color = (255, 200, 0)
-        elif sim.time_manager.is_step_mode():
-            status = "STEP MODE"
-            status_color = (0, 200, 255)
-        else:
-            status = "RUNNING"
-            status_color = (0, 255, 0)
-
-        status_surface = sim.font.render(f"Status: {status}", True, status_color)
-        sim.win.blit(status_surface, (sim.width + 15, y_offset))
-        y_offset += 25
-
-        for text in metrics:
-            if text:
+            for text in controls:
                 text_surface = sim.font.render(text, True, (220, 220, 220))
                 sim.win.blit(text_surface, (sim.width + 15, y_offset))
+                y_offset += 25
+
+        else:
+            # Metrics view
+            escaped = sum(1 for a in sim.agents if a.spot and a.spot.is_end())
+            deceased = sum(1 for a in sim.agents if a.health <= 0)
+            injured = sum(1 for a in sim.agents if 0 < a.health < 100 and not (a.spot and a.spot.is_end()))
+            avg_evac = float(np.mean(list(sim.agent_exit_times.values()))) if sim.agent_exit_times else 0.0
+            max_fire = max(sim.history["fire_cells"]) if sim.history["fire_cells"] else 0
+            max_smoke = max(sim.history["avg_smoke"]) if sim.history["avg_smoke"] else 0.0
+
+            is_single_agent = len(sim.agents) == 1
+            if is_single_agent:
+                primary = sim.agents[0] if sim.agents else None
+                if primary and primary.spot and primary.spot.is_end():
+                    outcome = "Escaped"
+                elif primary and primary.health <= 0:
+                    outcome = "Deceased"
+                elif primary and primary.health < 100:
+                    outcome = "Injured"
+                else:
+                    outcome = "Alive"
+                outcome_metrics = [
+                    f"Agent Outcome: {outcome}",
+                    f"Health: {sim.building.metrics['agent_health']:.1f}",
+                    f"Evac Time: {avg_evac:.1f}s",
+                ]
+            else:
+                outcome_metrics = [
+                    f"Escaped: {escaped}",
+                    f"Injured: {injured}",
+                    f"Deceased: {deceased}",
+                    f"Avg Evac Time: {avg_evac:.1f}s",
+                ]
+
+            # Status indicator
+            if sim.time_manager.is_paused():
+                status, status_color = "PAUSED", (255, 200, 0)
+            elif sim.time_manager.is_step_mode():
+                status, status_color = "STEP MODE", (0, 200, 255)
+            else:
+                status, status_color = "RUNNING", (0, 255, 0)
+
+            status_surface = sim.font.render(f"Status: {status}", True, status_color)
+            sim.win.blit(status_surface, (sim.width + 15, y_offset))
             y_offset += 25
 
-        # Health bar pinned to bottom
+            metrics = [
+                f"Time: {sim.building.metrics['elapsed_time']:.1f}s",
+                f"Step: {sim.time_manager.get_simulation_step()}",
+                f"FPS: {sim.time_manager.get_fps():.1f}",
+                f"Speed: {sim.time_manager.get_step_size()}x",
+                f"Fire Cells: {sim.building.metrics['fire_cells']}",
+                f"Avg Smoke: {sim.building.metrics['avg_smoke']:.3f}",
+                f"Avg Temp: {sim.building.metrics['avg_temp']:.1f}°C",
+                f"Path Length: {sim.building.metrics['path_length']}",
+                *outcome_metrics,
+                f"Peak Fire Cells: {max_fire}",
+                f"Peak Smoke: {max_smoke:.3f}",
+                f"Current Floor: {sim.building.current_floor + 1}",
+                "",
+                "H: Show Controls",
+            ]
+
+            for text in metrics:
+                if text:
+                    text_surface = sim.font.render(text, True, (220, 220, 220))
+                    sim.win.blit(text_surface, (sim.width + 15, y_offset))
+                y_offset += 25
+
+        # Health bar — always visible
         if sim.agents:
             health = float(sim.building.metrics.get('agent_health', 0)) / 100.0
             if not np.isfinite(health):
@@ -195,14 +204,13 @@ class SimRenderer:
             bar_width = int(180 * sim.scale)
             health_width = int(max(0.0, health) * bar_width)
             pygame.draw.rect(sim.win, (50, 50, 50),
-                             (sim.width + int(10 * sim.scale), status_y + int(25 * sim.scale), bar_width, int(20 * sim.scale)))
+                            (sim.width + int(10 * sim.scale), status_y + int(25 * sim.scale), bar_width, int(20 * sim.scale)))
             pygame.draw.rect(sim.win, status_color,
-                             (sim.width + int(10 * sim.scale), status_y, health_width, int(20 * sim.scale)))
+                            (sim.width + int(10 * sim.scale), status_y, health_width, int(20 * sim.scale)))
 
             health_text = sim.font.render(f"{health * 100:.0f}%", True, (255, 255, 255))
             text_x = sim.width + bar_width // 2 - health_text.get_width() // 2
             sim.win.blit(health_text, (text_x, status_y + int(2 * sim.scale)))
-
 
 # --------------- Free functions (temperature overlay, matplotlib plots) ---------------
 

@@ -69,7 +69,7 @@ class Simulation:
         self.time_manager = TimeManager(fps=120, step_size=1)  # Keep your 120 FPS
 
         self.running = True
-       
+        self.show_controls = False
         self.fire_set = False  
         self.restart_timer = False
 
@@ -214,6 +214,9 @@ class Simulation:
 
                 elif event.key == pygame.K_e:
                     return SIM_EDITOR
+
+                elif event.key == pygame.K_h:
+                    self.show_controls = not self.show_controls
 
                 elif event.key == pygame.K_F5:
                     path = self.analytics.save_snapshot()
