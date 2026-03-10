@@ -8,10 +8,10 @@ from PIL import Image
 # adaptive threshold with otsu's method: 
 def otsu_threshold(img_array: np.ndarray) -> int:
     """Automatically calculates an optimal threshold to separate walls from floors in a grayscale image."""
-    hist, _ = np.histogram(img_array, bins=256, range=(0, 256)) # to compute histogram of each pixel intensity
+    hist, _ = np.histogram(img_array, bins=256, range=(0, 256))
     total = img_array.size
 
-    sum_total = np.dot(np.arange(256), hist) # dotproduct of pixel intensity and histogram values
+    sum_total = np.dot(np.arange(256), hist)
     sum_bg = 0
     weight_bg = 0
     max_variance = 0
@@ -23,21 +23,21 @@ def otsu_threshold(img_array: np.ndarray) -> int:
             continue
 
         weight_fg = total - weight_bg
-        if weight_fg == 0: # if no of foreground pixels is zero
+        if weight_fg == 0:
             break
 
         sum_bg += t * hist[t]
-        mean_bg = sum_bg / weight_bg #mean intensities of bg and fg
+        mean_bg = sum_bg / weight_bg
         mean_fg = (sum_total - sum_bg) / weight_fg
 
-        variance = weight_bg * weight_fg * (mean_bg - mean_fg) ** 2 # between-class variance
+        variance = weight_bg * weight_fg * (mean_bg - mean_fg) ** 2
         if variance > max_variance:
             max_variance = variance
-            threshold = t #threshold value corresponding to max variance that best separates the background and foreground i.e. max variance
+            threshold = t
 
-    return threshold #  threshold is the best value to separate two intensity values
+    return threshold
 
-# wall thickening function for images with very thin walls
+
 def thicken_walls(grid: List[List[int]], iterations: int = 1) -> List[List[int]]:
     """Makes wall cells thicker in the generated grid for better wall continuity."""
     rows = len(grid)
@@ -55,7 +55,7 @@ def thicken_walls(grid: List[List[int]], iterations: int = 1) -> List[List[int]]
 
     return grid
 
-# NOISE REMOVAL
+
 def remove_isolated_walls(grid: List[List[int]]) -> List[List[int]]:
     """Removes noise/wall cells that are most likely errors because they have very few neighbors."""
     rows = len(grid)
@@ -71,12 +71,12 @@ def remove_isolated_walls(grid: List[List[int]]) -> List[List[int]]:
                     for dc in (-1, 0, 1)
                     if not (dr == 0 and dc == 0)
                 )
-                if neighbors < 1: # if each wall cell has less than 1 wall neighbors, remove it
+                if neighbors < 1:
                     new_grid[r][c] = 0
 
     return new_grid
 
-# main conversion function
+
 def floor_image_to_wall_csv(
     image_path: str,
     csv_path: str,
@@ -84,51 +84,69 @@ def floor_image_to_wall_csv(
     cols: int = 60,
     thicken_iterations: int = 1,
 ) -> None:
-    """Main function to convert a floor plan image into a CSV representing walls and floors."""
-    # Load image and convert to grayscale
+    """Convert a floor plan image into a CSV representing walls and floors.
+
+    Args:
+        image_path: Path to the input floor plan image.
+        csv_path: Destination path for the output CSV file.
+        rows: Number of grid rows in the output (default 60).
+        cols: Number of grid columns in the output (default 60).
+        thicken_iterations: Unused — wall thickening is disabled by default.
+            Pass to thicken_walls() manually if needed.
+    """
     with Image.open(image_path) as img:
         img = img.convert("L")
         img_array = np.array(img)
 
-    # Compute adaptive threshold
     threshold = otsu_threshold(img_array)
-    
-    # 3. Auto-detect wall if wall is darker or lighter than threshold
-    if img_array.mean() < 127:  # walls are darker
-        binary = (img_array > threshold).astype(np.uint8) # get integer 1 (wall), 0 (floor) if pixel intensity is more than threshold
-    else: # walls are lighter
-        binary = (img_array < threshold).astype(np.uint8) # converse
 
-    grid = binary.tolist() # convert numpy array to python list of lists
-    grid = remove_isolated_walls(grid) # Remove noise before resizing
+    # Auto-detect whether walls are darker or lighter than background
+    if img_array.mean() < 127:  # dark background — walls are lighter
+        binary = (img_array > threshold).astype(np.uint8)
+    else:                        # light background — walls are darker
+        binary = (img_array < threshold).astype(np.uint8)
 
-    binary_img = Image.fromarray(np.array(grid, dtype=np.uint8) * 255) #convert back to image for resizing
-    binary_img = binary_img.resize((cols, rows), Image.NEAREST) #NEAREST is used for resizing binary images to preserve hard edges
-    grid = (np.array(binary_img) > 0).astype(int).tolist() # convert back to binary grid
+    grid = binary.tolist()
+    grid = remove_isolated_walls(grid)
 
-    # img = img.resize((cols, rows), Image.LANCZOS) #LANCZOS is a high-quality resampling algorithm used for non-binary images
-    # grid = thicken_walls(grid, thicken_iterations) # (Optional) Thicken walls
+    # Resize to target grid dimensions using nearest-neighbour to preserve hard edges
+    binary_img = Image.fromarray(np.array(grid, dtype=np.uint8) * 255)
+    binary_img = binary_img.resize((cols, rows), Image.NEAREST)
+    grid = (np.array(binary_img) > 0).astype(int).tolist()
 
-    # Save as CSV
-    if os.path.dirname(csv_path):
-        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+    # grid = thicken_walls(grid, thicken_iterations)  # optional — uncomment if needed
+
+    os.makedirs(os.path.dirname(csv_path), exist_ok=True) if os.path.dirname(csv_path) else None
 
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerows(grid)
 
-    #print(f"CSV saved in: {csv_path}")
+
+def _next_layout_index(image_dir: str, csv_dir: str) -> int:
+    """Return the next unused layout index by scanning existing CSV files."""
+    existing = set(os.listdir(csv_dir)) if os.path.isdir(csv_dir) else set()
+    i = 1
+    while f"layout_{i}.csv" in existing:
+        i += 1
+    return i
 
 
-image_directory = 'layout_images'
-csv_directory = 'layout_csv'
-image_entries = os.listdir(image_directory)
-csv_entries = os.listdir(csv_directory) 
+if __name__ == "__main__":
+    IMAGE_DIR = "data/layout_images"
+    CSV_DIR = "data/layout_csv"
 
-i = 1 
-while f'layout_{i}.csv' in csv_entries:
-    i += 1
-csv_filename = f"{csv_directory}/layout_{i}.csv"
-img_filename = f"{image_directory}/layout_{i}.png" # layout_i.png and layout_i.csv are linked
+    if not os.path.isdir(IMAGE_DIR):
+        raise SystemExit(f"Image directory not found: {IMAGE_DIR!r}")
+    if not os.path.isdir(CSV_DIR):
+        os.makedirs(CSV_DIR)
 
-floor_image_to_wall_csv(image_path=img_filename, csv_path=csv_filename, rows=60, cols=60)
+    i = _next_layout_index(IMAGE_DIR, CSV_DIR)
+    img_path = os.path.join(IMAGE_DIR, f"layout_{i}.png")
+    csv_path = os.path.join(CSV_DIR, f"layout_{i}.csv")
+
+    if not os.path.isfile(img_path):
+        raise SystemExit(f"Expected image not found: {img_path!r}")
+
+    floor_image_to_wall_csv(image_path=img_path, csv_path=csv_path, rows=60, cols=60)
+    print(f"Saved: {csv_path}")

@@ -6,7 +6,7 @@ import pygame
 from collections import deque
 from typing import List, Optional, Tuple, Sequence, TYPE_CHECKING
 
-from core.floors import Building
+from core.building import Building
 from utils.utilities import Color, StairwellIDGenerator, rTemp, resource_path
 
 if TYPE_CHECKING:

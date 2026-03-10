@@ -334,8 +334,8 @@ class Simulation:
             # Update metrics
             self.analytics.update_metrics()
 
-    # ---------------- MAIN LOOP ----------------
-    def run(self) -> int:
+    def run(self) -> int: # Main simulation loop
+        pygame.event.clear() 
         while self.running:
             # Handle events first so step-by-step requests ("n") are registered
             action = self.handle_events()

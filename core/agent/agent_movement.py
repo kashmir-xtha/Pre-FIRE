@@ -151,7 +151,8 @@ class AgentMovement:
             self.agent.spot = next_node
             self.agent.path.pop(0)  # Remove current position from path
             self._add_trail()
-        
+        else: 
+            self.agent.path = self.agent.pathplanner.compute_path() # Recompute path if blocked
         return False
     
     def _cross_stairwell(self, stairwell: "Spot") -> None:
@@ -255,7 +256,9 @@ class AgentState:
         The smoke_detected flag is set by vision.update_memory() which scans
         the full visible radius (base 20 cells, reduced by local smoke).
         """
-        return self.agent.smoke_detected
+        return self.agent.smoke_detected or self.agent.vision.detect_imminent_danger(
+            max_distance_cells=int(self.agent.vision.compute_visibility_radius() / self.agent.grid.cell_size)
+        )
     
     def update(self, dt: float) -> str:
         """
@@ -268,20 +271,17 @@ class AgentState:
             Current state after update
         """
         if self.state == "IDLE":
-            # Start reaction only when local danger reaches the agent.
-            if self._should_start_reaction():
+            # React to visible danger OR if agent already has a valid path (pre-planned)
+            if self._should_start_reaction() or bool(self.agent.path):
                 self.state = "REACTION"
                 self.reaction_timer = self.reaction_time
-                logger.debug("Local danger detected, entering REACTION state")
+                logger.debug("Danger detected or path available, entering REACTION state")
         
         elif self.state == "REACTION":
-            # Count down reaction time
             self.reaction_timer -= dt
             if self.reaction_timer <= 0:
                 self.state = "MOVING"
-                logger.debug(f"Reaction time complete, entering MOVING state")
-        
-        # MOVING state doesn't transition, agent stays in this state
+                logger.debug("Reaction time complete, entering MOVING state")
         
         return self.state
     

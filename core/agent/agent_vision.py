@@ -211,7 +211,8 @@ class AgentVision:
                     smoke_found = True
         
         # Update smoke detection flag
-        self.agent.smoke_detected = smoke_found
+        if smoke_found:
+            self.agent.smoke_detected = True
     
     def get_known_smoke_in_path(self, path) -> float:
         """
