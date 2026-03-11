@@ -125,7 +125,7 @@ class ToolsPanel:
         
         # Draw instructions
         instructions = [
-            f"Current Floor: {self.floor + 1}",
+            f"Current Floor: {'Ground' if self.floor == 0 else self.floor}",
             "Click material to select",
             "Hold Left-click to place",
             "Hold Right-click to erase"
