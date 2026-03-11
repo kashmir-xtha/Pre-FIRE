@@ -125,3 +125,47 @@ temp = TempConstants()
 def rTemp() -> TempConstants:
     """Get the global TempConstants instance."""
     return temp
+
+class VulnerabilityProfile(Enum):
+    # Physical constants
+    # FED toxic: agent is incapacitated when fed_toxic >= 1.0
+    # Fractional dose per second at smoke = 1.0 (calibrated so heavy continuous
+    # smoke incapacitates in ~3 minutes, matching empirical corridor evacuation data).
+    FED_TOXIC_RATE_PER_SMOKE    = 1.0 / 180.0   # dose/s at smoke = 1.0
+
+    # FED thermal: agent is incapacitated when fed_thermal >= 1.0
+    # Above 60 °C convective heat causes pain in ~4 min; above 120 °C in < 30 s.
+    # We model this as an exponential: rate = exp((T - T_thresh) / T_scale) / T_ref
+    FED_THERMAL_THRESH_C        = 60.0           # °C — onset of thermal stress
+    FED_THERMAL_SCALE_C         = 30.0           # °C — e-folding scale
+    FED_THERMAL_REF_S           = 240.0          # s — time to incapacitate at threshold
+
+    # Non-monotonic temperature–speed curve
+    # Speed peaks at TEMP_BOOST_THRESHOLD, then falls.
+    TEMP_BOOST_THRESHOLD_C      = 60.0           # °C — speed maximum
+    TEMP_SPEED_DROP_SCALE_C     = 40.0           # °C — e-folding for drop above threshold
+    SPEED_BOOST_FACTOR          = 1.35           # peak multiplier vs normal (panic effect)
+    SPEED_FLOOR_FACTOR          = 0.20           # minimum fraction of normal speed
+
+    # Stress accumulation
+    STRESS_SMOKE_WEIGHT         = 0.6            # contribution per unit smoke
+    STRESS_HEAT_WEIGHT          = 0.004          # contribution per °C above threshold
+    STRESS_FIRE_PROXIMITY_WEIGHT= 0.25           # contribution per nearby fire cell
+    STRESS_DECAY_RATE           = 0.05           # stress lost per second in safe area
+    STRESS_IMPAIR_THRESHOLD     = 0.70           # above this, cognition is impaired
+    STRESS_MAX                  = 1.0
+
+    # Fire proximity avoidance
+    FIRE_AVOIDANCE_RADIUS_CELLS = 3              # cells at which repulsion begins
+    FIRE_AVOIDANCE_PEAK_FORCE   = 2.0            # extra path cost per adjacent fire cell
+
+    # Vulnerability profiles  {name: (fed_scale, speed_scale)}
+    # fed_scale  > 1 → accumulates dose faster (more vulnerable)
+    # speed_scale < 1 → slower base walking speed
+    VULNERABILITY_PROFILES = {
+        "adult_fit":     (1.0,  1.0),
+        "adult_average": (1.15, 0.90),
+        "elderly":       (1.50, 0.65),
+        "child":         (1.30, 0.75),
+        "injured":       (1.80, 0.50),
+    }

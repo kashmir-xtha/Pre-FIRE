@@ -1,10 +1,10 @@
-"""AgentMovement - Handles physical movement and damage for agents.
-"""
+"""AgentMovement - Handles physical movement and damage for agents."""
 import math
 import logging
 import random
 from collections import deque
 from typing import Optional, TYPE_CHECKING
+from utils.utilities import VulnerabilityProfile
 
 import numpy as np
 
@@ -16,60 +16,37 @@ from utils.utilities import StairwellIDGenerator, rTemp
 
 logger = logging.getLogger(__name__)
 
-# Physical constants
-# FED toxic: agent is incapacitated when fed_toxic >= 1.0
-# Fractional dose per second at smoke = 1.0 (calibrated so heavy continuous
-# smoke incapacitates in ~3 minutes, matching empirical corridor evacuation data).
-FED_TOXIC_RATE_PER_SMOKE    = 1.0 / 180.0   # dose/s at smoke = 1.0
+FED_TOXIC_RATE_PER_SMOKE    = VulnerabilityProfile.FED_TOXIC_RATE_PER_SMOKE.value  # dose/s at smoke = 1.0
 
-# FED thermal: agent is incapacitated when fed_thermal >= 1.0
-# Above 60 °C convective heat causes pain in ~4 min; above 120 °C in < 30 s.
-# We model this as an exponential: rate = exp((T - T_thresh) / T_scale) / T_ref
-FED_THERMAL_THRESH_C        = 60.0           # °C — onset of thermal stress
-FED_THERMAL_SCALE_C         = 30.0           # °C — e-folding scale
-FED_THERMAL_REF_S           = 240.0          # s — time to incapacitate at threshold
+FED_THERMAL_THRESH_C        = VulnerabilityProfile.FED_THERMAL_THRESH_C.value           
+FED_THERMAL_SCALE_C         = VulnerabilityProfile.FED_THERMAL_SCALE_C.value         
+FED_THERMAL_REF_S           = VulnerabilityProfile.FED_THERMAL_REF_S.value           
 
 # Non-monotonic temperature–speed curve
 # Speed peaks at TEMP_BOOST_THRESHOLD, then falls.
-TEMP_BOOST_THRESHOLD_C      = 60.0           # °C — speed maximum
-TEMP_SPEED_DROP_SCALE_C     = 40.0           # °C — e-folding for drop above threshold
-SPEED_BOOST_FACTOR          = 1.35           # peak multiplier vs normal (panic effect)
-SPEED_FLOOR_FACTOR          = 0.20           # minimum fraction of normal speed
+TEMP_BOOST_THRESHOLD_C      = VulnerabilityProfile.TEMP_BOOST_THRESHOLD_C.value      
+TEMP_SPEED_DROP_SCALE_C     = VulnerabilityProfile.TEMP_SPEED_DROP_SCALE_C.value     
+SPEED_BOOST_FACTOR          = VulnerabilityProfile.SPEED_BOOST_FACTOR.value          
+SPEED_FLOOR_FACTOR          = VulnerabilityProfile.SPEED_FLOOR_FACTOR.value          
 
 # Stress accumulation
-STRESS_SMOKE_WEIGHT         = 0.6            # contribution per unit smoke
-STRESS_HEAT_WEIGHT          = 0.004          # contribution per °C above threshold
-STRESS_FIRE_PROXIMITY_WEIGHT= 0.25           # contribution per nearby fire cell
-STRESS_DECAY_RATE           = 0.05           # stress lost per second in safe area
-STRESS_IMPAIR_THRESHOLD     = 0.70           # above this, cognition is impaired
-STRESS_MAX                  = 1.0
+STRESS_SMOKE_WEIGHT         = VulnerabilityProfile.STRESS_SMOKE_WEIGHT.value            
+STRESS_HEAT_WEIGHT          = VulnerabilityProfile.STRESS_HEAT_WEIGHT.value          
+STRESS_FIRE_PROXIMITY_WEIGHT= VulnerabilityProfile.STRESS_FIRE_PROXIMITY_WEIGHT.value           
+STRESS_DECAY_RATE           = VulnerabilityProfile.STRESS_DECAY_RATE.value          
+STRESS_IMPAIR_THRESHOLD     = VulnerabilityProfile.STRESS_IMPAIR_THRESHOLD.value        
+STRESS_MAX                  = VulnerabilityProfile.STRESS_MAX.value          
 
 # Fire proximity avoidance
-FIRE_AVOIDANCE_RADIUS_CELLS = 3              # cells at which repulsion begins
-FIRE_AVOIDANCE_PEAK_FORCE   = 2.0            # extra path cost per adjacent fire cell
+FIRE_AVOIDANCE_RADIUS_CELLS = VulnerabilityProfile.FIRE_AVOIDANCE_RADIUS_CELLS.value             
+FIRE_AVOIDANCE_PEAK_FORCE   = VulnerabilityProfile.FIRE_AVOIDANCE_PEAK_FORCE.value          
 
-# Vulnerability profiles  {name: (fed_scale, speed_scale)}
-# fed_scale  > 1 → accumulates dose faster (more vulnerable)
-# speed_scale < 1 → slower base walking speed
-VULNERABILITY_PROFILES = {
-    "adult_fit":     (1.0,  1.0),
-    "adult_average": (1.15, 0.90),
-    "elderly":       (1.50, 0.65),
-    "child":         (1.30, 0.75),
-    "injured":       (1.80, 0.50),
-}
+VULNERABILITY_PROFILES = VulnerabilityProfile.VULNERABILITY_PROFILES.value
 
 
 class AgentMovement:
     """
     Handles physical movement and environmental damage.
-
-    Core additions vs original:
-    - FED accumulators (fed_toxic, fed_thermal) → incapacitation at 1.0
-    - Non-monotonic temperature speed curve
-    - Stress variable with feedback into behaviour
-    - Vulnerability profile (age/condition)
-    - Fire proximity avoidance force
     """
 
     def __init__(self, agent: "Agent", vulnerability: str = "adult_average") -> None:
@@ -89,24 +66,24 @@ class AgentMovement:
         # Temperature config (global singleton)
         self.temp_config = rTemp()
 
-        # ---- FED accumulators ----------------------------------------
+        # FED accumulators           
         # Both in range [0.0, ∞); incapacitation when either >= 1.0.
         self.fed_toxic: float = 0.0       # cumulative toxic dose (smoke / CO proxy)
         self.fed_thermal: float = 0.0     # cumulative thermal dose (convective heat)
         self.incapacitated: bool = False  # latched True once FED >= 1.0
 
-        # ---- Stress variable -----------------------------------------
+        # Stress variable           
         # Range [0.0, 1.0].  Updated each damage tick from local hazard levels.
         self.stress: float = 0.0
 
-        # ---- Precomputed fire avoidance cost grid -------------------------
+        # Precomputed fire avoidance cost grid       -
         # Rebuilt lazily whenever known_fire changes (flagged by vision system).
         # Avoids recomputing inverse-square repulsion inside the A* inner loop.
         rows = agent.rows
         self._fire_avoid_grid: np.ndarray = np.zeros((rows, rows), dtype=np.float32)
         self._fire_avoid_dirty: bool = True  # force build on first use
 
-        # ---- Vulnerability profile -----------------------------------
+        # Vulnerability profile         ---
         profile = VULNERABILITY_PROFILES.get(vulnerability, VULNERABILITY_PROFILES["adult_average"])
         self.fed_scale: float   = profile[0]   # multiplies FED accumulation rate
         self.speed_scale: float = profile[1]   # multiplies base walking speed
@@ -117,12 +94,6 @@ class AgentMovement:
         """
         Calculate time required to move one cell.
 
-        Changes vs original:
-        - Non-monotonic temperature effect: speed rises toward 60 °C then falls.
-        - FED-based speed penalty: incapacitated agents shuffle at floor speed.
-        - Stress slows agents once above STRESS_IMPAIR_THRESHOLD.
-        - Per-agent vulnerability speed_scale applied.
-
         Returns:
             Seconds per cell.
         """
@@ -130,7 +101,7 @@ class AgentMovement:
         smoke    = self.agent.spot.smoke
         cell_size_m = max(self.temp_config.CELL_SIZE_M, 0.5)
 
-        # --- Base speed from smoke / visibility (original three-tier model) ---
+        # Base speed from smoke / visibility (original three-tier model)
         if smoke < 0.13:
             base_speed = 3.67
         elif smoke < 0.5:
@@ -138,7 +109,7 @@ class AgentMovement:
         else:
             base_speed = 0.64
 
-        # --- Non-monotonic temperature modifier ----------------------------
+        # Non-monotonic temperature modifier 
         if temp_c <= TEMP_BOOST_THRESHOLD_C:
             # Linear ramp from 1.0 at ambient to SPEED_BOOST_FACTOR at threshold
             t_frac = max(0.0, temp_c - 25.0) / max(TEMP_BOOST_THRESHOLD_C - 25.0, 1.0)
@@ -152,7 +123,7 @@ class AgentMovement:
                 SPEED_BOOST_FACTOR * decay
             )
 
-        # --- FED incapacitation penalty ------------------------------------
+        # FED incapacitation penalty
         # Once FED reaches 0.5 the agent starts to slow; at 1.0 (incapacitated)
         # speed is at floor level.
         fed_penalty = 1.0
@@ -163,13 +134,13 @@ class AgentMovement:
             fed_penalty = 1.0 - fed_frac * (1.0 - SPEED_FLOOR_FACTOR)
             fed_penalty = max(SPEED_FLOOR_FACTOR, fed_penalty)
 
-        # --- Stress cognitive impairment penalty ---------------------------
+        # Stress cognitive impairment penalty 
         stress_penalty = 1.0
         if self.stress > STRESS_IMPAIR_THRESHOLD:
             excess_stress = (self.stress - STRESS_IMPAIR_THRESHOLD) / (1.0 - STRESS_IMPAIR_THRESHOLD)
             stress_penalty = 1.0 - excess_stress * 0.25   # up to 25 % slowdown
 
-        # --- Combine all factors -------------------------------------------
+        # Combine all factors 
         effective_speed = (
             base_speed
             * temp_modifier
@@ -185,16 +156,6 @@ class AgentMovement:
     def apply_damage(self, dt: float) -> None:
         """
         Update FED accumulators and derive health from them.
-
-        Changes vs original:
-        - Smoke damage is now accumulated as FED_toxic rather than being
-          applied as an immediate HP deduction.  This creates physiological
-          debt that persists after the agent leaves the smoke.
-        - Thermal FED is computed from an exponential rate above 60 °C.
-        - Health is derived from the worse of the two FED values so the
-          panel still shows a meaningful HP bar.
-        - Instant death from direct fire contact is retained.
-        - Stress is updated here from the same hazard signals.
         """
         # Instant death from direct fire
         if self.agent.spot.is_fire():
@@ -207,12 +168,12 @@ class AgentMovement:
         smoke = self.agent.spot.smoke
         temp_c = self.agent.spot.temperature
 
-        # ---- Toxic FED (smoke / CO proxy) --------------------------------
+        # Toxic FED (smoke / CO proxy) 
         # Rate scales linearly with smoke density, modified by vulnerability.
         toxic_rate = smoke * FED_TOXIC_RATE_PER_SMOKE * self.fed_scale
         self.fed_toxic = min(self.fed_toxic + toxic_rate * dt, 2.0)  # cap at 2 for sanity
 
-        # ---- Thermal FED (convective heat) --------------------------------
+        # Thermal FED (convective heat) 
         if temp_c > FED_THERMAL_THRESH_C:
             excess_temp    = temp_c - FED_THERMAL_THRESH_C
             thermal_rate   = (
@@ -222,11 +183,11 @@ class AgentMovement:
             )
             self.fed_thermal = min(self.fed_thermal + thermal_rate * dt, 2.0)
 
-        # ---- Incapacitation check ----------------------------------------
+        # Incapacitation check
         if self.fed_toxic >= 1.0 or self.fed_thermal >= 1.0:
             self.incapacitated = True
 
-        # ---- Derive health from FED --------------------------------------
+        # Derive health from FED 
         # Map worst FED to health: 0 FED → 100 HP, 1.0 FED → 0 HP.
         # We use a slightly concave curve so health drops slowly at first
         # then rapidly as the agent nears incapacitation, which looks more
@@ -245,10 +206,6 @@ class AgentMovement:
         """
         Update the agent's stress level from current hazard exposure.
 
-        Stress contributions:
-        - Smoke density (visibility loss is psychologically threatening)
-        - Temperature above threshold (radiant heat discomfort)
-        - Number of fire cells visible within proximity radius
 
         Stress decays naturally in the absence of hazards.
         """

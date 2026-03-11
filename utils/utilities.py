@@ -15,7 +15,8 @@ from utils.constants import (
     SimulationState,
     TempConstants,
     temp,
-    rTemp
+    rTemp,
+    VulnerabilityProfile
 )
 
 from utils.stairwell_manager import StairwellIDGenerator
@@ -60,6 +61,7 @@ __all__ = [
     'TempConstants',
     'temp',
     'rTemp',
+    "VulnerabilityProfile",
     # Stairwell management
     'StairwellIDGenerator',
     # File utilities

@@ -254,7 +254,8 @@ class Spot:
             'smoke': self._smoke,
             'fuel': self._fuel,
             'material': self._material,  # Store value for serialization
-            'is_fire_source': self._is_fire_source
+            'is_fire_source': self._is_fire_source,
+            'is_stairwell': self.is_stairwell,
         }
     
     def draw(self, win: pygame.Surface) -> None:

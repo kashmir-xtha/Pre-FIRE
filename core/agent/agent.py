@@ -72,13 +72,6 @@ class Agent:
     - AgentPathplanner: Pathfinding and route planning
     - AgentMovement:    Physical movement, FED damage, stress
     - AgentState:       Behavioral state machine (IDLE/REACTION/MOVING)
-
-    New public API:
-        agent.fed_toxic       – cumulative toxic dose  [0, 2]
-        agent.fed_thermal     – cumulative thermal dose [0, 2]
-        agent.stress          – current stress level    [0, 1]
-        agent.incapacitated   – True once FED >= 1.0
-        agent.vulnerability   – profile name string
     """
 
     def __init__(
@@ -95,18 +88,20 @@ class Agent:
             start_spot:    Starting Spot on the grid.
             floor:         Which floor of the building (default 0).
             building:      Parent Building object (multi-floor navigation).
-            vulnerability: Key from VULNERABILITY_PROFILES – controls FED
+            vulnerability: Key from VULNERABILITY_PROFILES - controls FED
                            accumulation rate and base walking speed.
         """
         # Core attributes
         self.grid    = grid
         self.spot    = start_spot
+        self.initial_spot = start_spot
         self.rows    = grid.rows
         self.health  = 100.0
         self.alive   = True
         self.path:  List["Spot"] = []
         self.path_show   = True
         self.current_floor = floor
+        self.initial_floor = floor
         self.building    = building
 
         # Memory systems
@@ -292,12 +287,13 @@ class Agent:
         self.alive  = True
         self.path   = []
 
+        self.spot = self.initial_spot if self.initial_spot else self.spot
+        self.current_floor = self.initial_floor
+
+        # Reset memory systems
         self.known_smoke.fill(-1.0)
         self.known_fire.fill(False)
         self.known_temp.fill(20.0)
-
-        if self.grid.start:
-            self.spot = self.grid.start[0]
 
         self.smoke_detected = False
 

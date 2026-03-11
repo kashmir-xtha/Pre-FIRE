@@ -183,6 +183,7 @@ class SimRenderer:
                 f"Peak Fire Cells: {max_fire}",
                 f"Peak Smoke: {max_smoke:.3f}",
                 f"Current Floor:{'Ground' if sim.building.current_floor == 0 else sim.building.current_floor}",
+                "",
                 "H: Show Controls",
             ]
 

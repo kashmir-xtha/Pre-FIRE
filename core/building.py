@@ -119,20 +119,21 @@ class Building:
         self.metrics['avg_temp_per_floor'] = temp_per_floor
         self.metrics['avg_smoke'] = float(np.mean(total_smokes)) if total_smokes else 0.0
         self.metrics['avg_smoke_per_floor'] = smoke_per_floor 
-    
+
     def _transfer_inter_floor(self, dt: float) -> None:
         """
-        Transfer smoke between floors via stairwell spots.
-        Writes directly into smoke_np so values survive into the next
-        spread_smoke() call without being overwritten.
+        Transfer smoke and heat between floors via stairwell spots.
+        Uses gradient-driven diffusion (like Fick's law) so smoke is conserved — what leaves one floor arrives on the other.
+        Smoke is biased upward (buoyancy), but the net flow is always driven by the concentration difference, preventing recycling.
         """
         from utils.helpers import get_neighbors
 
-        SMOKE_TRANSFER_UP   = 0.4    # aggressive upward transfer
-        SMOKE_TRANSFER_DOWN = 0.01
-        HEAT_TRANSFER_UP    = 0.05
-        HEAT_TRANSFER_DOWN  = 0.02
-        NEIGHBOR_BLEED      = 0.5    # fraction spread into surrounding cells
+        # Upward bias: smoke rises, so upward diffusion coefficient is stronger
+        SMOKE_DIFFUSION_UP   = 0.25   # drives flow from lower → upper when lower > upper
+        SMOKE_DIFFUSION_DOWN = 0.1   # drives flow from upper → lower when upper > lower
+        HEAT_TRANSFER_UP     = 0.05
+        HEAT_TRANSFER_DOWN   = 0.02
+        NEIGHBOR_BLEED       = 0.3
 
         for stair_id, floor_spots in StairwellIDGenerator.stairs.items():
             floor_nums = sorted(floor_spots.keys())
@@ -146,48 +147,53 @@ class Building:
                 lower_floor = self.floors[lower_floor_num]
                 upper_floor = self.floors[upper_floor_num]
 
-                # Read smoke directly from smoke_np (source of truth)
                 lr, lc = lower_spot.row, lower_spot.col
                 ur, uc = upper_spot.row, upper_spot.col
 
                 lower_smoke = float(lower_floor.smoke_np[lr, lc])
                 upper_smoke = float(upper_floor.smoke_np[ur, uc])
 
-                smoke_up   = lower_smoke * SMOKE_TRANSFER_UP   * dt
-                smoke_down = upper_smoke * SMOKE_TRANSFER_DOWN * dt
+                # Gradient-driven: only transfer in the direction of the gradient, biased upward 
+                # Net transfer is conserved (what leaves one floor arrives on the other — no recycling)
+                smoke_diff = lower_smoke - upper_smoke
 
-                net_lower = -smoke_up + smoke_down
-                net_upper =  smoke_up - smoke_down
+                if smoke_diff > 0:
+                    # Lower has more smoke — flows upward (buoyancy + gradient)
+                    transfer = smoke_diff * SMOKE_DIFFUSION_UP * dt
+                else:
+                    # Upper has more smoke — small downward flow (gravity/backdraft)
+                    transfer = smoke_diff * SMOKE_DIFFUSION_DOWN * dt  # negative * negative = positive going down
 
-                # Write back into smoke_np directly
-                lower_floor.smoke_np[lr, lc] = float(np.clip(lower_smoke + net_lower, 0.0, 1.0))
-                upper_floor.smoke_np[ur, uc] = float(np.clip(upper_smoke + net_upper, 0.0, 1.0))
+                # Conserved transfer: lower loses exactly what upper gains
+                new_lower = float(np.clip(lower_smoke - transfer, 0.0, 1.0))
+                new_upper = float(np.clip(upper_smoke + transfer, 0.0, 1.0))
 
-                # Bleed transferred smoke into neighbors on the upper floor
-                if smoke_up > 0.001:
+                lower_floor.smoke_np[lr, lc] = new_lower
+                upper_floor.smoke_np[ur, uc] = new_upper
+                lower_floor.grid[lr][lc]._smoke = new_lower
+                upper_floor.grid[ur][uc]._smoke = new_upper
+
+                # Bleed arriving smoke into neighbors on the upper floor
+                if transfer > 0.001:
                     neighbors = get_neighbors(ur, uc, upper_floor.rows, upper_floor.rows)
                     passable = [
                         (nr, nc) for nr, nc in neighbors
                         if not upper_floor.is_barrier_np[nr, nc]
                     ]
                     if passable:
-                        bleed_each = (smoke_up * NEIGHBOR_BLEED) / len(passable)
+                        bleed_each = (transfer * NEIGHBOR_BLEED) / len(passable)
                         for nr, nc in passable:
-                            upper_floor.smoke_np[nr, nc] = float(np.clip(
-                                upper_floor.smoke_np[nr, nc] + bleed_each, 0.0, 1.0
-                            ))
+                            val = float(np.clip(upper_floor.smoke_np[nr, nc] + bleed_each, 0.0, 1.0))
+                            upper_floor.smoke_np[nr, nc] = val
+                            upper_floor.grid[nr][nc]._smoke = val
 
-                # Sync spot objects so renderer sees updated values
-                lower_floor.grid[lr][lc]._smoke = float(lower_floor.smoke_np[lr, lc])
-                upper_floor.grid[ur][uc]._smoke = float(upper_floor.smoke_np[ur, uc])
-
-                # --- Heat transfer ---
+                # Heat transfer 
                 temp_diff = lower_spot.temperature - upper_spot.temperature
                 if temp_diff > 0:
                     heat_up = temp_diff * HEAT_TRANSFER_UP * dt
                     lower_spot.add_temperature(-heat_up)
-                    upper_spot.add_temperature( heat_up)
+                    upper_spot.add_temperature(heat_up)
                 else:
                     heat_down = abs(temp_diff) * HEAT_TRANSFER_DOWN * dt
                     upper_spot.add_temperature(-heat_down)
-                    lower_spot.add_temperature( heat_down)
+                    lower_spot.add_temperature(heat_down)

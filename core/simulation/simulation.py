@@ -279,8 +279,13 @@ class Simulation:
                         spot.make_end()
                     elif disc.get('is_fire_source'):
                         spot.set_as_fire_source(disc.get('temperature') if disc.get('temperature') else 1200.0)
+                    elif disc.get('is_stairwell'):
+                        spot._color = Color.PINK.value
+                        print(spot.stair_id)
+                        from utils.stairwell_manager import StairwellIDGenerator
+                        print(StairwellIDGenerator.stairs)
                     else:
-                        spot.set_material(disc.get('material'))
+                        spot.set_material(disc.get('material', 'concrete'))  # default to concrete if not specified
 
             floor.backup_layout()
             floor.mark_material_cache_dirty()
@@ -288,16 +293,8 @@ class Simulation:
             floor.update_np_arrays()
 
         # 2. Reset every agent (once, after all floors are restored)
-        active_floor = self.building.get_floor(0)
-        for i, agent in enumerate(self.agents):
+        for agent in self.agents: 
             agent.reset()
-            if i < len(active_floor.start):
-                agent.spot = active_floor.start[i]
-            else:
-                agent.spot = active_floor.start[0] if active_floor.start else None
-
-            if agent.spot and bool(active_floor.exits):
-                agent.path = agent.best_path()
 
     def update(self, dt: float) -> None:
         """Time-based update with delta time"""
