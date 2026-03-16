@@ -5,6 +5,10 @@ from typing import Dict, List, Optional, TYPE_CHECKING
 import numpy as np
 import pygame
 import pygame_gui
+import subprocess
+import tkinter as tk
+import sys
+from tkinter import filedialog
 from core.building import Building
 from core.simulation.sim_renderer import SimRenderer
 from core.simulation.sim_analytics import SimAnalytics
@@ -226,10 +230,7 @@ class Simulation:
                     path = self.analytics.export_history_csv()
                     logger.info("Simulation history CSV exported: %s", path)
 
-                # Currently this does nothing except log the snapshot metadata, 
-                # but in the future we could extend it to actually restore 
-                # the simulation state from the snapshot 
-                # (e.g. for debugging or to implement a "rewind" feature)
+                # Currently this only logs the snapshot metadata
                 elif event.key == pygame.K_F7:
                     snapshot = self.analytics.load_latest_snapshot()
                     if snapshot is None:
@@ -240,7 +241,10 @@ class Simulation:
                             snapshot.evacuation_time,
                             snapshot.survival_count,
                         )
-
+                elif event.key == pygame.K_F8:
+                    _launch_heatmap_picker()
+                elif event.key == pygame.K_F9:
+                    _launch_congestion_map_picker()
         return SIM_CONTINUE
 
     def reset(self) -> None:
@@ -362,3 +366,39 @@ class Simulation:
             self.renderer.draw(self.building.current_floor)
 
         return SIM_QUIT
+
+def _launch_heatmap_picker() -> None:
+    """Open a file dialog to pick a layout CSV, then run survival_heatmap."""
+    root = tk.Tk()
+    root.withdraw()          # hide the blank Tk window
+    root.attributes("-topmost", True)  # dialog appears in front of pygame
+    csv_path = filedialog.askopenfilename(
+        title="Select layout CSV for heatmap",
+        initialdir="data/layout_csv",
+        filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+    )
+    root.destroy()
+    if not csv_path:
+        logger.info("Heatmap: no file selected.")
+        return
+    cmd = [sys.executable, "-m", "sim_statistics.survival_heatmap", "--csv", csv_path]
+    logger.info("Launching heatmap: %s", " ".join(cmd))
+    subprocess.Popen(cmd)   # non-blocking – simulation keeps running
+
+def _launch_congestion_map_picker() -> None:
+    """Open a file dialog to pick a layout CSV, then run congestion_map."""
+    root = tk.Tk()
+    root.withdraw()          # hide the blank Tk window
+    root.attributes("-topmost", True)  # dialog appears in front of pygame
+    csv_path = filedialog.askopenfilename(
+        title="Select layout CSV for congestion map",
+        initialdir="data/layout_csv",
+        filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+    )
+    root.destroy()
+    if not csv_path:
+        logger.info("Congestion Map: no file selected.")
+        return
+    cmd = [sys.executable, "-m", "sim_statistics.congestion_map", "--csv", csv_path]
+    logger.info("Launching congestion map: %s", " ".join(cmd))
+    subprocess.Popen(cmd)   # non-blocking – simulation keeps running

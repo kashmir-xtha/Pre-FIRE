@@ -118,6 +118,8 @@ class SimRenderer:
                 "F5: Save Snapshot",
                 "F6: Export CSV",
                 "F7: Load Last Snapshot",
+                "F8: Generate Heatmap",
+                "F9: Congestion Map",
                 "ESC: Quit",
             ]
             for text in controls:
@@ -243,8 +245,7 @@ class SimRenderer:
                 # Draw a thin border around the bar for better definition
                 pygame.draw.rect(sim.win, indicator_color, (bar_x, bar_y, bar_width, bar_height), 2)
 
-# --------------- Free functions (temperature overlay, matplotlib plots) ---------------
-
+# Free functions (temperature overlay, matplotlib plots)
 def draw_temperature(grid: "Grid", win: pygame.Surface, rows: int) -> None:
     """Draw temperature as color overlay."""
     if not hasattr(grid, "temp_np"):

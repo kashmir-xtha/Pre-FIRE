@@ -5,6 +5,7 @@ __pycache__
 PreFIRE.spec
 build
 benchmark_results.txt
-statistics/heatmap/
+sim_statistics/heatmap/
+sim_statistics/congestion
 data/simulation_history/
 .pytest_cache/

@@ -17,7 +17,7 @@ Public API (for programmatic use):
     )
 """
 
-from statistics.survival_heatmap import (
+from sim_statistics.survival_heatmap import (
     build_heatmap,
     plot_heatmap,
     build_fresh_grid,
@@ -41,4 +41,5 @@ __all__ = [
     "compute_next_move",
     "BatchAgentSim",
     "run_scenario",
+    "generate_congestion_map",
 ]
