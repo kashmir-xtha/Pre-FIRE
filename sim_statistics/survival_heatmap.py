@@ -310,6 +310,8 @@ def run_scenario(
     dt: float,
 ) -> np.ndarray:
     restore_grid(grid)
+    if not np.any(exit_mask):
+        return np.zeros(len(cands_r), dtype=bool)
     if not place_fire(grid):
         return np.ones(len(cands_r), dtype=bool)
 
@@ -391,6 +393,10 @@ def build_heatmap(
         [[probe.grid[r][c].is_end() for c in range(ROWS)] for r in range(ROWS)],
         dtype=bool,
     )
+    if not np.any(exit_mask):
+        sys.exit(f"ERROR: No exit cells found in {csv_path}. "
+                "Mark at least one cell as END in the editor before running this analysis")
+
     coords = [
         (r, c) for r in range(ROWS) for c in range(ROWS)
         if not barrier_mask[r, c] and not exit_mask[r, c]

@@ -197,7 +197,7 @@ class AgentPathplanner:
         start: "Spot",
         end: "Spot",
         desperate: bool = False,
-        max_iterations: int = 3000
+        max_iterations: int = 6000 # so that it can reach the whole grid
     ) -> List["Spot"]:
         """
         High-performance A* pathfinding implementation.
