@@ -27,6 +27,7 @@ class state_value(Enum):
     FIRE = 2
     START = 8
     END = 9
+    SPRINKLER = 12
 
 
 class smoke_constants(Enum):
@@ -60,6 +61,7 @@ class ToolType(Enum):
     END = 9
     FIRE_SOURCE = 10
     STAIR = 11
+    SPRINKLER = 12
     
 
 class SimulationState(Enum):

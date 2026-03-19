@@ -6,7 +6,7 @@ import numpy as np
 import pygame
 
 from utils.utilities import Color
-
+from environment.fire import EFFECT_RADIUS, _has_line_of_sight
 if TYPE_CHECKING:
     from core.grid import Grid
     from core.simulation.simulation import Simulation
@@ -67,6 +67,73 @@ class SimRenderer:
         # Smoke overlay
         from environment.smoke import draw_smoke
         draw_smoke(to_draw_floor, grid_surface)
+        # Draw sprinkler indicators
+        for r in range(sim.rows):
+            for c in range(sim.rows):
+                spot = to_draw_floor.grid[r][c]
+                if not spot.is_sprinkler():
+                    continue
+
+                cx = spot.x + cell_size // 2
+                cy = spot.y + cell_size // 2
+
+                cfg = sim.temp
+                cell_size_m = max(cfg.CELL_SIZE_M, 1e-6)
+                effect_radius = max(1, round(EFFECT_RADIUS / cell_size_m))
+
+                # Draw radius cell by cell, skipping walled-off cells
+                fill_color = (0, 120, 255, 18) if spot.is_sprinkler_active() else (0, 180, 255, 10)
+                ring_color  = (0, 120, 255, 60) if spot.is_sprinkler_active() else (0, 180, 255, 35)
+
+                for nr in range(max(0, r - effect_radius), min(sim.rows, r + effect_radius + 1)):
+                    for nc in range(max(0, c - effect_radius), min(sim.rows, c + effect_radius + 1)):
+                        dist_m = ((nr - r)**2 + (nc - c)**2) ** 0.5 * cell_size_m
+                        if dist_m > EFFECT_RADIUS:
+                            continue
+                        if not _has_line_of_sight(to_draw_floor, r, c, nr, nc):
+                            continue
+
+                        cell_surf = pygame.Surface((cell_size, cell_size), pygame.SRCALPHA)
+                        target = to_draw_floor.grid[nr][nc]
+                        nx = target.x
+                        ny = target.y
+
+                        # Fill reachable cell
+                        pygame.draw.rect(cell_surf, fill_color, (0, 0, cell_size, cell_size))
+                        grid_surface.blit(cell_surf, (nx, ny))
+
+                # Outline the reachable boundary — only cells on the edge of the reachable zone
+                for nr in range(max(0, r - effect_radius), min(sim.rows, r + effect_radius + 1)):
+                    for nc in range(max(0, c - effect_radius), min(sim.rows, c + effect_radius + 1)):
+                        dist_m = ((nr - r)**2 + (nc - c)**2) ** 0.5 * cell_size_m
+                        if dist_m > EFFECT_RADIUS:
+                            continue
+                        if not _has_line_of_sight(to_draw_floor, r, c, nr, nc):
+                            continue
+
+                        # Check if any neighbour is outside the reachable zone (makes it a boundary cell)
+                        is_edge = False
+                        for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+                            nnr, nnc = nr + dr, nc + dc
+                            if not (0 <= nnr < sim.rows and 0 <= nnc < sim.rows):
+                                is_edge = True
+                                break
+                            n_dist = ((nnr - r)**2 + (nnc - c)**2) ** 0.5 * cell_size_m
+                            n_blocked = not _has_line_of_sight(to_draw_floor, r, c, nnr, nnc)
+                            if n_dist > EFFECT_RADIUS or n_blocked:
+                                is_edge = True
+                                break
+
+                        if is_edge:
+                            target = to_draw_floor.grid[nr][nc]
+                            edge_surf = pygame.Surface((cell_size, cell_size), pygame.SRCALPHA)
+                            pygame.draw.rect(edge_surf, ring_color, (0, 0, cell_size, cell_size), 2)
+                            grid_surface.blit(edge_surf, (target.x, target.y))
+
+                # Sprinkler head dot on top
+                dot_color = (0, 120, 255) if spot.is_sprinkler_active() else (0, 180, 255)
+                pygame.draw.circle(grid_surface, dot_color, (cx, cy), max(2, cell_size // 3))
+
 
         # Agents on top
         for i, agent in enumerate(sim.agents):

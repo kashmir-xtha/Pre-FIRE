@@ -6,6 +6,7 @@ from environment.smoke import spread_smoke
 from environment.fire import do_temperature_update
 from environment.fire import update_fire_with_materials
 from utils.utilities import StairwellIDGenerator
+from environment.fire import update_sprinklers
 
 if TYPE_CHECKING:
     from core.agent.agent import Agent
@@ -64,6 +65,7 @@ class Building:
             do_temperature_update(floor, update_dt)
             update_fire_with_materials(floor, update_dt)
             spread_smoke(floor, update_dt)
+            update_sprinklers(floor, update_dt)
             floor.update_np_arrays()
         self._transfer_inter_floor(update_dt)
     

@@ -193,15 +193,12 @@ def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
     # Update is_fire array
     is_fire = is_fire | new_fire_mask
 
-    # Burn rate scales with cell size: a larger cell holds proportionally
-    # more fuel so it burns for longer before extinguishing.
-    # --- Combined fuel consumption and extinguishment loop ---
+    # Burn rate scales with cell size: a larger cell holds proportionally more fuel so it burns for longer before extinguishing.
+    #  Combined fuel consumption and extinguishment loop 
     fuel_after = fuel.copy()
     dirty = False
 
-    # Burn rate now comes from each cell's material properties instead of
-    # a single hardcoded constant.  Fall back to 0.02 for materials that
-    # don't define fuel_burn_rate.
+    # Burn rate now comes from each cell's material properties instead of a single hardcoded constant.  Fall back to 0.02 for materials that don't define fuel_burn_rate.
     fire_indices = np.argwhere(is_fire)
     for r, c in fire_indices:
         spot = grid_grid[r][c]
@@ -357,3 +354,83 @@ def is_valid_fire_start(grid: "Grid", r: int, c: int, max_dist: int = 30) -> boo
         if not direction_blocked(grid, r, c, dr, dc, max_dist):
             return False  
     return True
+
+ACTIVATION_TEMP  = 68.0   # °C — standard commercial glass-bulb sprinkler
+EFFECT_RADIUS   = 2.4     # m suppressed in each direction (roughly NFPA 13 standard for 12m² coverage per sprinkler)
+COOLING_RATE     = 80.0   # °C removed per second from each cell in radius
+SMOKE_CLEAR_RATE = 0.3    # smoke units cleared per second in radius
+
+def update_sprinklers(grid: "Grid", dt: float) -> None:
+    """Activate sprinklers and apply suppression effects each timestep."""
+    cfg = rTemp()
+    cell_size_m = max(cfg.CELL_SIZE_M, 1e-6)
+    effect_radius = max(1, round(EFFECT_RADIUS / cell_size_m))  # ← now resolves correctly
+    rows = grid.rows
+
+    for r in range(rows):
+        for c in range(rows):
+            spot = grid.grid[r][c]
+            if not spot.is_sprinkler():
+                continue
+
+            if spot.temperature >= ACTIVATION_TEMP:
+                spot.activate_sprinkler()
+
+            if not spot.is_sprinkler_active():
+                continue
+
+            # Use effect_radius (int) not EFFECT_RADIUS_M (float)
+            r_min = max(0, r - effect_radius)
+            r_max = min(rows, r + effect_radius + 1)
+            c_min = max(0, c - effect_radius)
+            c_max = min(rows, c + effect_radius + 1)
+
+            for nr in range(r_min, r_max):
+                for nc in range(c_min, c_max):
+                    # Circular boundary check
+                    dist_m = ((nr - r)**2 + (nc - c)**2) ** 0.5 * cell_size_m
+                    if dist_m > EFFECT_RADIUS:
+                        continue
+                    if not _has_line_of_sight(grid, r, c, nr, nc):
+                        continue
+                    target = grid.grid[nr][nc]
+                    if target.is_barrier():
+                        continue
+
+                    if target.is_fire():
+                        target.extinguish_fire()
+                        grid.fire_np[nr, nc] = False
+
+                    cooling = COOLING_RATE * dt
+                    new_temp = max(25.0, target.temperature - cooling)
+                    target._temperature = new_temp
+                    grid.temp_np[nr, nc] = new_temp
+
+                    clearing = SMOKE_CLEAR_RATE * dt
+                    new_smoke = max(0.0, target.smoke - clearing)
+                    target._smoke = new_smoke
+                    grid.smoke_np[nr, nc] = new_smoke
+    
+def _has_line_of_sight(grid: "Grid", r1: int, c1: int, r2: int, c2: int) -> bool:
+    """Bresenham line walk — returns False if any barrier lies between (r1,c1) and (r2,c2)."""
+    dr = abs(r2 - r1)
+    dc = abs(c2 - c1)
+    r, c = r1, c1
+    sr = 1 if r2 > r1 else -1
+    sc = 1 if c2 > c1 else -1
+    err = dr - dc
+
+    while True:
+        if r == r2 and c == c2:
+            return True
+        # Don't check the own cell or the target cell
+        if (r != r1 or c != c1) and (r != r2 or c != c2):
+            if grid.is_barrier_np[r, c]:
+                return False
+        e2 = 2 * err
+        if e2 > -dc:
+            err -= dc
+            r += sr
+        if e2 < dr:
+            err += dr
+            c += sc

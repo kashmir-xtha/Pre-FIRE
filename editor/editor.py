@@ -223,6 +223,8 @@ class Editor:
         elif tool_type == ToolType.STAIR:
             self.current_tool = "STAIR"
             logger.debug("Stairwell mode - click on grid to place stairwell")
+        elif tool_type == ToolType.SPRINKLER:
+            self.current_tool = "SPRINKLER"
 
     def _handle_grid_click(self, event: pygame.event.Event) -> None:
         """Handle mouse clicks in the grid area"""
@@ -301,6 +303,9 @@ class Editor:
             spot.set_as_fire_source()
             logger.debug("Fire source placed")
 
+        elif self.current_tool == "SPRINKLER":
+            spot.set_as_sprinkler()
+            
     def _erase_from_grid(self, spot: "Spot") -> None:
         """Erase items from the grid"""
         if spot.is_start():

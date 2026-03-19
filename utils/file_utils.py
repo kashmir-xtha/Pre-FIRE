@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 def spot_to_cell_value(spot) -> str:
     """Convert a spot to a CSV cell value."""
+    if spot.is_sprinkler():
+        return f"12|{spot.material.value}"
     return f"{spot.state}|{spot.material.value}"
 
 
@@ -65,6 +67,8 @@ def load_layout(grid, filename: str = "layout_csv\\layout_1.csv") -> Tuple[Optio
                         end.add(spot)
                     elif cell_state == state_value.FIRE.value:
                         spot.set_on_fire()
+                    elif cell_state == state_value.SPRINKLER.value:   # 12
+                        spot.set_as_sprinkler()
     except FileNotFoundError:
         logger.warning("Layout file %s not found. Starting with empty grid.", filename)
     

@@ -85,6 +85,7 @@ class ToolsPanel:
         tools.append((ToolType.START, None, "Start", GREEN))
         tools.append((ToolType.END, None, "End", RED))
         tools.append((ToolType.STAIR, None, "Stair", PINK))
+        tools.append((ToolType.SPRINKLER, None, "Sprinkler", (0, 180, 255)))
         
         self.buttons.clear()
         for i, (tool_type, material_id, name, color) in enumerate(tools):

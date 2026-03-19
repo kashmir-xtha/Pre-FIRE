@@ -35,7 +35,7 @@ class Spot:
         'is_stairwell', 'stair_id',
         '_color', '_state', '_temperature', '_smoke',
         '_fuel', '_material', '_is_fire_source', '_burned',
-        'is_special', 'material_props',
+        'is_special', 'material_props', '_is_sprinkler', '_sprinkler_active',
     )
 
     _material_props_cache: Optional[Dict[material_id, MaterialProps]] = None
@@ -67,7 +67,8 @@ class Spot:
         self._burned = False  # True once the spot has ever been on fire
         self.is_special = None  # Lazy-cached by update_temperature_from_flux
         self.material_props = None  # Lazy-cached by update_temperature_from_flux
-        
+        self._is_sprinkler = False
+        self._sprinkler_active = False
     # --- Property getters for safe access ---
     @property
     def color(self) -> ColorTuple:
@@ -97,7 +98,7 @@ class Spot:
     def is_fire_source(self) -> bool:
         return self._is_fire_source
     
-    # --- State-changing methods with validation ---
+    # State-changing methods with validation 
     def reset(self) -> None:
         """Reset spot to default state"""
         self._color = WHITE
@@ -110,7 +111,9 @@ class Spot:
         self._burned = False
         self.is_special = None
         self.material_props = None
-    
+        self._is_sprinkler = False
+        self._sprinkler_active = False
+
     def make_barrier(self) -> None:
         """Make this spot a barrier/wall"""
         self._color = BLACK
@@ -200,8 +203,22 @@ class Spot:
     def consume_fuel(self, amount: float) -> None:
         """Consume fuel with bounds checking."""
         self._fuel = max(0.0, self._fuel - amount)
+    def set_as_sprinkler(self) -> None:
+        self._is_sprinkler = True
+        self._sprinkler_active = False
+        self._state = state_value.SPRINKLER.value
+        self._color = (0, 180, 255)   # light blue
+
+    def is_sprinkler(self) -> bool:
+        return self._is_sprinkler
+
+    def activate_sprinkler(self) -> None:
+        self._sprinkler_active = True
+
+    def is_sprinkler_active(self) -> bool:
+        return self._sprinkler_active
     
-    # --- Query methods ---
+    # Query methods 
 
     @property #property decorator allows us for access as an attribute while still controlling it with a private variable
     def burned(self) -> bool:
@@ -256,6 +273,8 @@ class Spot:
             'material': self._material,  # Store value for serialization
             'is_fire_source': self._is_fire_source,
             'is_stairwell': self.is_stairwell,
+            'is_sprinkler': self._is_sprinkler,
+            'sprinkler_active': self._sprinkler_active,
         }
     
     def draw(self, win: pygame.Surface) -> None:
