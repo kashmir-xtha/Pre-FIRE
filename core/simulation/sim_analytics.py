@@ -77,7 +77,7 @@ class SimAnalytics:
 
         metrics_copy = {
             "elapsed_time": float(sim.building.metrics.get("elapsed_time", 0.0)),
-            "agent_health": float(sim.building.metrics.get("agent_health", 0.0)),
+            "agent_health": sim.building.metrics.get("agent_health", []),
             "fire_cells": int(sim.building.metrics.get("fire_cells", 0)),
             "avg_smoke": float(sim.building.metrics.get("avg_smoke", 0.0)),
             "avg_temp": float(sim.building.metrics.get("avg_temp", 20.0)),

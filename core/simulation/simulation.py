@@ -284,10 +284,10 @@ class Simulation:
                     elif disc.get('is_fire_source'):
                         spot.set_as_fire_source(disc.get('temperature') if disc.get('temperature') else 1200.0)
                     elif disc.get('is_stairwell'):
+                        # This code is broken at the moment
                         spot._color = Color.PINK.value
-                        print(spot.stair_id)
-                        from utils.stairwell_manager import StairwellIDGenerator
-                        print(StairwellIDGenerator.stairs)
+                    elif disc.get('is_sprinkler'):
+                        spot.set_as_sprinkler()
                     else:
                         spot.set_material(disc.get('material', 'concrete'))  # default to concrete if not specified
 

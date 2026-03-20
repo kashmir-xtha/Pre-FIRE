@@ -216,7 +216,7 @@ class SimRenderer:
                     outcome = "Alive"
                 outcome_metrics = [
                     f"Agent Outcome: {outcome}",
-                    f"Health: {sim.building.metrics['agent_health']:.1f}",
+                    f"Health: {np.mean(sim.building.metrics['agent_health']):.1f}",
                     f"Evac Time: {avg_evac:.1f}s",
                 ]
             else:

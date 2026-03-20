@@ -62,7 +62,7 @@ class SaveManager:
 
         time_values = history.get("time", [])
         row_count = len(time_values)
-
+        print(history["agent_health"])
         columns = [
             "time",
             "fire_cells",
@@ -81,7 +81,7 @@ class SaveManager:
                     history.get("fire_cells", [None] * row_count)[i],
                     history.get("avg_temp", [None] * row_count)[i],
                     history.get("avg_smoke", [None] * row_count)[i],
-                    history.get("agent_health", [None] * row_count)[i],
+                    'T'.join(str(h) for h in history.get("agent_health", [None] * row_count)[i]),
                     history.get("path_length", [None] * row_count)[i],
                 ])
 

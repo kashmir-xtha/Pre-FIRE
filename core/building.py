@@ -30,7 +30,7 @@ class Building:
         # Metrics
         self.metrics = {
             'elapsed_time': 0,
-            'agent_health': 0,
+            'agent_health': [],
             'fire_cells': 0,               # building-wide total
             'fire_cells_per_floor': [],    # [floor_0, floor_1, ...]
             'avg_smoke': 0,                # building-wide average
@@ -73,7 +73,7 @@ class Building:
         """Compute and aggregate metrics across all floors."""
         # Agent health and path length (building-wide averages)
         if agents:
-            self.metrics['agent_health'] = sum(a.health for a in agents) / len(agents)
+            self.metrics['agent_health'] = [a.health for a in agents] 
             # Average path length across all agents (building-wide)
             total_path_length = sum(len(a.path) for a in agents)
             self.metrics['path_length'] = total_path_length // len(agents) if agents else 0
