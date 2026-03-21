@@ -54,6 +54,7 @@ class Grid:
         self.cooling_rate_np = np.zeros((rows, rows), dtype=np.float32)
         self.heat_capacity_np = np.ones((rows, rows), dtype=np.float32)
         self.ignition_temp_np = np.full((rows, rows), float("inf"), dtype=np.float32)
+        self.emissivity_np = np.zeros((rows, rows), dtype=np.float32)
         self.is_barrier_np = np.zeros((rows, rows), dtype=np.bool_)
         self.is_start_np = np.zeros((rows, rows), dtype=np.bool_)
         self.is_end_np = np.zeros((rows, rows), dtype=np.bool_)
@@ -171,6 +172,7 @@ class Grid:
                 self.is_barrier_np[r, c] = spot.is_barrier()
                 self.is_start_np[r, c] = spot.is_start()
                 self.is_end_np[r, c] = spot.is_end()
+                self.emissivity_np[r, c] = props.get("emissivity", 0.0)
 
         self.material_cache_dirty = False
     

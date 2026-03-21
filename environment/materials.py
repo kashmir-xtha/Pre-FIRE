@@ -14,8 +14,9 @@ MATERIALS = {
         "density": 1.2,                 # kg/m³
         "specific_heat": 1005.0,        # J/(kg·K)
         "heat_release_rate": 200.0,     # °C/s — room contents burn less intensely
-        "fuel_burn_rate": 0.05,          # fuel units/s — furnishings burn out in ~6s
+        "fuel_burn_rate": 0.05,         # fuel units/s — furnishings burn out in ~6s
         "smoke_yield": 0.5,             # dimensionless — moderate smoke
+        "emissivity": 0.0,              # dimensionless — air is transparent to radiation
         "default_state": EMPTY
     },
     material_id.WOOD: {
@@ -28,8 +29,9 @@ MATERIALS = {
         "density": 600.0,               # kg/m³
         "specific_heat": 1700.0,        # J/(kg·K)
         "heat_release_rate": 500.0,     # °C/s — vigorous combustion
-        "fuel_burn_rate": 0.15,          # fuel units/s — wood burns out in ~33s
+        "fuel_burn_rate": 0.15,         # fuel units/s — wood burns out in ~33s
         "smoke_yield": 1.0,             # dimensionless — baseline smoke producer
+        "emissivity": 0.90,             # dimensionless — wood has high thermal emissivity
         "default_state": EMPTY
     },
     material_id.CONCRETE: {
@@ -44,6 +46,7 @@ MATERIALS = {
         "heat_release_rate": 0.0,       # non-combustible
         "fuel_burn_rate": 0.0,
         "smoke_yield": 0.0,
+        "emissivity": 0.90,             # dimensionless — concrete has high thermal emissivity
         "default_state": WALL
     },
     material_id.METAL: {
@@ -58,6 +61,7 @@ MATERIALS = {
         "heat_release_rate": 0.0,       # non-combustible
         "fuel_burn_rate": 0.0,
         "smoke_yield": 0.0,
+        "emissivity": 0.30,             # dimensionless — oxidized steel; polished metal ~0.05
         "default_state": EMPTY
     }
 }

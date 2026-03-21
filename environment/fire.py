@@ -26,6 +26,7 @@ def do_temperature_update(grid: "Grid", dt: float = 1.0) -> None:
     heat_transfer = np.where(grid.is_barrier_np, 0.0, grid.heat_transfer_np)
     cooling_rate = grid.cooling_rate_np
     heat_capacity = grid.heat_capacity_np
+    emmisivity = grid.emissivity_np
     is_barrier = grid.is_barrier_np
 
     temp_constants = rTemp()
@@ -58,18 +59,16 @@ def do_temperature_update(grid: "Grid", dt: float = 1.0) -> None:
         (east - temp) * k_e
     ) / (dx * dx)
 
-    # --- Radiative heat transfer (simplified Stefan-Boltzmann) ---
     # In real fires, 40-60% of heat transfer is radiative.
     # q_rad = epsilon * sigma * (T_hot^4 - T_cold^4)
     # We linearize for stability: approximate as rad_coeff * (T_neighbor - T)
     # for high-temperature cells only (above 200°C), with coefficient scaling
     # as T^3 (from derivative of T^4).
     STEFAN_BOLTZMANN = 5.67e-8  # W/(m²·K⁴)
-    EMISSIVITY = 0.9            # typical for soot/wood char
     # Effective radiative coefficient: ε·σ·T³ (linearized)
     # Convert °C to K for radiation calculation
     temp_K = temp + 273.15
-    rad_coeff = EMISSIVITY * STEFAN_BOLTZMANN * temp_K**3  # W/(m²·K)
+    rad_coeff = emmisivity * STEFAN_BOLTZMANN * temp_K**3  # W/(m²·K)
     # Only apply radiation above ~200°C to avoid unnecessary computation on cool cells
     rad_mask = temp > 200.0
     rad_coeff = np.where(rad_mask, rad_coeff, 0.0)
@@ -163,20 +162,28 @@ def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
         # Source fire intensity factor
         fire_intensity = min(max(temp[r, c] / 600.0, 0.2), 1.0)
         prob = base_prob * fire_intensity
-
-        # Check all 8 neighbors
+ 
+        # Check all 8 neighbors.
+        # Diagonal neighbours are √2 further away than cardinal neighbours,
+        # so their spread probability is scaled by 1/√2 to keep fire
+        # propagation speed isotropic across all directions.
+        # This mirrors the diag_factor already applied in smoke diffusion.
+        DIAG_FACTOR = 0.7071067811865476  # 1 / sqrt(2)
         for dr in [-1, 0, 1]:
             for dc in [-1, 0, 1]:
                 if dr == 0 and dc == 0:
                     continue  # Skip self
-                
+ 
                 nr, nc = r + dr, c + dc
-                
+ 
                 # Check bounds
                 if not (0 <= nr < rows and 0 <= nc < rows):
                     continue
-                
-                if candidate[nr, nc] and np.random.random() < prob:
+ 
+                # Reduce probability for diagonal neighbours
+                effective_prob = prob * DIAG_FACTOR if (dr != 0 and dc != 0) else prob
+ 
+                if candidate[nr, nc] and np.random.random() < effective_prob:
                     spread_mask[nr, nc] = True
     
     spread = spread_mask
@@ -357,7 +364,7 @@ def is_valid_fire_start(grid: "Grid", r: int, c: int, max_dist: int = 30) -> boo
 
 ACTIVATION_TEMP  = 68.0   # °C — standard commercial glass-bulb sprinkler
 EFFECT_RADIUS   = 2.4     # m suppressed in each direction (roughly NFPA 13 standard for 12m² coverage per sprinkler)
-COOLING_RATE     = 80.0   # °C removed per second from each cell in radius
+COOLING_RATE_SPRINKLER  = 80.0   # °C removed per second from each cell in radius
 SMOKE_CLEAR_RATE = 0.3    # smoke units cleared per second in radius
 
 def update_sprinklers(grid: "Grid", dt: float) -> None:
@@ -401,7 +408,7 @@ def update_sprinklers(grid: "Grid", dt: float) -> None:
                         target.extinguish_fire()
                         grid.fire_np[nr, nc] = False
 
-                    cooling = COOLING_RATE * dt
+                    cooling = COOLING_RATE_SPRINKLER * dt
                     new_temp = max(25.0, target.temperature - cooling)
                     target._temperature = new_temp
                     grid.temp_np[nr, nc] = new_temp

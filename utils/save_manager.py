@@ -62,7 +62,6 @@ class SaveManager:
 
         time_values = history.get("time", [])
         row_count = len(time_values)
-        print(history["agent_health"])
         columns = [
             "time",
             "fire_cells",

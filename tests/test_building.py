@@ -166,7 +166,8 @@ class TestComputeMetrics:
         for f in building.floors:
             f.update_np_arrays()
         building.compute_metrics(agents=[a1, a2])
-        assert building.metrics["agent_health"] == pytest.approx(70.0)
+        import numpy as np
+        assert np.mean(building.metrics["agent_health"]) == pytest.approx(70.0)
 
     def test_per_floor_lists_length(self, building_3f):
         '''Per-floor metric lists should have one entry per floor.'''

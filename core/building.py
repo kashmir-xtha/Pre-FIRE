@@ -76,8 +76,12 @@ class Building:
             self.metrics['agent_health'] = [a.health for a in agents] 
             # Average path length across all agents (building-wide)
             total_path_length = sum(len(a.path) for a in agents)
-            self.metrics['path_length'] = total_path_length // len(agents) if agents else 0
-        
+            agents_count = 0
+            for a in agents:
+                if len(a.path) > 0:
+                    agents_count += 1
+            self.metrics['path_length'] = total_path_length // agents_count if agents_count > 0 else 0
+
         # Aggregate metrics across all floors
         total_fire_cells = 0
         total_temps = []
