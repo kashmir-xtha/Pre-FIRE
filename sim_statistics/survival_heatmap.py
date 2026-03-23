@@ -382,6 +382,7 @@ def build_heatmap(
     dt: float = 0.1,
     workers: int = 0,
     use_mp: bool = True,
+    gui_mode: bool = False, # ADDED
 ) -> np.ndarray:
 
     probe = build_fresh_grid(csv_path)
@@ -406,10 +407,11 @@ def build_heatmap(
     N = len(coords)
 
     n_workers = min(workers if workers > 0 else mp.cpu_count(), scenarios)
-    print(f"Cells    : {N}  (all tested simultaneously per scenario)")
-    print(f"Scenarios: {scenarios}")
-    print(f"Steps    : {steps}  ({steps * dt:.1f}s simulated)")
-    print(f"Workers  : {n_workers if use_mp else 1}\n")
+    if not gui_mode:
+        print(f"Cells    : {N}  (all tested simultaneously per scenario)")
+        print(f"Scenarios: {scenarios}")
+        print(f"Steps    : {steps}  ({steps * dt:.1f}s simulated)")
+        print(f"Workers  : {n_workers if use_mp else 1}\n")
 
     survival_counts = np.zeros(N, dtype=np.int32)
 
@@ -420,16 +422,25 @@ def build_heatmap(
             initializer=_worker_init_v3,
             initargs=(csv_path, steps, dt),
         ) as pool:
-            for _, survived in tqdm(
-                pool.imap_unordered(_worker_fn_v3, range(scenarios)),
-                total=scenarios, desc="Scenarios", unit="scenario",
-            ):
+            iterator = pool.imap_unordered(_worker_fn_v3, range(scenarios))
+            if not gui_mode:
+                iterator = tqdm(iterator, total=scenarios, desc="Scenarios", unit="scenario")
+            
+            for i, (_, survived) in enumerate(iterator):
                 survival_counts += survived.astype(np.int32)
+                if gui_mode:
+                    print(f"PROGRESS:{i+1}/{scenarios}", flush=True)
     else:
         _worker_init_v3(csv_path, steps, dt)
-        for i in tqdm(range(scenarios), desc="Scenarios", unit="scenario"):
+        iterator = range(scenarios)
+        if not gui_mode:
+            iterator = tqdm(iterator, desc="Scenarios", unit="scenario")
+            
+        for i in iterator:
             _, survived = _worker_fn_v3(i)
             survival_counts += survived.astype(np.int32)
+            if gui_mode:
+                print(f"PROGRESS:{i+1}/{scenarios}", flush=True)
 
     survival = np.full((ROWS, ROWS), np.nan, dtype=np.float32)
     for idx, (r, c) in enumerate(coords):
@@ -452,7 +463,8 @@ def plot_heatmap(survival: np.ndarray, output_path: str, csv_path: str) -> None:
     plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"Heatmap saved  -> {output_path}")
+    # Modified to only print the path in a clean format for the GUI loader
+    print(f"Heatmap saved -> {output_path}")
 
 # CLI
 def parse_args() -> argparse.Namespace:
@@ -464,6 +476,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--workers",   type=int,   default=0)
     p.add_argument("--output",    default="survival_heatmap.png")
     p.add_argument("--no-mp",     action="store_true")
+    p.add_argument("--gui-mode",  action="store_true", help="Format output for Pygame GUI parser") # ADDED
     return p.parse_args()
 
 def main() -> None:
@@ -477,16 +490,26 @@ def main() -> None:
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"heatmap_{base_name}.png")
 
-    print(f"Layout  : {args.csv}\nOutput  : {output_path}\n")
+    if not args.gui_mode:
+        print(f"Layout  : {args.csv}\nOutput  : {output_path}\n")
+    
     survival = build_heatmap(
         csv_path=args.csv, scenarios=args.scenarios,
         steps=args.steps, dt=args.dt,
         workers=args.workers, use_mp=not args.no_mp,
+        gui_mode=args.gui_mode # PASSED
     )
-    valid = survival[~np.isnan(survival)]
-    print(f"\nSurvival across {len(valid)} cells:")
-    print(f"Mean: {valid.mean():.2%}\tMin: {valid.min():.2%}  Max : {valid.max():.2%}")
+    
+    if not args.gui_mode:
+        valid = survival[~np.isnan(survival)]
+        print(f"\nSurvival across {len(valid)} cells:")
+        print(f"Mean: {valid.mean():.2%}\tMin: {valid.min():.2%}  Max : {valid.max():.2%}")
+    
     plot_heatmap(survival, output_path, args.csv)
+
+    # Signal completion to the Pygame UI
+    if args.gui_mode:
+        print(f"DONE:{output_path}", flush=True)
 
 if __name__ == "__main__":
     main()

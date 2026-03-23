@@ -275,7 +275,7 @@ class SimRenderer:
                 floor_index += 1
                 
                 status_text = "ALIVE" if agent.alive else "DEAD"
-                
+                status_text = "ESCAPED" if agent.spot.is_end() else status_text
                 # Health Bar Dimensions
                 bar_width = int(180 * sim.scale)
                 bar_height = int(22 * sim.scale)

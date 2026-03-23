@@ -8,6 +8,8 @@ import pygame_gui
 import subprocess
 import tkinter as tk
 import sys
+import threading 
+import queue
 from tkinter import filedialog
 from core.building import Building
 from core.simulation.sim_renderer import SimRenderer
@@ -106,6 +108,8 @@ class Simulation:
         # Submodules (composition like Agent's agent_modules)
         self.renderer = SimRenderer(self)
         self.analytics = SimAnalytics(self)
+        self.manager = pygame_gui.UIManager(self.win.get_size())
+        self.analytics_runners: List['AnalyticsRunner'] = [] 
 
     def create_sliders(self) -> None:
         # place slider panel just above the agent health bar... to hold a dropdown + slider + labels plus a small gap
@@ -242,9 +246,9 @@ class Simulation:
                             snapshot.survival_count,
                         )
                 elif event.key == pygame.K_F8:
-                    _launch_heatmap_picker()
+                    self._launch_analytics("sim_statistics.survival_heatmap", "Survival Heatmap")
                 elif event.key == pygame.K_F9:
-                    _launch_congestion_map_picker()
+                    self._launch_analytics("sim_statistics.congestion_map", "Congestion Map")
         return SIM_CONTINUE
 
     def reset(self) -> None:
@@ -362,43 +366,145 @@ class Simulation:
             # Update simulation if time_manager says so
             if should_update:
                 self.update(self.time_manager.get_delta_time())
+            for runner in self.analytics_runners:
+                runner.update(self.manager)
+            # Remove closed/killed windows from memory
+            self.analytics_runners = [r for r in self.analytics_runners if r.window.alive()]
 
             self.renderer.draw(self.building.current_floor)
 
         return SIM_QUIT
+    def _launch_analytics(self, script_module: str, title: str) -> None:
+        """Open a file dialog to pick a layout CSV, then run the given analytics module."""
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        csv_path = filedialog.askopenfilename(
+            title=f"Select layout CSV for {title}",
+            initialdir="data/layout_csv",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+        )
+        root.destroy()
+        
+        if not csv_path:
+            logger.info("%s: no file selected.", title)
+            return
+            
+        cmd = [sys.executable, "-m", script_module, "--csv", csv_path]
+        logger.info("Launching %s", title)
+        
+        # Spawn runner and attach to simulation
+        runner = AnalyticsRunner(cmd, self.manager, self.win.get_rect(), title)
+        self.analytics_runners.append(runner)
 
-def _launch_heatmap_picker() -> None:
-    """Open a file dialog to pick a layout CSV, then run survival_heatmap."""
-    root = tk.Tk()
-    root.withdraw()          # hide the blank Tk window
-    root.attributes("-topmost", True)  # dialog appears in front of pygame
-    csv_path = filedialog.askopenfilename(
-        title="Select layout CSV for heatmap",
-        initialdir="data/layout_csv",
-        filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-    )
-    root.destroy()
-    if not csv_path:
-        logger.info("Heatmap: no file selected.")
-        return
-    cmd = [sys.executable, "-m", "sim_statistics.survival_heatmap", "--csv", csv_path]
-    logger.info("Launching heatmap: %s", " ".join(cmd))
-    subprocess.Popen(cmd)   # non-blocking – simulation keeps running
+# def _launch_heatmap_picker() -> None:
+#     """Open a file dialog to pick a layout CSV, then run survival_heatmap."""
+#     root = tk.Tk()
+#     root.withdraw()          # hide the blank Tk window
+#     root.attributes("-topmost", True)  # dialog appears in front of pygame
+#     csv_path = filedialog.askopenfilename(
+#         title="Select layout CSV for heatmap",
+#         initialdir="data/layout_csv",
+#         filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+#     )
+#     root.destroy()
+#     if not csv_path:
+#         logger.info("Heatmap: no file selected.")
+#         return
+#     cmd = [sys.executable, "-m", "sim_statistics.survival_heatmap", "--csv", csv_path]
+#     logger.info("Launching heatmap: %s", " ".join(cmd))
+#     subprocess.Popen(cmd)   # non-blocking – simulation keeps running
 
-def _launch_congestion_map_picker() -> None:
-    """Open a file dialog to pick a layout CSV, then run congestion_map."""
-    root = tk.Tk()
-    root.withdraw()          # hide the blank Tk window
-    root.attributes("-topmost", True)  # dialog appears in front of pygame
-    csv_path = filedialog.askopenfilename(
-        title="Select layout CSV for congestion map",
-        initialdir="data/layout_csv",
-        filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-    )
-    root.destroy()
-    if not csv_path:
-        logger.info("Congestion Map: no file selected.")
-        return
-    cmd = [sys.executable, "-m", "sim_statistics.congestion_map", "--csv", csv_path]
-    logger.info("Launching congestion map: %s", " ".join(cmd))
-    subprocess.Popen(cmd)   # non-blocking – simulation keeps running
+# def _launch_congestion_map_picker() -> None:
+#     """Open a file dialog to pick a layout CSV, then run congestion_map."""
+#     root = tk.Tk()
+#     root.withdraw()          # hide the blank Tk window
+#     root.attributes("-topmost", True)  # dialog appears in front of pygame
+#     csv_path = filedialog.askopenfilename(
+#         title="Select layout CSV for congestion map",
+#         initialdir="data/layout_csv",
+#         filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+#     )
+#     root.destroy()
+#     if not csv_path:
+#         logger.info("Congestion Map: no file selected.")
+#         return
+#     cmd = [sys.executable, "-m", "sim_statistics.congestion_map", "--csv", csv_path]
+#     logger.info("Launching congestion map: %s", " ".join(cmd))
+#     subprocess.Popen(cmd)   # non-blocking – simulation keeps running
+
+class AnalyticsRunner:
+    """Manages background analytics subprocesses and their Pygame GUI representation."""
+    def __init__(self, cmd: List[str], manager: pygame_gui.UIManager, win_rect: pygame.Rect, title: str):
+        self.queue = queue.Queue()
+        cmd.append("--gui-mode")
+        
+        # Start subprocess routing stdout to PIPE
+        self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
+        
+        # Thread to read output without blocking Pygame
+        self.thread = threading.Thread(target=self._read_output, daemon=True)
+        self.thread.start()
+
+        # Build UI Elements
+        self.window = pygame_gui.elements.UIWindow(
+            rect=pygame.Rect(win_rect.centerx - 200, win_rect.centery - 100, 400, 200),
+            manager=manager,
+            window_display_title=title
+        )
+        self.status_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(20, 20, 340, 25),
+            text="Initializing...",
+            manager=manager,
+            container=self.window
+        )
+        self.progress_bar = pygame_gui.elements.UIProgressBar(
+            relative_rect=pygame.Rect(20, 50, 340, 30),
+            manager=manager,
+            container=self.window
+        )
+        self.is_done = False
+
+    def _read_output(self) -> None:
+        """Reads stdout lines from the subprocess asynchronously."""
+        for line in iter(self.process.stdout.readline, ''):
+            self.queue.put(line.strip())
+        self.process.stdout.close()
+
+    def update(self, manager: pygame_gui.UIManager) -> None:
+        """Polls the queue and updates the Pygame UI from the main thread."""
+        if self.is_done: return
+
+        while not self.queue.empty():
+            line = self.queue.get()
+            if line.startswith("PROGRESS:"):
+                try:
+                    curr, total = map(int, line.replace("PROGRESS:", "").split("/"))
+                    self.progress_bar.set_current_progress(curr*100 / total)
+                    self.status_label.set_text(f"Processing... {curr}/{total} Scenarios")
+                except ValueError:
+                    pass
+            elif line.startswith("DONE:"):
+                img_path = line.replace("DONE:", "")
+                self._show_result(img_path, manager)
+
+    def _show_result(self, img_path: str, manager: pygame_gui.UIManager) -> None:
+        self.is_done = True
+        self.status_label.set_text("Complete!")
+        self.progress_bar.kill()
+        
+        # Expand window to fit image
+        self.window.set_dimensions((840, 660))
+        self.window.set_position((100, 50))
+        
+        try:
+            loaded_img = pygame.image.load(img_path).convert()
+            scaled_img = pygame.transform.smoothscale(loaded_img, (800, 580))
+            pygame_gui.elements.UIImage(
+                relative_rect=pygame.Rect(10, 30, 800, 580),
+                image_surface=scaled_img,
+                manager=manager,
+                container=self.window
+            )
+        except Exception as e:
+            logger.error(f"Failed to load image map: {e}")

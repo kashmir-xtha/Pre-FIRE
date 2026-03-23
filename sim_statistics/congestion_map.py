@@ -393,6 +393,7 @@ def build_congestion_map(
     dt: float = 0.1,
     workers: int = 0,
     use_mp: bool = True,
+    gui_mode: bool = False, # ADDED
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Returns:
@@ -420,10 +421,11 @@ def build_congestion_map(
     cands_c = np.array([x[1] for x in coords], dtype=np.int32)
 
     n_workers = min(workers if workers > 0 else mp.cpu_count(), scenarios)
-    print(f"Cells    : {len(coords)}  (all seeded simultaneously per scenario)")
-    print(f"Scenarios: {scenarios}")
-    print(f"Steps    : {steps}  ({steps * dt:.1f}s simulated)")
-    print(f"Workers  : {n_workers if use_mp else 1}\n")
+    if not gui_mode:
+        print(f"Cells    : {len(coords)}  (all seeded simultaneously per scenario)")
+        print(f"Scenarios: {scenarios}")
+        print(f"Steps    : {steps}  ({steps * dt:.1f}s simulated)")
+        print(f"Workers  : {n_workers if use_mp else 1}\n")
 
     total_traffic = np.zeros((ROWS, ROWS), dtype=np.int64)
     sum_danger    = np.zeros((ROWS, ROWS), dtype=np.float64)
@@ -435,18 +437,27 @@ def build_congestion_map(
             initializer=_worker_init,
             initargs=(csv_path, steps, dt),
         ) as pool:
-            for _, traffic, danger in tqdm(
-                pool.imap_unordered(_worker_fn, range(scenarios)),
-                total=scenarios, desc="Scenarios", unit="scenario",
-            ):
+            iterator = pool.imap_unordered(_worker_fn, range(scenarios))
+            if not gui_mode:
+                iterator = tqdm(iterator, total=scenarios, desc="Scenarios", unit="scenario")
+            
+            for i, (_, traffic, danger) in enumerate(iterator):
                 total_traffic += traffic
                 sum_danger    += danger
+                if gui_mode:
+                    print(f"PROGRESS:{i+1}/{scenarios}", flush=True)
     else:
         _worker_init(csv_path, steps, dt)
-        for i in tqdm(range(scenarios), desc="Scenarios", unit="scenario"):
+        iterator = range(scenarios)
+        if not gui_mode:
+            iterator = tqdm(iterator, desc="Scenarios", unit="scenario")
+            
+        for i in iterator:
             _, traffic, danger = _worker_fn(i)
             total_traffic += traffic
             sum_danger    += danger
+            if gui_mode:
+                print(f"PROGRESS:{i+1}/{scenarios}", flush=True)
 
     avg_danger = (sum_danger / scenarios).astype(np.float32)
     return barrier_mask, total_traffic, avg_danger
@@ -458,6 +469,7 @@ def plot_congestion_map(
     avg_danger: np.ndarray,
     output_path: str,
     csv_path: str,
+    gui_mode: bool = False, # ADDED
 ) -> None:
     layout_name = os.path.basename(csv_path)
 
@@ -499,7 +511,7 @@ def plot_congestion_map(
     fig.colorbar(im0, ax=ax, fraction=0.046, pad=0.04).set_label("Relative Traffic", fontsize=10)
     ax.set_title("Agent Traffic Frequency\n(brighter = more agents passed through)", fontsize=10)
     ax.set_xlabel("Column"); ax.set_ylabel("Row")
-
+    
     # # Panel 2: Environmental danger
     # ax = axes[1]
     # im1 = ax.imshow(masked(danger_norm), cmap="RdPu", vmin=0, vmax=1,
@@ -507,7 +519,7 @@ def plot_congestion_map(
     # fig.colorbar(im1, ax=ax, fraction=0.046, pad=0.04).set_label("Relative Danger", fontsize=10)
     # ax.set_title("Average Env. Danger\n(smoke × 12 + excess temp × 0.8, normalised)", fontsize=10)
     # ax.set_xlabel("Column"); ax.set_ylabel("Row")
-
+    
     # Panel 3: Chokepoint overlay
     # ax = axes[2] # enable for all 3 panels
     ax = axes[1]
@@ -536,12 +548,9 @@ def plot_congestion_map(
     plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"Congestion map saved -> {output_path}")
-
-    # Print top chokepoint coordinates for reference
-    print("\nTop-10 chokepoint cells (row, col) — score:")
-    for r, c, v in zip(top_r[valid], top_c[valid], flat[top_r[valid], top_c[valid]]):
-        print(f"  ({r:3d}, {c:3d})  score={v:.4f}")
+    
+    if not gui_mode:
+        print(f"Congestion map saved -> {output_path}")
 
 # CLI
 def parse_args() -> argparse.Namespace:
@@ -553,6 +562,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--workers",   type=int,   default=0,   help="Worker processes; 0=cpu_count")
     p.add_argument("--output",    default="",              help="Output PNG (auto-named if empty)")
     p.add_argument("--no-mp",     action="store_true",     help="Disable multiprocessing")
+    p.add_argument("--gui-mode",  action="store_true",     help="Format output for Pygame GUI parser") # ADDED
     return p.parse_args()
 
 def main() -> None:
@@ -565,7 +575,8 @@ def main() -> None:
     os.makedirs(output_dir, exist_ok=True)
     output_path = args.output or os.path.join(output_dir, f"congestion_{base_name}.png")
 
-    print(f"Layout  : {args.csv}\nOutput  : {output_path}\n")
+    if not args.gui_mode:
+        print(f"Layout  : {args.csv}\nOutput  : {output_path}\n")
 
     barrier_mask, total_traffic, avg_danger = build_congestion_map(
         csv_path=args.csv,
@@ -574,14 +585,20 @@ def main() -> None:
         dt=args.dt,
         workers=args.workers,
         use_mp=not args.no_mp,
+        gui_mode=args.gui_mode # PASSED
     )
 
-    walkable = ~barrier_mask
-    t = total_traffic[walkable]
-    print(f"\nTraffic across {walkable.sum()} walkable cells:")
-    print(f"  Mean: {t.mean():.1f}  Median: {np.median(t):.1f}  Max: {t.max()}")
+    if not args.gui_mode:
+        walkable = ~barrier_mask
+        t = total_traffic[walkable]
+        print(f"\nTraffic across {walkable.sum()} walkable cells:")
+        print(f"  Mean: {t.mean():.1f}  Median: {np.median(t):.1f}  Max: {t.max()}")
 
-    plot_congestion_map(barrier_mask, total_traffic, avg_danger, output_path, args.csv)
+    plot_congestion_map(barrier_mask, total_traffic, avg_danger, output_path, args.csv, gui_mode=args.gui_mode)
+
+    # Signal completion to the Pygame UI
+    if args.gui_mode:
+        print(f"DONE:{output_path}", flush=True)
 
 if __name__ == "__main__":
     main()

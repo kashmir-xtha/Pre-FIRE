@@ -363,7 +363,7 @@ def is_valid_fire_start(grid: "Grid", r: int, c: int, max_dist: int = 30) -> boo
     return True
 
 ACTIVATION_TEMP  = 68.0   # °C — standard commercial glass-bulb sprinkler
-EFFECT_RADIUS   = 2.4     # m suppressed in each direction (roughly NFPA 13 standard for 12m² coverage per sprinkler)
+EFFECT_RADIUS   = 2.3     # m suppressed in each direction (approx NFPA 13 standard for 12m² coverage per sprinkler)
 COOLING_RATE_SPRINKLER  = 80.0   # °C removed per second from each cell in radius
 SMOKE_CLEAR_RATE = 0.3    # smoke units cleared per second in radius
 
