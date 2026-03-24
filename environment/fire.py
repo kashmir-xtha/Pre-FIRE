@@ -222,14 +222,16 @@ def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
 
         # Check for extinguishment
         if new_fuel <= 0.0:
-            spot.extinguish_fire()
-            # Convert burned-out cell to inert AIR without refueling
-            spot._material = material_id.AIR
+            props = spot.get_material_properties()
+            if props.get("ash_on_burnout", False): #false is the default
+                spot._material = material_id.ASH #set to ash if valid material else returns false and sets to air like before
+            else:
+                spot._material = material_id.AIR # Convert burned-out cell to inert AIR without refueling
             spot._fuel = 0.0
             spot.material_props = None  # invalidate cached props
+            spot.extinguish_fire()
             dirty = True
-            # Mark this cell as not fire in the array (for grid.fire_np later)
-            is_fire[r, c] = False
+            is_fire[r, c] = False # Mark this cell as not fire in the array (for grid.fire_np later)
 
     if dirty:
         grid.mark_material_cache_dirty()

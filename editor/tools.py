@@ -76,8 +76,8 @@ class ToolsPanel:
         
         tools = []
         for value in MaterialID:
-            if value == MaterialID.FIRE or value == MaterialID.AIR:
-                continue # Skip FIRE and AIR as material tools
+            if value in (MaterialID.FIRE, MaterialID.AIR, MaterialID.ASH):
+                continue # Skip FIRE, AIR or ASH as material tools
             tools.append((ToolType.MATERIAL, value, MATERIALS[value]["name"], MATERIALS[value]["color"]))
 
         # Special tools

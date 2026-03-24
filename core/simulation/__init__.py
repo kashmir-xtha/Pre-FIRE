@@ -11,7 +11,7 @@ Usage:
 """
 
 from core.simulation.simulation import Simulation
-from core.simulation.sim_renderer import SimRenderer, draw_temperature, plot_fire_environment, plot_path_length
+from core.simulation.sim_renderer import SimRenderer, AnalyticsRunner, draw_temperature, plot_fire_environment, plot_path_length
 from core.simulation.sim_analytics import SimAnalytics
 
 # Re-export constants for backward compatibility

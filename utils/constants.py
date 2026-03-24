@@ -53,6 +53,7 @@ class material_id(Enum):
     CONCRETE = 2
     METAL = 3
     FIRE = 4
+    ASH = 5
 
 
 class ToolType(Enum):

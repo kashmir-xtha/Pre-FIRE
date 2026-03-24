@@ -32,7 +32,8 @@ MATERIALS = {
         "fuel_burn_rate": 0.15,         # fuel units/s — wood burns out in ~33s
         "smoke_yield": 1.0,             # dimensionless — baseline smoke producer
         "emissivity": 0.90,             # dimensionless — wood has high thermal emissivity
-        "default_state": EMPTY
+        "default_state": EMPTY,
+        "ash_on_burnout": True
     },
     material_id.CONCRETE: {
         "name": "Wall",
@@ -62,6 +63,21 @@ MATERIALS = {
         "fuel_burn_rate": 0.0,
         "smoke_yield": 0.0,
         "emissivity": 0.30,             # dimensionless — oxidized steel; polished metal ~0.05
+        "default_state": EMPTY
+    },
+    material_id.ASH: { # this is system assigned, not accessible to users
+        "name": "Ash",
+        "color": (169, 169, 169),
+        "fuel": 0.0,
+        "ignition_temp": 9999.0,
+        "cooling_rate": 5.0,
+        "heat_transfer": 0.07,
+        "density": 100.0,
+        "specific_heat": 800.0,
+        "heat_release_rate": 0.0,
+        "fuel_burn_rate": 0.0,
+        "smoke_yield": 0.0,
+        "emissivity": 0.90,
         "default_state": EMPTY
     }
 }

@@ -5,21 +5,17 @@ from typing import Dict, List, Optional, TYPE_CHECKING
 import numpy as np
 import pygame
 import pygame_gui
-import subprocess
 import tkinter as tk
 import sys
-import threading 
-import queue
 from tkinter import filedialog
 from core.building import Building
-from core.simulation.sim_renderer import SimRenderer
+from core.simulation.sim_renderer import SimRenderer, AnalyticsRunner
 from core.simulation.sim_analytics import SimAnalytics
 from environment.fire import randomfirespot
 from utils.utilities import Color, Dimensions, state_value, SimulationState, rTemp, load_layout, get_dpi_scale
 from ui.slider import create_control_panel
 from utils.save_manager import SaveManager, SimulationSnapshot
 from utils.time_manager import TimeManager
-
 if TYPE_CHECKING:
     from core.agent.agent import Agent
     from core.grid import Grid
@@ -432,79 +428,3 @@ class Simulation:
 #     cmd = [sys.executable, "-m", "sim_statistics.congestion_map", "--csv", csv_path]
 #     logger.info("Launching congestion map: %s", " ".join(cmd))
 #     subprocess.Popen(cmd)   # non-blocking – simulation keeps running
-
-class AnalyticsRunner:
-    """Manages background analytics subprocesses and their Pygame GUI representation."""
-    def __init__(self, cmd: List[str], manager: pygame_gui.UIManager, win_rect: pygame.Rect, title: str):
-        self.queue = queue.Queue()
-        cmd.append("--gui-mode")
-        
-        # Start subprocess routing stdout to PIPE
-        self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
-        
-        # Thread to read output without blocking Pygame
-        self.thread = threading.Thread(target=self._read_output, daemon=True)
-        self.thread.start()
-
-        # Build UI Elements
-        self.window = pygame_gui.elements.UIWindow(
-            rect=pygame.Rect(win_rect.centerx - 200, win_rect.centery - 100, 400, 200),
-            manager=manager,
-            window_display_title=title
-        )
-        self.status_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(20, 20, 340, 25),
-            text="Initializing...",
-            manager=manager,
-            container=self.window
-        )
-        self.progress_bar = pygame_gui.elements.UIProgressBar(
-            relative_rect=pygame.Rect(20, 50, 340, 30),
-            manager=manager,
-            container=self.window
-        )
-        self.is_done = False
-
-    def _read_output(self) -> None:
-        """Reads stdout lines from the subprocess asynchronously."""
-        for line in iter(self.process.stdout.readline, ''):
-            self.queue.put(line.strip())
-        self.process.stdout.close()
-
-    def update(self, manager: pygame_gui.UIManager) -> None:
-        """Polls the queue and updates the Pygame UI from the main thread."""
-        if self.is_done: return
-
-        while not self.queue.empty():
-            line = self.queue.get()
-            if line.startswith("PROGRESS:"):
-                try:
-                    curr, total = map(int, line.replace("PROGRESS:", "").split("/"))
-                    self.progress_bar.set_current_progress(curr*100 / total)
-                    self.status_label.set_text(f"Processing... {curr}/{total} Scenarios")
-                except ValueError:
-                    pass
-            elif line.startswith("DONE:"):
-                img_path = line.replace("DONE:", "")
-                self._show_result(img_path, manager)
-
-    def _show_result(self, img_path: str, manager: pygame_gui.UIManager) -> None:
-        self.is_done = True
-        self.status_label.set_text("Complete!")
-        self.progress_bar.kill()
-        
-        # Expand window to fit image
-        self.window.set_dimensions((840, 660))
-        self.window.set_position((100, 50))
-        
-        try:
-            loaded_img = pygame.image.load(img_path).convert()
-            scaled_img = pygame.transform.smoothscale(loaded_img, (800, 580))
-            pygame_gui.elements.UIImage(
-                relative_rect=pygame.Rect(10, 30, 800, 580),
-                image_surface=scaled_img,
-                manager=manager,
-                container=self.window
-            )
-        except Exception as e:
-            logger.error(f"Failed to load image map: {e}")
