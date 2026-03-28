@@ -82,7 +82,7 @@ class TempConstants:
         # Physical size of one grid cell (meters)
         self.CELL_SIZE_M = 0.5
         # Agent base walking speed multiplier (1.0 = research-paper speeds)
-        self.BASE_SPEED_M_S = 1.0
+        self.BASE_SPEED_M_S = 2.0
         self.NUM_FLOORS = 1
 
         self.PARAMS = {

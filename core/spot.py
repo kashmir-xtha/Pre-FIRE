@@ -69,7 +69,8 @@ class Spot:
         self.material_props = None  # Lazy-cached by update_temperature_from_flux
         self._is_sprinkler = False
         self._sprinkler_active = False
-    # --- Property getters for safe access ---
+
+    # Property getters for safe access
     @property
     def color(self) -> ColorTuple:
         return self._color
@@ -219,7 +220,6 @@ class Spot:
         return self._sprinkler_active
     
     # Query methods 
-
     @property #property decorator allows us for access as an attribute while still controlling it with a private variable
     def burned(self) -> bool:
         """True if this spot has ever been on fire"""

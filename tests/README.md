@@ -4,7 +4,7 @@
 
 ```bash
 # Run from project root
-cd "d:\Python\fire simulation\Pre-FIRE - Copy"
+cd "d:\Python\fire simulation\Pre-FIRE"
 
 # Run all tests
 pytest

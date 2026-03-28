@@ -36,8 +36,8 @@ class Grid:
         self.exits = set()
 
         # a snapshot of the layout when the grid is first created/edited.
-        # used during simulation reset to restore original materials even if
-        # cells have been converted to air by burning.
+        # used during simulation reset to restore original materials 
+        # even if cells have been converted to air by burning.
         self.initial_layout = None  
         # type: Optional[List[List[Dict[str, object]]]]
 

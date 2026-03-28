@@ -241,7 +241,7 @@ class Agent:
         return self.pathplanner.compute_path()
 
     def compute_visibility_radius(self) -> float:
-        return self.vision.compute_visibility_radius()
+        return self.vision.compute_visibility_radius_in_pixels()
 
     # State properties (delegating to state_manager)
     @property
@@ -338,18 +338,48 @@ class Agent:
 
         win.blit(self.trail_surf, (0, 0))
 
+    def _cast_ray_grid(
+                self,
+                cx: int, 
+                cy: int, 
+                angle: float, 
+                max_dist: float, 
+                grid: List[List[str]], 
+                tile_size: int
+            ) -> tuple:
+        step = 4 # calculates every 4 pixels along the ray
+
+        for d in range(0, int(max_dist), step):
+            x = cx + math.cos(angle) * d
+            y = cy + math.sin(angle) * d
+
+            gx = int(x // tile_size)
+            gy = int(y // tile_size)
+
+            # bounds check
+            if gy < 0 or gy >= len(grid) or gx < 0 or gx >= len(grid[0]):
+                return (x, y)
+
+            # stop if wall cell
+            if grid[gy][gx]._state == 1:
+                return (x, y)
+
+        return (
+            cx + math.cos(angle) * max_dist,
+            cy + math.sin(angle) * max_dist
+        )
+
     def _draw_vision_cone(self, win: pygame.Surface, cx: int, cy: int) -> None:
-        vis_radius   = self.vision.compute_visibility_radius()
-        cone_points  = [(cx, cy)]
+        vis_radius   = self.vision.compute_visibility_radius_in_pixels()
         start_angle  = math.radians(-self.movement.current_angle - 135)
         end_angle    = math.radians(-self.movement.current_angle - 45)
+        cone_points  = [(cx, cy)]
+        
+        for i in range(40):  # more rays = smoother
+            angle = start_angle + (end_angle - start_angle) * (i / 39)
 
-        for i in range(13):
-            angle = start_angle + (end_angle - start_angle) * (i / 12)
-            cone_points.append((
-                cx + math.cos(angle) * vis_radius,
-                cy + math.sin(angle) * vis_radius,
-            ))
+            hit = self._cast_ray_grid(cx, cy, angle, vis_radius, self.grid.grid, self.grid.cell_size)
+            cone_points.append(hit)
 
         self.vision_surf.fill((0, 0, 0, 0))
         pygame.draw.polygon(self.vision_surf, (180, 210, 255, 160), cone_points)

@@ -82,7 +82,7 @@ class ToolsPanel:
 
         # Special tools
         tools.append((ToolType.FIRE_SOURCE, None, "Fire", FIRE_COLOR))
-        tools.append((ToolType.START, None, "Start", GREEN))
+        tools.append((ToolType.START, None, "Agent", GREEN))
         tools.append((ToolType.END, None, "End", RED))
         tools.append((ToolType.STAIR, None, "Stair", PINK))
         tools.append((ToolType.SPRINKLER, None, "Sprinkler", (0, 180, 255)))

@@ -31,7 +31,7 @@ class AgentVision:
         self.update_timer = 0.0
         self.update_interval = 0.1  # Update perception 10 times per second
     
-    def compute_visibility_radius(self) -> float:
+    def compute_visibility_radius_in_pixels(self) -> float:
         """
         Calculate current visibility radius based on smoke density.
         
@@ -174,7 +174,7 @@ class AgentVision:
         self.update_timer = 0.0
         
         # Calculate visibility range
-        vis_radius_px = self.compute_visibility_radius()
+        vis_radius_px = self.compute_visibility_radius_in_pixels()
         cell_size = getattr(self.agent.grid, 'cell_size', 20)
         radius_cells = int(vis_radius_px / cell_size)
         

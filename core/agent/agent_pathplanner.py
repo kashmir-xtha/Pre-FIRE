@@ -131,7 +131,7 @@ class AgentPathplanner:
             return False
         
         # Calculate visible range (vision is already an AgentVision instance)
-        vis_cells = int(self.agent.vision.compute_visibility_radius() / self.agent.grid.cell_size)
+        vis_cells = int(self.agent.vision.compute_visibility_radius_in_pixels() / self.agent.grid.cell_size)
         
         # Check visible portion of path for dangers
         for spot in path[:vis_cells]:
@@ -191,6 +191,25 @@ class AgentPathplanner:
                     stairs.append(spot)
         return stairs
     
+    def _compute_danger_cost(self, nr: int, nc: int, desperate: bool, vis_cells: float) -> float:
+        """Aggregate environmental danger cost for A* node (nr, nc)."""
+        raw_smoke = self.agent.known_smoke[nr, nc]
+        smoke_val = 0.8 if raw_smoke < 0 else raw_smoke
+
+        if desperate:
+            return smoke_val * 2
+
+        cost = smoke_val * 12
+        cost += max(0, (self.agent.known_temp[nr, nc] - 60) * 0.8)
+        cost += self.agent.movement.fire_avoidance_cost(nr, nc)
+
+        if vis_cells <= 3.0:
+            barrier_count = self.agent.barrier_adjacent[nr, nc]
+            wall_map = {0: 0.5, 1: -0.15}
+            cost += wall_map.get(barrier_count, -0.3)
+
+        return cost
+
     def _a_star(
         self,
         grid: "Grid",
@@ -216,7 +235,7 @@ class AgentPathplanner:
         """
         rows = self.agent.rows
         cell_size = getattr(grid, 'cell_size', 20)
-        vis_cells = self.agent.vision.compute_visibility_radius() / cell_size
+        vis_cells = self.agent.vision.compute_visibility_radius_in_pixels() / cell_size
         
         # Initialize arrays for tracking
         g_score = np.full((rows, rows), np.inf, dtype=np.float32)
@@ -274,36 +293,11 @@ class AgentPathplanner:
                 # Turning penalty (encourage straight paths)
                 turn_cost = 0.2 if last_dir != (0, 0) and (dr, dc) != last_dir else 0.0
                 
-                # Danger cost (smoke + temperature)
-                raw_smoke = self.agent.known_smoke[nr, nc]
-                smoke_val = 0.8 if raw_smoke < 0 else raw_smoke
-                danger_cost = (smoke_val * 12) if not desperate else (smoke_val * 2)
-
-                if not desperate:
-                    danger_cost += max(0, (self.agent.known_temp[nr, nc] - 60) * 0.8)
-
-                # Fire proximity avoidance force
-                # Delegates to AgentMovement.fire_avoidance_cost() which evaluates
-                # radiant heat flux from all known fire cells within the avoidance
-                # radius.  Suppressed in desperate mode so a blocked agent can still
-                # find any path out.
-                fire_avoid_cost = 0.0
-                if not desperate:
-                    fire_avoid_cost = self.agent.movement.fire_avoidance_cost(nr, nc)
-
-                # Wall proximity cost (prefer paths near walls in low visibility)
-                wall_cost = 0.0
-                if vis_cells <= 3.0 and not desperate:
-                    barrier_count = self.agent.barrier_adjacent[nr, nc]
-                    if barrier_count == 0:
-                        wall_cost = 0.5
-                    elif barrier_count == 1:
-                        wall_cost = -0.15
-                    else:
-                        wall_cost = -0.3
+                # Danger cost (smoke, heat, fire avoidance, wall proximity)
+                danger_cost = self._compute_danger_cost(nr, nc, desperate, vis_cells)
 
                 # Total tentative g-score
-                temp_g = current_g + dist_cost + turn_cost + danger_cost + fire_avoid_cost + wall_cost
+                temp_g = current_g + dist_cost + turn_cost + danger_cost
                 
                 # Update if this is a better path
                 if temp_g < g_score[nr, nc]:

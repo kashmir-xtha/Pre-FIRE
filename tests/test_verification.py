@@ -49,9 +49,6 @@ from utils.utilities import fire_constants
 AMBIENT = fire_constants.AMBIENT_TEMP.value
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def make_grid(rows=10):
     g = Grid(rows=rows, width=400, floor=0)
@@ -67,10 +64,6 @@ def make_agent(vulnerability="adult_fit", rows=10):
     return Agent(g, g.grid[rows // 2][rows // 2], floor=0,
                  vulnerability=vulnerability)
 
-
-# ===========================================================================
-# 1. FIRE SPREAD
-# ===========================================================================
 
 class TestBurnedFlagPreventsReIgnition:
     """

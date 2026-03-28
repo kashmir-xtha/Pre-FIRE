@@ -76,14 +76,14 @@ class AgentMovement:
         # Range [0.0, 1.0].  Updated each damage tick from local hazard levels.
         self.stress: float = 0.0
 
-        # Precomputed fire avoidance cost grid       -
+        # Precomputed fire avoidance cost grid
         # Rebuilt lazily whenever known_fire changes (flagged by vision system).
         # Avoids recomputing inverse-square repulsion inside the A* inner loop.
         rows = agent.rows
         self._fire_avoid_grid: np.ndarray = np.zeros((rows, rows), dtype=np.float32)
         self._fire_avoid_dirty: bool = True  # force build on first use
 
-        # Vulnerability profile         ---
+        # Vulnerability profile
         profile = VULNERABILITY_PROFILES.get(vulnerability, VULNERABILITY_PROFILES["adult_average"])
         self.fed_scale: float   = profile[0]   # multiplies FED accumulation rate
         self.speed_scale: float = profile[1]   # multiplies base walking speed
@@ -125,7 +125,7 @@ class AgentMovement:
 
         # FED incapacitation penalty
         # Once FED reaches 0.5 the agent starts to slow; at 1.0 (incapacitated)
-        # speed is at floor level.
+        # Speed is at floor level.
         fed_penalty = 1.0
         max_fed = max(self.fed_toxic, self.fed_thermal)
         if max_fed > 0.5:
@@ -189,7 +189,7 @@ class AgentMovement:
 
         # Derive health from FED 
         # Map worst FED to health: 0 FED → 100 HP, 1.0 FED → 0 HP.
-        # We use a slightly concave curve so health drops slowly at first
+        # We use a slightly convex curve so health drops slowly at first
         # then rapidly as the agent nears incapacitation, which looks more
         # realistic on the panel.
         worst_fed = min(max(self.fed_toxic, self.fed_thermal), 1.0)
@@ -446,7 +446,7 @@ class AgentState:
     def _should_start_reaction(self) -> bool:
         return self.agent.smoke_detected or self.agent.vision.detect_imminent_danger(
             max_distance_cells=int(
-                self.agent.vision.compute_visibility_radius() / self.agent.grid.cell_size
+                self.agent.vision.compute_visibility_radius_in_pixels() / self.agent.grid.cell_size
             )
         )
 
