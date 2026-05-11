@@ -59,6 +59,11 @@ class Grid:
         self.is_start_np = np.zeros((rows, rows), dtype=np.bool_)
         self.is_end_np = np.zeros((rows, rows), dtype=np.bool_)
 
+        # Additional caches for optimization
+        self.special_np = np.zeros((rows, rows), dtype=np.bool_)
+        self.heat_release_np = np.zeros((rows, rows), dtype=np.float32)
+        self.fuel_burn_rate_np = np.zeros((rows, rows), dtype=np.float32)
+
         self.ensure_material_cache()
 
     def add_exit(self, spot: "Spot") -> None:
@@ -120,6 +125,12 @@ class Grid:
                 self.fuel_np[r, c] = spot.fuel
                 self.fire_np[r, c] = spot.is_fire()
                 self.burned_np[r, c] = spot.burned
+
+                # Populate optimization arrays
+                self.special_np[r, c] = spot.is_barrier() or spot.is_start() or spot.is_end()
+                props = spot.get_material_properties()
+                self.heat_release_np[r, c] = props.get("heat_release_rate", 500.0)
+                self.fuel_burn_rate_np[r, c] = props.get("fuel_burn_rate", 0.0)
                 
     def get_spot(self, r: int, c: int) -> Optional["Spot"]:
         if self.in_bounds(r, c):

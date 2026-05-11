@@ -86,13 +86,23 @@ def do_temperature_update(grid: "Grid", dt: float = 1.0) -> None:
     net_flux = (conduction_flux + radiation_flux + cooling_flux) / heat_capacity
     net_flux[is_barrier] = 0.0
 
-    for r in range(rows):
+    # Vectorized temperature update using masks
+    ambient = temp_constants.AMBIENT_TEMP
+
+    special_mask = grid.special_np # barrier/start/end cells that don't follow normal conduction
+    grid.temp_np[special_mask] += (ambient - grid.temp_np[special_mask]) * 0.02 * dt
+
+    normal_mask = ~special_mask # cells that follow normal conduction: apply diffusion and convection flux to the whole array
+    grid.temp_np[normal_mask] += net_flux[normal_mask] * dt
+
+    burning_mask = normal_mask & grid.fire_np & (grid.fuel_np > 0) # only add heat release to cells that are actually burning with fuel left
+    grid.temp_np[burning_mask] += grid.heat_release_np[burning_mask] * dt
+
+    grid.temp_np = np.maximum(ambient, np.minimum(grid.temp_np, 5000.0)) # prevent infinite heat by clamping 
+    
+    for r in range(rows): # Sync back to spot objects (for rendering and agent interactions)
         for c in range(rows):
-            grid.grid[r][c].update_temperature_from_flux(
-                heat_flux=net_flux[r, c],
-                tempConstant=temp_constants,
-                dt=dt
-            )
+            grid.grid[r][c]._temperature = grid.temp_np[r, c]
 
 
 def update_fire_with_materials(grid: "Grid", dt: float = 1.0) -> List["Spot"]:
